@@ -1,9 +1,14 @@
 package main
 
 import (
-	"fmt"
+	"meqa/mqswag"
+	"meqa/mqutil"
 )
 
 func main() {
-	fmt.Printf("usage:")
+	filePath := "d:\\src\\autoapi\\example-jsons\\petstore.json"
+	mqutil.Logger = mqutil.NewStdLogger()
+
+	swagger := mqswag.Swagger{}
+	swagger.InitFromFile(filePath)
 }
