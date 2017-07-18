@@ -1,0 +1,6 @@
+# This is an informal documentation of the environment setting and 3rd party
+# packages we use. Eventually we will need to put them into a Dockerfile.
+
+export GOPATH="c:\go_vendor;d:\src\autoapi\mqgo"
+
+go get github.com/derekparker/delve/cmd/dlv
