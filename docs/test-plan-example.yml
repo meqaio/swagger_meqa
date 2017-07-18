@@ -1,0 +1,88 @@
+# In this example, a user has attributes name, address, phone, id (returned by post)
+---
+create user manual:
+  - path: /users
+    method: post
+    parameters:
+      name: john smith
+      address: 1st main street, San Jose, CA 95133
+      phone: 888-888-8888
+
+---
+create user auto:
+  - path: /users
+    method: post
+
+---
+delete user:
+  - path: /users/{user_id}
+    method: delete
+
+---
+get all users:
+  - path: /users
+    method: get
+
+---
+get user:
+  - path: /users/{user_id}
+    method: get
+
+--- 
+update user:
+  - path: /users/{user_id}
+    method: update
+
+---
+create 2 delete 1:
+  - name: create1
+    ref: create user auto
+  - name: create2
+    ref: create user auto
+    parameters:
+      name: joe  
+  - ref: get all users
+  - ref: get user
+    parameters:
+      user_id: "%create1.id%"
+  - ref: delete user
+    parameters:
+      user_id: "%create1.id%"
+  - ref: get user
+    parameters:
+      user_id: "%create1.id%"
+    expects:
+      status: fail
+
+---
+crud:
+  - name: create
+    ref: create user auto
+  - name: read
+    ref: get user
+    parameters:
+      user_id: "%create.id%"
+  - name: update
+    ref: update user
+    parameters:
+      user_id: "%create.id%"
+  - name: delete
+    ref: delete user
+    parameters:
+      user_id: "%create.id%"
+  - name: read
+    ref: get user
+    parameters:
+      user_id: "%create.id%"
+    expects:
+      status: fail
+
+---
+auto test:
+  - ref: create user auto
+  - ref: get user
+    parameters:
+      user_id: auto
+  - ref: update user
+  - ref: delete user
+  
