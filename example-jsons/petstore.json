@@ -200,7 +200,7 @@
                     {
                         "name": "tags",
                         "in": "query",
-                        "description": "Tags to filter by",
+                        "description": "Tags to filter by @meqa[Pet:tags]",
                         "required": true,
                         "type": "array",
                         "items": {
@@ -250,7 +250,7 @@
                     {
                         "name": "petId",
                         "in": "path",
-                        "description": "ID of pet to return",
+                        "description": "ID of pet to return @meqa[Pet:id]",
                         "required": true,
                         "type": "integer",
                         "format": "int64"
@@ -294,7 +294,7 @@
                     {
                         "name": "petId",
                         "in": "path",
-                        "description": "ID of pet that needs to be updated",
+                        "description": "ID of pet that needs to be updated @meqa[Pet:id]",
                         "required": true,
                         "type": "integer",
                         "format": "int64"
@@ -302,14 +302,14 @@
                     {
                         "name": "name",
                         "in": "formData",
-                        "description": "Updated name of the pet",
+                        "description": "Updated name of the pet @meqa[Pet:name]",
                         "required": false,
                         "type": "string"
                     },
                     {
                         "name": "status",
                         "in": "formData",
-                        "description": "Updated status of the pet",
+                        "description": "Updated status of the pet @meqa[Pet:status]",
                         "required": false,
                         "type": "string"
                     }
@@ -349,7 +349,7 @@
                     {
                         "name": "petId",
                         "in": "path",
-                        "description": "Pet id to delete",
+                        "description": "Pet id to delete @meqa[Pet:id]",
                         "required": true,
                         "type": "integer",
                         "format": "int64"
@@ -391,7 +391,7 @@
                     {
                         "name": "petId",
                         "in": "path",
-                        "description": "ID of pet to update",
+                        "description": "ID of pet to update @meqa[Pet:id]",
                         "required": true,
                         "type": "integer",
                         "format": "int64"
@@ -512,7 +512,7 @@
                     {
                         "name": "orderId",
                         "in": "path",
-                        "description": "ID of pet that needs to be fetched",
+                        "description": "ID of pet that needs to be fetched @meqa[Order:id]",
                         "required": true,
                         "type": "integer",
                         "maximum": 10.0,
@@ -550,7 +550,7 @@
                     {
                         "name": "orderId",
                         "in": "path",
-                        "description": "ID of the order that needs to be deleted",
+                        "description": "ID of the order that needs to be deleted @meqa[Order:id]",
                         "required": true,
                         "type": "integer",
                         "minimum": 1.0,
@@ -679,14 +679,14 @@
                     {
                         "name": "username",
                         "in": "query",
-                        "description": "The user name for login",
+                        "description": "The user name for login @meqa[User:username]",
                         "required": true,
                         "type": "string"
                     },
                     {
                         "name": "password",
                         "in": "query",
-                        "description": "The password for login in clear text",
+                        "description": "The password for login in clear text @meqa[User:password]",
                         "required": true,
                         "type": "string"
                     }
@@ -752,7 +752,7 @@
                     {
                         "name": "username",
                         "in": "path",
-                        "description": "The name that needs to be fetched. Use user1 for testing. ",
+                        "description": "The name that needs to be fetched. Use user1 for testing.  @meqa[User:username]",
                         "required": true,
                         "type": "string"
                     }
@@ -787,7 +787,7 @@
                     {
                         "name": "username",
                         "in": "path",
-                        "description": "name that need to be updated",
+                        "description": "name that need to be updated @meqa[User:username]",
                         "required": true,
                         "type": "string"
                     },
@@ -825,7 +825,7 @@
                     {
                         "name": "username",
                         "in": "path",
-                        "description": "The name that needs to be deleted",
+                        "description": "The name that needs to be deleted @meqa[User:username]",
                         "required": true,
                         "type": "string"
                     }
