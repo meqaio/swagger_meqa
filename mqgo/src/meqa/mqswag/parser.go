@@ -2,9 +2,12 @@
 package mqswag
 
 import (
-	"encoding/json"
-	"io/ioutil"
+	"log"
 	"meqa/mqutil"
+
+	"github.com/go-openapi/loads"
+	"github.com/go-openapi/loads/fmts"
+	"github.com/go-openapi/spec"
 )
 
 // string fields in OpenAPI doc
@@ -20,31 +23,20 @@ const PATHS = "paths"
 const SECURITY_DEFINITIONS = "securityDefinitions"
 const DEFINITIONS = "definitions"
 
-// Swagger stores the swagger.json we parsed.
-type Swagger struct {
-	// The raw doc parsed from json.
-	doc map[string]interface{}
-}
-
-// Init from a json string
-func (swagger *Swagger) InitFromString(data []byte) error {
-	swagger.doc = nil
-	err := json.Unmarshal(data, &swagger.doc)
-	if err != nil {
-		mqutil.Logger.Println("The input is not a valid json")
-		mqutil.Logger.Println(err.Error())
-		return err
-	}
-	return nil
-}
-
 // Init from a file
-func (swagger *Swagger) InitFromFile(path string) error {
-	data, err := ioutil.ReadFile(path)
+func CreateSwaggerFromURL(path string) (*spec.Swagger, error) {
+	specDoc, err := loads.Spec(path)
 	if err != nil {
 		mqutil.Logger.Printf("Can't open the following file: %s", path)
 		mqutil.Logger.Println(err.Error())
-		return err
+		return nil, err
 	}
-	return swagger.InitFromString(data)
+
+	log.Println("Would be serving:", specDoc.Spec().Info.Title)
+
+	return specDoc.Spec(), nil
+}
+
+func init() {
+	loads.AddLoader(fmts.YAMLMatcher, fmts.YAMLDoc)
 }
