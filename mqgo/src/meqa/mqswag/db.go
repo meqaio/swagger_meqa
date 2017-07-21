@@ -132,8 +132,8 @@ func (db *SchemaDB) Delete(criteria interface{}, matches MatchFunc, desiredCount
 }
 
 // DB holds schema name to Schema mapping.
-var DB map[string]SchemaDB
+var DB map[string](*SchemaDB)
 
 func init() {
-	DB = make(map[string]SchemaDB)
+	DB = make(map[string](*SchemaDB))
 }
