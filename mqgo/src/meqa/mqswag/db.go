@@ -114,6 +114,23 @@ func (db *SchemaDB) Find(criteria interface{}, matches MatchFunc, desiredCount i
 	return result
 }
 
+// Delete deletes the specified number of elements that match the criteria. Input -1 for delete all.
+// Returns the number of elements deleted.
+func (db *SchemaDB) Delete(criteria interface{}, matches MatchFunc, desiredCount int) int {
+	count := 0
+	for i, obj := range db.Objects {
+		if matches(criteria, obj) {
+			db.Objects[i] = db.Objects[count]
+			count++
+			if count >= desiredCount {
+				break
+			}
+		}
+	}
+	db.Objects = db.Objects[count:]
+	return count
+}
+
 // DB holds schema name to Schema mapping.
 var DB map[string]SchemaDB
 
