@@ -1,5 +1,8 @@
-# In this example, a user has attributes name, address, phone, id (returned by post)
+
+# Example test plan
+
 ---
+# In this example, a user has attributes name, address, phone, id (returned by post)
 create user manual:
   - path: /users
     method: post

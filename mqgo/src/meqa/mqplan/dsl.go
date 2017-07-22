@@ -1,14 +1,14 @@
 package mqplan
 
 import (
-	"io/ioutil"
-	"meqa/mqutil"
-	"strings"
-
 	"errors"
 	"fmt"
+	"io/ioutil"
+	"strings"
 
 	"gopkg.in/yaml.v2"
+
+	"meqa/mqutil"
 )
 
 // Test represents a test object in the DSL
@@ -20,9 +20,7 @@ type Test struct {
 	Parameters map[string]interface{}
 }
 
-type TestCase struct {
-	Tests []*Test
-}
+type TestCase []*Test
 
 // Represents all the test cases in the DSL.
 type TestPlan struct {
@@ -70,10 +68,7 @@ func (plan *TestPlan) InitFromFile(path string) error {
 	}
 	chunks := strings.Split(string(data), "---")
 	for _, chunk := range chunks {
-		err := plan.AddFromString(chunk)
-		if err != nil {
-			return err
-		}
+		plan.AddFromString(chunk)
 	}
 	return nil
 }

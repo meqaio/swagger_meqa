@@ -2,15 +2,20 @@ package main
 
 import (
 	"fmt"
+
+	"meqa/mqplan"
 	"meqa/mqswag"
 	"meqa/mqutil"
 )
 
 func main() {
-	filePath := "d:\\src\\autoapi\\example-jsons\\petstore.json"
+	swaggerJsonPath := "d:\\src\\autoapi\\example-jsons\\petstore.json"
+	testPlanPath := "d:\\src\\autoapi\\docs\\test-plan-example.yml"
+
 	mqutil.Logger = mqutil.NewStdLogger()
 
-	swagger, err := mqswag.CreateSwaggerFromURL(filePath)
+	// Test loading swagger.json
+	swagger, err := mqswag.CreateSwaggerFromURL(swaggerJsonPath)
 	if err != nil {
 		mqutil.Logger.Printf("Error: %s", err.Error())
 	}
@@ -18,4 +23,11 @@ func main() {
 		fmt.Printf("%v:%v\n", pathName, pathItem)
 	}
 	fmt.Printf("%v", swagger.Paths.Paths["/pet"].Post)
+
+	// Test loading test plan
+	err = mqplan.Current.InitFromFile(testPlanPath)
+	if err != nil {
+		mqutil.Logger.Printf("Error loading test plan: %s", err.Error())
+	}
+
 }
