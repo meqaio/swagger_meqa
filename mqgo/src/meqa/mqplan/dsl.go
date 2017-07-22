@@ -8,6 +8,7 @@ import (
 
 	"gopkg.in/yaml.v2"
 
+	"meqa/mqswag"
 	"meqa/mqutil"
 )
 
@@ -74,7 +75,7 @@ func (plan *TestPlan) InitFromFile(path string) error {
 }
 
 // Run a named TestCase in the test plan.
-func (plan *TestPlan) Run(name string) error {
+func (plan *TestPlan) Run(name string, swagger *mqswag.Swagger, db map[string](*mqswag.SchemaDB)) error {
 	panic("not implemented")
 	return nil
 }

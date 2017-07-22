@@ -30,4 +30,5 @@ func main() {
 		mqutil.Logger.Printf("Error loading test plan: %s", err.Error())
 	}
 
+	mqplan.Current.Run("create user manual", swagger, mqswag.DB)
 }

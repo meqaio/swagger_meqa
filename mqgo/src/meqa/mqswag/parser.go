@@ -25,8 +25,10 @@ const SECURITY_DEFINITIONS = "securityDefinitions"
 const DEFINITIONS = "definitions"
 */
 
+type Swagger spec.Swagger
+
 // Init from a file
-func CreateSwaggerFromURL(path string) (*spec.Swagger, error) {
+func CreateSwaggerFromURL(path string) (*Swagger, error) {
 	specDoc, err := loads.Spec(path)
 	if err != nil {
 		mqutil.Logger.Printf("Can't open the following file: %s", path)
@@ -36,11 +38,11 @@ func CreateSwaggerFromURL(path string) (*spec.Swagger, error) {
 
 	log.Println("Would be serving:", specDoc.Spec().Info.Title)
 
-	return specDoc.Spec(), nil
+	return (*Swagger)(specDoc.Spec()), nil
 }
 
 // AddSchemasToDB finds object schemas in the swagger spec and add them to DB.
-func AddSchemasToDB(swagger *spec.Swagger) {
+func AddSchemasToDB(swagger *Swagger) {
 	for schemaName, schema := range swagger.Definitions {
 		if _, ok := DB[schemaName]; ok {
 			mqutil.Logger.Printf("warning - schema %s already exists", schemaName)
