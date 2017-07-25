@@ -1,0 +1,39 @@
+package mqutil
+
+import (
+	"fmt"
+	"runtime/debug"
+)
+
+const (
+	ErrOK       = iota // 0
+	ErrInvalid         // invalid parameters
+	ErrNotFound        // resource not found
+)
+
+// Error implements MQ specific error type.
+type Error interface {
+	error
+	Type() int
+}
+
+// TypedError holds a type and a back trace for easy debugging
+type TypedError struct {
+	errType int
+	errMsg  string
+}
+
+func (e *TypedError) Error() string {
+	return e.errMsg
+}
+
+func (e *TypedError) Type() int {
+	return e.errType
+}
+
+func NewError(errType int, str string) error {
+	buf := debug.Stack()
+	err := TypedError{errType, ""}
+	err.errMsg = fmt.Sprintf("==== %v ====\nCaller message:\n%s\nBacktrace:%v", errType, str, buf)
+	return &err
+}

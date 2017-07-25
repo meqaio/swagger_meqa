@@ -44,10 +44,10 @@ func CreateSwaggerFromURL(path string) (*Swagger, error) {
 // AddSchemasToDB finds object schemas in the swagger spec and add them to DB.
 func AddSchemasToDB(swagger *Swagger) {
 	for schemaName, schema := range swagger.Definitions {
-		if _, ok := DB[schemaName]; ok {
+		if _, ok := ObjDB[schemaName]; ok {
 			mqutil.Logger.Printf("warning - schema %s already exists", schemaName)
 		}
-		DB[schemaName] = &SchemaDB{schemaName, Schema(schema), nil}
+		ObjDB[schemaName] = &SchemaDB{schemaName, Schema(schema), nil}
 	}
 }
 
