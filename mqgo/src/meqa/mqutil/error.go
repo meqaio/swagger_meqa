@@ -34,6 +34,6 @@ func (e *TypedError) Type() int {
 func NewError(errType int, str string) error {
 	buf := debug.Stack()
 	err := TypedError{errType, ""}
-	err.errMsg = fmt.Sprintf("==== %v ====\nCaller message:\n%s\nBacktrace:%v", errType, str, buf)
+	err.errMsg = fmt.Sprintf("==== %v ====\nError message:\n%s\nBacktrace:%v", errType, str, buf)
 	return &err
 }

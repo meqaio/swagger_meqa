@@ -1,6 +1,8 @@
 package mqplan
 
 import (
+	"encoding/base64"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -16,6 +18,7 @@ import (
 	"meqa/mqutil"
 
 	"github.com/go-openapi/spec"
+	"github.com/lucasjones/reggen"
 	"github.com/xeipuuv/gojsonschema"
 )
 
@@ -88,13 +91,13 @@ func generateParameter(paramSpec *spec.Parameter, db mqswag.DB) (interface{}, er
 		return generateObject(paramSpec)
 	}
 
-	return generateByType(&paramSpec.SimpleSchema, &paramSpec.CommonValidations)
+	return generateByType(&paramSpec.SimpleSchema, &paramSpec.CommonValidations, paramSpec.Name+"-")
 }
 
-func generateByType(s *spec.SimpleSchema, v *spec.CommonValidations) (interface{}, error) {
+func generateByType(s *spec.SimpleSchema, v *spec.CommonValidations, prefix string) (interface{}, error) {
 	switch s.Type {
 	case gojsonschema.TYPE_ARRAY:
-		return generateArray(s, v)
+		return generateArray(s, v, prefix)
 	case gojsonschema.TYPE_BOOLEAN:
 		return generateBool(v)
 	case gojsonschema.TYPE_INTEGER:
@@ -102,23 +105,56 @@ func generateByType(s *spec.SimpleSchema, v *spec.CommonValidations) (interface{
 	case gojsonschema.TYPE_NUMBER:
 		return generateFloat(v)
 	case gojsonschema.TYPE_STRING:
-		return generateString(s, v)
+		return generateString(s, v, prefix)
 	}
 
 	panic("not implemented")
 }
 
+// RandomTime generate a random time in the range of [t - r, t).
+func RandomTime(t time.Time, r time.Duration) time.Time {
+	return t.Add(-time.Duration(float64(r) * rand.Float64()))
+}
+
 // TODO we need to make it context aware. Based on different contexts we should generate different
-// date ranges.
-func generateString(s *spec.SimpleSchema, v *spec.CommonValidations) (string, error) {
+// date ranges. Prefix is a prefix to use when generating strings. It's only used when there is
+// no specified pattern in the swagger.json
+func generateString(s *spec.SimpleSchema, v *spec.CommonValidations, prefix string) (string, error) {
 	if s.Format == "date-time" {
-		t := time.Now()
-		t = t.Add(time.Duration(float64(-1*time.Hour*24*30) * rand.Float64()))
+		t := RandomTime(time.Now(), time.Hour*24*30)
 		return t.Format(time.RFC3339), nil
 	}
 	if s.Format == "date" {
-		//d := time.
+		t := RandomTime(time.Now(), time.Hour*24*30)
+		return t.Format("2006-01-02"), nil
 	}
+
+	// If no pattern is specified, we use the field name + some numbers as pattern
+	var pattern string
+	length := 0
+	if len(v.Pattern) != 0 {
+		pattern = v.Pattern
+		length = len(v.Pattern) * 2
+	} else {
+		pattern = prefix + "\\d+"
+		length = len(prefix) + 5
+	}
+	g, err := reggen.NewGenerator(pattern)
+	if err != nil {
+		return "", mqutil.NewError(mqutil.ErrInvalid, err.Error())
+	}
+	str := g.Generate(length)
+
+	if len(s.Format) == 0 || s.Format == "password" {
+		return str, nil
+	}
+	if s.Format == "byte" {
+		return base64.StdEncoding.EncodeToString([]byte(str)), nil
+	}
+	if s.Format == "binary" {
+		return hex.EncodeToString([]byte(str)), nil
+	}
+	return "", mqutil.NewError(mqutil.ErrInvalid, fmt.Sprintf("Invalid format string: %s", s.Format))
 }
 
 func generateBool(v *spec.CommonValidations) (interface{}, error) {
@@ -169,7 +205,7 @@ func generateInt(v *spec.CommonValidations) (int64, error) {
 	return i, nil
 }
 
-func generateArray(s *spec.SimpleSchema, v *spec.CommonValidations) (interface{}, error) {
+func generateArray(s *spec.SimpleSchema, v *spec.CommonValidations, prefix string) (interface{}, error) {
 	var maxItems int
 	if v.MaxItems != nil {
 		maxItems = int(*v.MaxItems)
@@ -196,7 +232,7 @@ func generateArray(s *spec.SimpleSchema, v *spec.CommonValidations) (interface{}
 
 	var ar []interface{}
 	for i := 0; i < numItems; i++ {
-		entry, err := generateByType(&s.Items.SimpleSchema, &s.Items.CommonValidations)
+		entry, err := generateByType(&s.Items.SimpleSchema, &s.Items.CommonValidations, prefix+"-")
 		if err != nil {
 			return nil, err
 		}
