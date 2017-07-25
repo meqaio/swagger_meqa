@@ -22,6 +22,14 @@ import (
 	"github.com/xeipuuv/gojsonschema"
 )
 
+func MapInterfaceToMapString(src map[string]interface{}) map[string]string {
+	dst := make(map[string]string)
+	for k, v := range src {
+		dst[k] = fmt.Sprint(v)
+	}
+	return dst
+}
+
 // Test represents a test object in the DSL
 type Test struct {
 	Name       string
@@ -45,7 +53,8 @@ func (t *Test) Run(swagger *mqswag.Swagger, db mqswag.DB, plan *TestPlan) error 
 	// TODO add check for http/https (operation schemes) and pointers
 	switch t.Method {
 	case resty.MethodGet:
-		resp, err := resty.R().SetQueryParams(t.Parameters).Get(swagger.BasePath + "/" + t.Path)
+		resp, err := resty.R().SetQueryParams(MapInterfaceToMapString(t.Parameters)).
+			Get(swagger.BasePath + "/" + t.Path)
 		// TODO properly process resp. Check against the current DB to see if they match
 		mqutil.Logger.Print(resp)
 
@@ -85,10 +94,11 @@ func generateParameter(paramSpec *spec.Parameter, db mqswag.DB) (interface{}, er
 		return generateByEnum(paramSpec)
 	}
 	if len(paramSpec.Type) == 0 {
-		return "", mqutil.NewError(mqutil.ErrInvalid, "Parameter doesn't have type")
+		return nil, mqutil.NewError(mqutil.ErrInvalid, "Parameter doesn't have type")
 	}
 	if paramSpec.Type == gojsonschema.TYPE_OBJECT {
-		return generateObject(paramSpec)
+		return nil, mqutil.NewError(mqutil.ErrInvalid, fmt.Sprintf("parameter %s: type can't be object",
+			paramSpec.Name))
 	}
 
 	return generateByType(&paramSpec.SimpleSchema, &paramSpec.CommonValidations, paramSpec.Name+"-")
@@ -108,7 +118,7 @@ func generateByType(s *spec.SimpleSchema, v *spec.CommonValidations, prefix stri
 		return generateString(s, v, prefix)
 	}
 
-	panic("not implemented")
+	return nil, mqutil.NewError(mqutil.ErrInvalid, fmt.Sprintf("unrecognized type: %s", s.Type))
 }
 
 // RandomTime generate a random time in the range of [t - r, t).
@@ -219,10 +229,6 @@ func generateArray(s *spec.SimpleSchema, v *spec.CommonValidations, prefix strin
 		if minItems < 0 {
 			minItems = 0
 		}
-	}
-	count := 0
-	if minItems == maxItems && minItems != 0 {
-		count = minItems
 	}
 	maxDiff := maxItems - minItems
 	if maxDiff < 0 {
