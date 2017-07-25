@@ -32,11 +32,15 @@ func MapInterfaceToMapString(src map[string]interface{}) map[string]string {
 
 // Test represents a test object in the DSL
 type Test struct {
-	Name       string
-	Path       string
-	Method     string
-	Ref        string
-	Parameters map[string]interface{}
+	Name         string
+	Path         string
+	Method       string
+	Ref          string
+	QueryParams  map[string]interface{}
+	BodyParams   map[string]interface{}
+	FormParams   map[string]interface{}
+	PathParams   map[string]interface{}
+	HeaderParams map[string]interface{}
 }
 
 // Run runs the test. It only returns error when there is an internal error.
@@ -53,7 +57,8 @@ func (t *Test) Run(swagger *mqswag.Swagger, db mqswag.DB, plan *TestPlan) error 
 	// TODO add check for http/https (operation schemes) and pointers
 	switch t.Method {
 	case resty.MethodGet:
-		resp, err := resty.R().SetQueryParams(MapInterfaceToMapString(t.Parameters)).
+		// TODO add other types of params
+		resp, err := resty.R().SetQueryParams(MapInterfaceToMapString(t.QueryParams)).
 			Get(swagger.BasePath + "/" + t.Path)
 		// TODO properly process resp. Check against the current DB to see if they match
 		mqutil.Logger.Print(resp)
@@ -86,12 +91,12 @@ func getOperationByMethod(item *spec.PathItem, method string) *spec.Operation {
 }
 
 // Generate paramter value based on the spec.
-func generateParameter(paramSpec *spec.Parameter, db mqswag.DB) (interface{}, error) {
+func generateParameter(paramSpec *spec.Parameter, swagger *mqswag.Swagger, db mqswag.DB) (interface{}, error) {
 	if paramSpec.Schema != nil {
-		return generateBySchema(paramSpec.Schema, db)
+		return generateSchema(paramSpec.Schema, swagger, db)
 	}
 	if len(paramSpec.Enum) != 0 {
-		return generateByEnum(paramSpec)
+		return generateEnum(paramSpec.Enum)
 	}
 	if len(paramSpec.Type) == 0 {
 		return nil, mqutil.NewError(mqutil.ErrInvalid, "Parameter doesn't have type")
@@ -247,12 +252,44 @@ func generateArray(s *spec.SimpleSchema, v *spec.CommonValidations, prefix strin
 	return ar, nil
 }
 
-func generateBySchema(schema *spec.Schema, db mqswag.DB) (string, error) {
+func generateSchema(schema *spec.Schema, swagger *mqswag.Swagger, db mqswag.DB) (interface{}, error) {
+	tokens := schema.Ref.GetPointer().DecodedTokens()
+	if len(tokens) != 0 {
+		if len(tokens) != 2 {
+			return nil, mqutil.NewError(mqutil.ErrInvalid, fmt.Sprintf("Invalid reference: %s", schema.Ref.GetURL()))
+		}
+		if tokens[0] == "definitions" {
+			referredSchema, ok := swagger.Definitions[tokens[1]]
+			if !ok {
+				return nil, mqutil.NewError(mqutil.ErrInvalid, fmt.Sprintf("Reference object not found: %s", schema.Ref.GetURL()))
+			}
+			return generateSchema(&referredSchema, swagger, db)
+		}
+		return nil, mqutil.NewError(mqutil.ErrInvalid, fmt.Sprintf("Invalid reference: %s", schema.Ref.GetURL()))
+	}
+
+	if len(schema.Enum) != 0 {
+		return generateEnum(schema.Enum)
+	}
+	if len(schema.Type) == 0 {
+		return nil, mqutil.NewError(mqutil.ErrInvalid, "Parameter doesn't have type")
+	}
+	if schema.Type[0] == gojsonschema.TYPE_OBJECT {
+		panic("not implemented")
+	}
+
+	//return generateByType(&paramSpec.SimpleSchema, &paramSpec.CommonValidations, paramSpec.Name+"-")
+
 	panic("not implemented")
+	return nil, mqutil.NewError(mqutil.ErrInvalid, "schema is not pointing to any definitions")
 }
 
-func generateByEnum(paramSpec *spec.Parameter) (string, error) {
-	return fmt.Sprintf("%v", paramSpec.Enum[rand.Intn(len(paramSpec.Enum))]), nil
+func GenerateSchema(schema *spec.Schema, swagger *mqswag.Swagger, db mqswag.DB) (interface{}, error) {
+	return generateSchema(schema, swagger, db)
+}
+
+func generateEnum(e []interface{}) (interface{}, error) {
+	return e[rand.Intn(len(e))], nil
 }
 
 // ResolveParameters fullfills the parameters for the specified request using the in-mem DB.
@@ -264,16 +301,29 @@ func (t *Test) ResolveParameters(swagger *mqswag.Swagger, db mqswag.DB, plan *Te
 		return mqutil.NewError(mqutil.ErrNotFound, fmt.Sprintf("Path %s not found in swagger file", t.Path))
 	}
 
+	var paramsMap map[string]interface{}
 	for _, params := range op.Parameters {
+		switch params.In {
+		case "path":
+			paramsMap = t.PathParams
+		case "query":
+			paramsMap = t.QueryParams
+		case "header":
+			paramsMap = t.HeaderParams
+		case "body":
+			paramsMap = t.BodyParams
+		case "form":
+			paramsMap = t.FormParams
+		}
 		// We don't override the existing parameters
-		if _, ok := t.Parameters[params.Name]; ok {
+		if _, ok := paramsMap[params.Name]; ok {
 			continue
 		}
-		p, err := generateParameter(&params, db)
+		p, err := generateParameter(&params, swagger, db)
 		if err != nil {
 			return err
 		}
-		t.Parameters[params.Name] = p
+		paramsMap[params.Name] = p
 		return nil
 	}
 	return nil

@@ -29,6 +29,8 @@ func main() {
 	if err != nil {
 		mqutil.Logger.Printf("Error loading test plan: %s", err.Error())
 	}
+	//fmt.Printf("\n---\n%v", swagger.Paths.Paths["/pet/findByStatus"].Get.Parameters[0].Schema.Ref.GetURL())
+	mqplan.GenerateSchema(swagger.Paths.Paths["/pet"].Post.Parameters[0].Schema, swagger, mqswag.ObjDB)
 
 	mqplan.Current.Run("create user manual", swagger, mqswag.ObjDB)
 }
