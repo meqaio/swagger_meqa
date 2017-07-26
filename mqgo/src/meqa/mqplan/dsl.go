@@ -104,14 +104,15 @@ func generateParameter(paramSpec *spec.Parameter, swagger *mqswag.Swagger, db mq
 	if paramSpec.Type == gojsonschema.TYPE_OBJECT {
 		return generateObject("param_", paramSpec.Schema, swagger, db)
 	}
+	if paramSpec.Type == gojsonschema.TYPE_ARRAY {
+		return generateArray("param_", paramSpec.Schema, swagger, db)
+	}
 
 	return generateByType(&paramSpec.SimpleSchema, &paramSpec.CommonValidations, paramSpec.Name+"_")
 }
 
 func generateByType(s *spec.SimpleSchema, v *spec.CommonValidations, prefix string) (interface{}, error) {
 	switch s.Type {
-	case gojsonschema.TYPE_ARRAY:
-		return generateArray(s, v, prefix)
 	case gojsonschema.TYPE_BOOLEAN:
 		return generateBool(v)
 	case gojsonschema.TYPE_INTEGER:
@@ -224,30 +225,43 @@ func generateInt(v *spec.CommonValidations) (int64, error) {
 	return i, nil
 }
 
-func generateArray(s *spec.SimpleSchema, v *spec.CommonValidations, prefix string) (interface{}, error) {
-	var maxItems int
-	if v.MaxItems != nil {
-		maxItems = int(*v.MaxItems)
-		if maxItems < 0 {
-			maxItems = 0
+//func generateArray(s *spec.SimpleSchema, v *spec.CommonValidations, prefix string) (interface{}, error) {
+func generateArray(name string, schema *spec.Schema, swagger *mqswag.Swagger, db mqswag.DB) (interface{}, error) {
+	var numItems int
+	if schema.MaxItems != nil || schema.MinItems != nil {
+		var maxItems int
+		if schema.MaxItems != nil {
+			maxItems = int(*schema.MaxItems)
+			if maxItems < 0 {
+				maxItems = 0
+			}
 		}
-	}
-	var minItems int
-	if v.MinItems != nil {
-		minItems = int(*v.MinItems)
-		if minItems < 0 {
-			minItems = 0
+		var minItems int
+		if schema.MinItems != nil {
+			minItems = int(*schema.MinItems)
+			if minItems < 0 {
+				minItems = 0
+			}
 		}
+		maxDiff := maxItems - minItems
+		if maxDiff <= 0 {
+			maxDiff = 1
+		}
+		numItems = rand.Intn(int(maxDiff)) + minItems
+	} else {
+		numItems = rand.Intn(10)
 	}
-	maxDiff := maxItems - minItems
-	if maxDiff <= 0 {
-		maxDiff = 1
+
+	var itemSchema *spec.Schema
+	if len(schema.Items.Schemas) != 0 {
+		itemSchema = &(schema.Items.Schemas[0])
+	} else {
+		itemSchema = schema.Items.Schema
 	}
-	numItems := rand.Intn(int(maxDiff)) + minItems
 
 	var ar []interface{}
 	for i := 0; i < numItems; i++ {
-		entry, err := generateByType(&s.Items.SimpleSchema, &s.Items.CommonValidations, prefix)
+		entry, err := generateSchema(name, itemSchema, swagger, db)
 		if err != nil {
 			return nil, err
 		}
@@ -288,11 +302,15 @@ func splitSchema(schema *spec.Schema) (*spec.SimpleSchema, *spec.CommonValidatio
 		} else {
 			s = &(schema.Items.Schemas[0])
 		}
-		ss, cv := splitSchema(s)
-		if ss != nil {
-			simple.Items = &spec.Items{}
-			simple.Items.SimpleSchema = *ss
-			simple.Items.CommonValidations = *cv
+		simple.Items = &spec.Items{}
+		if s.Ref.GetURL() != nil {
+			simple.Items.Ref = s.Ref
+		} else {
+			ss, cv := splitSchema(s)
+			if ss != nil {
+				simple.Items.SimpleSchema = *ss
+				simple.Items.CommonValidations = *cv
+			}
 		}
 	}
 	simple.Format = schema.Format
@@ -339,6 +357,9 @@ func generateSchema(name string, schema *spec.Schema, swagger *mqswag.Swagger, d
 	}
 	if schema.Type[0] == gojsonschema.TYPE_OBJECT {
 		return generateObject(name, schema, swagger, db)
+	}
+	if schema.Type[0] == gojsonschema.TYPE_ARRAY {
+		return generateArray(name, schema, swagger, db)
 	}
 
 	ss, cv := splitSchema(schema)
