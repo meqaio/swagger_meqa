@@ -102,10 +102,10 @@ func generateParameter(paramSpec *spec.Parameter, swagger *mqswag.Swagger, db mq
 		return nil, mqutil.NewError(mqutil.ErrInvalid, "Parameter doesn't have type")
 	}
 	if paramSpec.Type == gojsonschema.TYPE_OBJECT {
-		return generateObject("param-", paramSpec.Schema, swagger, db)
+		return generateObject("param_", paramSpec.Schema, swagger, db)
 	}
 
-	return generateByType(&paramSpec.SimpleSchema, &paramSpec.CommonValidations, paramSpec.Name+"-")
+	return generateByType(&paramSpec.SimpleSchema, &paramSpec.CommonValidations, paramSpec.Name+"_")
 }
 
 func generateByType(s *spec.SimpleSchema, v *spec.CommonValidations, prefix string) (interface{}, error) {
@@ -208,6 +208,11 @@ func generateFloat(v *spec.CommonValidations) (float64, error) {
 }
 
 func generateInt(v *spec.CommonValidations) (int64, error) {
+	// Give a default range if there isn't one
+	if v.Maximum == nil && v.Minimum == nil {
+		maxf := 10000.0
+		v.Maximum = &maxf
+	}
 	f, err := generateFloat(v)
 	if err != nil {
 		return 0, err
@@ -235,7 +240,7 @@ func generateArray(s *spec.SimpleSchema, v *spec.CommonValidations, prefix strin
 		}
 	}
 	maxDiff := maxItems - minItems
-	if maxDiff < 0 {
+	if maxDiff <= 0 {
 		maxDiff = 1
 	}
 	numItems := rand.Intn(int(maxDiff)) + minItems
@@ -254,7 +259,7 @@ func generateArray(s *spec.SimpleSchema, v *spec.CommonValidations, prefix strin
 func generateObject(name string, schema *spec.Schema, swagger *mqswag.Swagger, db mqswag.DB) (interface{}, error) {
 	obj := make(map[string]interface{})
 	for k, v := range schema.Properties {
-		o, err := generateSchema(name+k+"-", &v, swagger, db)
+		o, err := generateSchema(name+k+"_", &v, swagger, db)
 		if err != nil {
 			return nil, err
 		}
@@ -333,11 +338,11 @@ func generateSchema(name string, schema *spec.Schema, swagger *mqswag.Swagger, d
 		return nil, mqutil.NewError(mqutil.ErrInvalid, "Parameter doesn't have type")
 	}
 	if schema.Type[0] == gojsonschema.TYPE_OBJECT {
-		return generateObject(name+"-", schema, swagger, db)
+		return generateObject(name, schema, swagger, db)
 	}
 
 	ss, cv := splitSchema(schema)
-	return generateByType(ss, cv, name+"-")
+	return generateByType(ss, cv, name)
 }
 
 // XXX for testing only
@@ -465,3 +470,7 @@ func (plan *TestPlan) Run(name string, swagger *mqswag.Swagger, db mqswag.DB) (e
 
 // The current global TestPlan
 var Current TestPlan
+
+func init() {
+	rand.Seed(int64(time.Now().Second()))
+}
