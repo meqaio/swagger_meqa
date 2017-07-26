@@ -93,7 +93,7 @@ func getOperationByMethod(item *spec.PathItem, method string) *spec.Operation {
 // Generate paramter value based on the spec.
 func generateParameter(paramSpec *spec.Parameter, swagger *mqswag.Swagger, db mqswag.DB) (interface{}, error) {
 	if paramSpec.Schema != nil {
-		return generateSchema(paramSpec.Schema, swagger, db)
+		return generateSchema(paramSpec.Name, paramSpec.Schema, swagger, db)
 	}
 	if len(paramSpec.Enum) != 0 {
 		return generateEnum(paramSpec.Enum)
@@ -102,8 +102,7 @@ func generateParameter(paramSpec *spec.Parameter, swagger *mqswag.Swagger, db mq
 		return nil, mqutil.NewError(mqutil.ErrInvalid, "Parameter doesn't have type")
 	}
 	if paramSpec.Type == gojsonschema.TYPE_OBJECT {
-		return nil, mqutil.NewError(mqutil.ErrInvalid, fmt.Sprintf("parameter %s: type can't be object",
-			paramSpec.Name))
+		panic("not implemented")
 	}
 
 	return generateByType(&paramSpec.SimpleSchema, &paramSpec.CommonValidations, paramSpec.Name+"-")
@@ -252,7 +251,53 @@ func generateArray(s *spec.SimpleSchema, v *spec.CommonValidations, prefix strin
 	return ar, nil
 }
 
-func generateSchema(schema *spec.Schema, swagger *mqswag.Swagger, db mqswag.DB) (interface{}, error) {
+// splitSchema splits the full schema into SimpleSchema and CommonValidations. Note that in this process
+// we throw out some properties on the full schema. This may be OK short term but may not work for all
+// cases. The proper way is probably to design for full schema using JSONLookup (assuming all the fields),
+// and for the SimpleSchema case, it just means some of the properties are not found, and we degenerate to
+// the simple case.
+// Returns nil on failure
+func splitSchema(schema *spec.Schema) (*spec.SimpleSchema, *spec.CommonValidations) {
+	if len(schema.Type) == 0 {
+		return nil, nil
+	}
+	var simple spec.SimpleSchema
+	var commonVal spec.CommonValidations
+	simple.Type = schema.Type[0]
+	if schema.Items != nil && schema.Items.Len() != 0 {
+		var s *spec.Schema
+		if schema.Items.Schema != nil {
+			s = schema.Items.Schema
+		} else {
+			s = &(schema.Items.Schemas[0])
+		}
+		ss, cv := splitSchema(s)
+		if ss != nil {
+			simple.Items = &spec.Items{}
+			simple.Items.SimpleSchema = *ss
+			simple.Items.CommonValidations = *cv
+		}
+	}
+	simple.Format = schema.Format
+	simple.Default = schema.Default
+
+	commonVal.Enum = schema.Enum
+	commonVal.ExclusiveMaximum = schema.ExclusiveMaximum
+	commonVal.ExclusiveMinimum = schema.ExclusiveMinimum
+	commonVal.Maximum = schema.Maximum
+	commonVal.Minimum = schema.Minimum
+	commonVal.MaxItems = schema.MaxItems
+	commonVal.MaxLength = schema.MaxLength
+	commonVal.MinItems = schema.MinItems
+	commonVal.MinLength = schema.MinLength
+	commonVal.MultipleOf = schema.MultipleOf
+	commonVal.Pattern = schema.Pattern
+	commonVal.UniqueItems = schema.UniqueItems
+
+	return &simple, &commonVal
+}
+
+func generateSchema(name string, schema *spec.Schema, swagger *mqswag.Swagger, db mqswag.DB) (interface{}, error) {
 	tokens := schema.Ref.GetPointer().DecodedTokens()
 	if len(tokens) != 0 {
 		if len(tokens) != 2 {
@@ -263,7 +308,7 @@ func generateSchema(schema *spec.Schema, swagger *mqswag.Swagger, db mqswag.DB) 
 			if !ok {
 				return nil, mqutil.NewError(mqutil.ErrInvalid, fmt.Sprintf("Reference object not found: %s", schema.Ref.GetURL()))
 			}
-			return generateSchema(&referredSchema, swagger, db)
+			return generateSchema(name, &referredSchema, swagger, db)
 		}
 		return nil, mqutil.NewError(mqutil.ErrInvalid, fmt.Sprintf("Invalid reference: %s", schema.Ref.GetURL()))
 	}
@@ -278,14 +323,13 @@ func generateSchema(schema *spec.Schema, swagger *mqswag.Swagger, db mqswag.DB) 
 		panic("not implemented")
 	}
 
-	//return generateByType(&paramSpec.SimpleSchema, &paramSpec.CommonValidations, paramSpec.Name+"-")
-
-	panic("not implemented")
-	return nil, mqutil.NewError(mqutil.ErrInvalid, "schema is not pointing to any definitions")
+	ss, cv := splitSchema(schema)
+	return generateByType(ss, cv, name+"-")
 }
 
+// XXX for testing only
 func GenerateSchema(schema *spec.Schema, swagger *mqswag.Swagger, db mqswag.DB) (interface{}, error) {
-	return generateSchema(schema, swagger, db)
+	return generateSchema("prefix", schema, swagger, db)
 }
 
 func generateEnum(e []interface{}) (interface{}, error) {
