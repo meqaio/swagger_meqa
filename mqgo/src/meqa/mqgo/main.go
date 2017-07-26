@@ -30,10 +30,21 @@ func main() {
 	if err != nil {
 		mqutil.Logger.Printf("Error loading test plan: %s", err.Error())
 	}
-	//fmt.Printf("\n---\n%v", swagger.Paths.Paths["/pet/findByStatus"].Get.Parameters[0].Schema.Ref.GetURL())
-	schema, err := mqplan.GenerateSchema(swagger.Paths.Paths["/pet"].Post.Parameters[0].Schema, swagger, mqswag.ObjDB)
-	str, _ := json.MarshalIndent(schema, "", "    ")
-	fmt.Printf("\n---:\n%s", str)
 
+	param, err := mqplan.GenerateParameter(&(swagger.Paths.Paths["/pet/findByStatus"].Get.Parameters[0]), swagger, mqswag.ObjDB)
+	str, _ := json.MarshalIndent(param, "", "    ")
+	if err == nil {
+		fmt.Printf("\n---\n%s", str)
+	} else {
+		fmt.Printf("\nerr:\n%v", err)
+	}
+
+	schema, err := mqplan.GenerateSchema("", swagger.Paths.Paths["/pet"].Post.Parameters[0].Schema, swagger, mqswag.ObjDB)
+	str, _ = json.MarshalIndent(schema, "", "    ")
+	if err == nil {
+		fmt.Printf("\n---\n%s", str)
+	} else {
+		fmt.Printf("\nerr:\n%v", err)
+	}
 	mqplan.Current.Run("create user manual", swagger, mqswag.ObjDB)
 }
