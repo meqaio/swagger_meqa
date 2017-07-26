@@ -11,11 +11,6 @@ import (
 
 // This file implements the in-memory DB that holds all the entity objects.
 
-// JSONSearchable allows lookup field by token
-type JSONSearchable interface {
-	JSONLookup(token string) (interface{}, error)
-}
-
 // Schema is the swagger spec schema.
 type Schema spec.Schema
 

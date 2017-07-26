@@ -102,7 +102,7 @@ func generateParameter(paramSpec *spec.Parameter, swagger *mqswag.Swagger, db mq
 		return nil, mqutil.NewError(mqutil.ErrInvalid, "Parameter doesn't have type")
 	}
 	if paramSpec.Type == gojsonschema.TYPE_OBJECT {
-		panic("not implemented")
+		return generateObject("param-", paramSpec.Schema, swagger, db)
 	}
 
 	return generateByType(&paramSpec.SimpleSchema, &paramSpec.CommonValidations, paramSpec.Name+"-")
@@ -242,13 +242,25 @@ func generateArray(s *spec.SimpleSchema, v *spec.CommonValidations, prefix strin
 
 	var ar []interface{}
 	for i := 0; i < numItems; i++ {
-		entry, err := generateByType(&s.Items.SimpleSchema, &s.Items.CommonValidations, prefix+"-")
+		entry, err := generateByType(&s.Items.SimpleSchema, &s.Items.CommonValidations, prefix)
 		if err != nil {
 			return nil, err
 		}
 		ar = append(ar, entry)
 	}
 	return ar, nil
+}
+
+func generateObject(name string, schema *spec.Schema, swagger *mqswag.Swagger, db mqswag.DB) (interface{}, error) {
+	obj := make(map[string]interface{})
+	for k, v := range schema.Properties {
+		o, err := generateSchema(name+k+"-", &v, swagger, db)
+		if err != nil {
+			return nil, err
+		}
+		obj[k] = o
+	}
+	return obj, nil
 }
 
 // splitSchema splits the full schema into SimpleSchema and CommonValidations. Note that in this process
@@ -298,6 +310,7 @@ func splitSchema(schema *spec.Schema) (*spec.SimpleSchema, *spec.CommonValidatio
 }
 
 func generateSchema(name string, schema *spec.Schema, swagger *mqswag.Swagger, db mqswag.DB) (interface{}, error) {
+	// Deal with refs.
 	tokens := schema.Ref.GetPointer().DecodedTokens()
 	if len(tokens) != 0 {
 		if len(tokens) != 2 {
@@ -320,7 +333,7 @@ func generateSchema(name string, schema *spec.Schema, swagger *mqswag.Swagger, d
 		return nil, mqutil.NewError(mqutil.ErrInvalid, "Parameter doesn't have type")
 	}
 	if schema.Type[0] == gojsonschema.TYPE_OBJECT {
-		panic("not implemented")
+		return generateObject(name+"-", schema, swagger, db)
 	}
 
 	ss, cv := splitSchema(schema)
@@ -329,7 +342,7 @@ func generateSchema(name string, schema *spec.Schema, swagger *mqswag.Swagger, d
 
 // XXX for testing only
 func GenerateSchema(schema *spec.Schema, swagger *mqswag.Swagger, db mqswag.DB) (interface{}, error) {
-	return generateSchema("prefix", schema, swagger, db)
+	return generateSchema("prefix-", schema, swagger, db)
 }
 
 func generateEnum(e []interface{}) (interface{}, error) {
