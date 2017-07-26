@@ -116,19 +116,21 @@ func GenerateParameter(paramSpec *spec.Parameter, swagger *mqswag.Swagger, db mq
 		return generateArray("param_", schema, swagger, db)
 	}
 
-	return generateByType(&paramSpec.SimpleSchema, &paramSpec.CommonValidations, paramSpec.Name+"_")
+	return generateByType(createSchemaFromSimple(&paramSpec.SimpleSchema, &paramSpec.CommonValidations), paramSpec.Name+"_")
 }
 
-func generateByType(s *spec.SimpleSchema, v *spec.CommonValidations, prefix string) (interface{}, error) {
-	switch s.Type {
-	case gojsonschema.TYPE_BOOLEAN:
-		return generateBool(v)
-	case gojsonschema.TYPE_INTEGER:
-		return generateInt(v)
-	case gojsonschema.TYPE_NUMBER:
-		return generateFloat(v)
-	case gojsonschema.TYPE_STRING:
-		return generateString(s, v, prefix)
+func generateByType(s *spec.Schema, prefix string) (interface{}, error) {
+	if len(s.Type) != 0 {
+		switch s.Type[0] {
+		case gojsonschema.TYPE_BOOLEAN:
+			return generateBool(s)
+		case gojsonschema.TYPE_INTEGER:
+			return generateInt(s)
+		case gojsonschema.TYPE_NUMBER:
+			return generateFloat(s)
+		case gojsonschema.TYPE_STRING:
+			return generateString(s, prefix)
+		}
 	}
 
 	return nil, mqutil.NewError(mqutil.ErrInvalid, fmt.Sprintf("unrecognized type: %s", s.Type))
@@ -142,7 +144,7 @@ func RandomTime(t time.Time, r time.Duration) time.Time {
 // TODO we need to make it context aware. Based on different contexts we should generate different
 // date ranges. Prefix is a prefix to use when generating strings. It's only used when there is
 // no specified pattern in the swagger.json
-func generateString(s *spec.SimpleSchema, v *spec.CommonValidations, prefix string) (string, error) {
+func generateString(s *spec.Schema, prefix string) (string, error) {
 	if s.Format == "date-time" {
 		t := RandomTime(time.Now(), time.Hour*24*30)
 		return t.Format(time.RFC3339), nil
@@ -155,9 +157,9 @@ func generateString(s *spec.SimpleSchema, v *spec.CommonValidations, prefix stri
 	// If no pattern is specified, we use the field name + some numbers as pattern
 	var pattern string
 	length := 0
-	if len(v.Pattern) != 0 {
-		pattern = v.Pattern
-		length = len(v.Pattern) * 2
+	if len(s.Pattern) != 0 {
+		pattern = s.Pattern
+		length = len(s.Pattern) * 2
 	} else {
 		pattern = prefix + "\\d+"
 		length = len(prefix) + 5
@@ -180,60 +182,59 @@ func generateString(s *spec.SimpleSchema, v *spec.CommonValidations, prefix stri
 	return "", mqutil.NewError(mqutil.ErrInvalid, fmt.Sprintf("Invalid format string: %s", s.Format))
 }
 
-func generateBool(v *spec.CommonValidations) (interface{}, error) {
+func generateBool(s *spec.Schema) (interface{}, error) {
 	return rand.Intn(2) == 0, nil
 }
 
-func generateFloat(v *spec.CommonValidations) (float64, error) {
+func generateFloat(s *spec.Schema) (float64, error) {
 	var realmin float64
-	if v.Minimum != nil {
-		realmin = *v.Minimum
-		if v.ExclusiveMinimum {
+	if s.Minimum != nil {
+		realmin = *s.Minimum
+		if s.ExclusiveMinimum {
 			realmin += 0.01
 		}
 	}
 	var realmax float64
-	if v.Maximum != nil {
-		realmax = *v.Maximum
-		if v.ExclusiveMaximum {
+	if s.Maximum != nil {
+		realmax = *s.Maximum
+		if s.ExclusiveMaximum {
 			realmax -= 0.01
 		}
 	}
 	if realmin >= realmax {
-		if v.Minimum == nil && v.Maximum == nil {
+		if s.Minimum == nil && s.Maximum == nil {
 			realmin = -1.0
 			realmax = 1.0
-		} else if v.Minimum != nil {
+		} else if s.Minimum != nil {
 			realmax = realmin + math.Abs(realmin)
-		} else if v.Maximum != nil {
+		} else if s.Maximum != nil {
 			realmin = realmax - math.Abs(realmax)
 		} else {
 			// both are present but conflicting
 			return 0, mqutil.NewError(mqutil.ErrInvalid, fmt.Sprintf("specified min value %v is bigger than max %v",
-				*v.Minimum, *v.Maximum))
+				*s.Minimum, *s.Maximum))
 		}
 	}
 	return rand.Float64()*(realmax-realmin) + realmin, nil
 }
 
-func generateInt(v *spec.CommonValidations) (int64, error) {
+func generateInt(s *spec.Schema) (int64, error) {
 	// Give a default range if there isn't one
-	if v.Maximum == nil && v.Minimum == nil {
+	if s.Maximum == nil && s.Minimum == nil {
 		maxf := 10000.0
-		v.Maximum = &maxf
+		s.Maximum = &maxf
 	}
-	f, err := generateFloat(v)
+	f, err := generateFloat(s)
 	if err != nil {
 		return 0, err
 	}
 	i := int64(f)
-	if v.Minimum != nil && i <= int64(*v.Minimum) {
+	if s.Minimum != nil && i <= int64(*s.Minimum) {
 		i++
 	}
 	return i, nil
 }
 
-//func generateArray(s *spec.SimpleSchema, v *spec.CommonValidations, prefix string) (interface{}, error) {
 func generateArray(name string, schema *spec.Schema, swagger *mqswag.Swagger, db mqswag.DB) (interface{}, error) {
 	var numItems int
 	if schema.MaxItems != nil || schema.MinItems != nil {
@@ -290,56 +291,6 @@ func generateObject(name string, schema *spec.Schema, swagger *mqswag.Swagger, d
 	return obj, nil
 }
 
-// splitSchema splits the full schema into SimpleSchema and CommonValidations. Note that in this process
-// we throw out some properties on the full schema. This may be OK short term but may not work for all
-// cases. The proper way is probably to design for full schema using JSONLookup (assuming all the fields),
-// and for the SimpleSchema case, it just means some of the properties are not found, and we degenerate to
-// the simple case.
-// Returns nil on failure
-func splitSchema(schema *spec.Schema) (*spec.SimpleSchema, *spec.CommonValidations) {
-	if len(schema.Type) == 0 {
-		return nil, nil
-	}
-	var simple spec.SimpleSchema
-	var commonVal spec.CommonValidations
-	simple.Type = schema.Type[0]
-	if schema.Items != nil && schema.Items.Len() != 0 {
-		var s *spec.Schema
-		if schema.Items.Schema != nil {
-			s = schema.Items.Schema
-		} else {
-			s = &(schema.Items.Schemas[0])
-		}
-		simple.Items = &spec.Items{}
-		if s.Ref.GetURL() != nil {
-			simple.Items.Ref = s.Ref
-		} else {
-			ss, cv := splitSchema(s)
-			if ss != nil {
-				simple.Items.SimpleSchema = *ss
-				simple.Items.CommonValidations = *cv
-			}
-		}
-	}
-	simple.Format = schema.Format
-	simple.Default = schema.Default
-
-	commonVal.Enum = schema.Enum
-	commonVal.ExclusiveMaximum = schema.ExclusiveMaximum
-	commonVal.ExclusiveMinimum = schema.ExclusiveMinimum
-	commonVal.Maximum = schema.Maximum
-	commonVal.Minimum = schema.Minimum
-	commonVal.MaxItems = schema.MaxItems
-	commonVal.MaxLength = schema.MaxLength
-	commonVal.MinItems = schema.MinItems
-	commonVal.MinLength = schema.MinLength
-	commonVal.MultipleOf = schema.MultipleOf
-	commonVal.Pattern = schema.Pattern
-	commonVal.UniqueItems = schema.UniqueItems
-
-	return &simple, &commonVal
-}
-
 func createSchemaFromSimple(s *spec.SimpleSchema, v *spec.CommonValidations) *spec.Schema {
 	schema := spec.Schema{}
 	schema.AddType(s.Type, s.Format)
@@ -394,8 +345,7 @@ func GenerateSchema(name string, schema *spec.Schema, swagger *mqswag.Swagger, d
 		return generateArray(name, schema, swagger, db)
 	}
 
-	ss, cv := splitSchema(schema)
-	return generateByType(ss, cv, name)
+	return generateByType(schema, name)
 }
 
 func generateEnum(e []interface{}) (interface{}, error) {
