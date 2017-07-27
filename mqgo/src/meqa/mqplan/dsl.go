@@ -11,6 +11,7 @@ import (
 	"gopkg.in/resty.v0"
 	"gopkg.in/yaml.v2"
 
+	"encoding/json"
 	"meqa/mqswag"
 	"meqa/mqutil"
 )
@@ -57,41 +58,72 @@ func GetBaseURL(swagger *mqswag.Swagger) string {
 
 // Test represents a test object in the DSL
 type Test struct {
-	Name         string
-	Path         string
-	Method       string
-	Ref          string
-	QueryParams  map[string]interface{}
-	BodyParams   map[string]interface{}
-	FormParams   map[string]interface{}
-	PathParams   map[string]interface{}
-	HeaderParams map[string]interface{}
+	Name       string
+	Path       string
+	Method     string
+	Ref        string
+	Parameters map[string]interface{}
+
+	queryParams  map[string]interface{}
+	bodyParams   map[string]interface{}
+	formParams   map[string]interface{}
+	pathParams   map[string]interface{}
+	headerParams map[string]interface{}
 }
 
-// Run runs the test. It only returns error when there is an internal error.
-// Test case failures are not counted.
-func (t *Test) Run(swagger *mqswag.Swagger, db mqswag.DB, plan *TestPlan) error {
+func (t *Test) Init() {
+	if len(t.Method) != 0 {
+		t.Method = strings.ToUpper(t.Method)
+	}
+	if t.Parameters == nil {
+		t.Parameters = make(map[string]interface{})
+	}
+}
+
+// DecodeResult decodes the response from the server into a result array
+func (t *Test) DecodeResult(resp *resty.Response) ([]map[string]interface{}, error) {
+	var resultArray []map[string]interface{}
+	err := json.Unmarshal(resp.Body(), &resultArray)
+	if err == nil {
+		return resultArray, nil
+	}
+	var resultMap map[string]interface{}
+	err = json.Unmarshal(resp.Body(), &resultMap)
+	if err == nil {
+		return []map[string]interface{}{resultMap}, nil
+	}
+	return nil, err
+}
+
+// Run runs the test. Returns the test result.
+func (t *Test) Run(swagger *mqswag.Swagger, db mqswag.DB, plan *TestPlan, params map[string]interface{}) ([]map[string]interface{}, error) {
 	if len(t.Ref) != 0 {
-		return plan.Run(t.Ref, swagger, db)
+		return plan.Run(t.Ref, swagger, db, params)
+	}
+
+	// Add parameters passed in to t's existing parameters. What is passed in from outside
+	// always takes higher priority
+	for k, v := range params {
+		t.Parameters[k] = v
 	}
 	err := t.ResolveParameters(swagger, db, plan)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// TODO add check for http/https (operation schemes) and pointers
 	switch t.Method {
 	case resty.MethodGet:
 		// TODO add other types of params
-		resp, err := resty.R().SetQueryParams(MapInterfaceToMapString(t.QueryParams)).
+		resp, err := resty.R().SetQueryParams(MapInterfaceToMapString(t.queryParams)).
 			Get(GetBaseURL(swagger) + t.Path)
+		if err != nil {
+			return nil, mqutil.NewError(mqutil.ErrHttp, err.Error())
+		}
 		// TODO properly process resp. Check against the current DB to see if they match
-		mqutil.Logger.Print(resp)
-
-		return err
+		return t.DecodeResult(resp)
 	default:
-		str := fmt.Sprintf("Unknown method in test %s: %v", t.Name, t.Method)
-		return errors.New(str)
+		return nil, mqutil.NewError(mqutil.ErrInvalid, fmt.Sprintf("Unknown method in test %s: %v", t.Name, t.Method))
 	}
 }
 
@@ -108,33 +140,34 @@ func (t *Test) ResolveParameters(swagger *mqswag.Swagger, db mqswag.DB, plan *Te
 	for _, params := range op.Parameters {
 		switch params.In {
 		case "path":
-			if t.PathParams == nil {
-				t.PathParams = make(map[string]interface{})
+			if t.pathParams == nil {
+				t.pathParams = make(map[string]interface{})
 			}
-			paramsMap = t.PathParams
+			paramsMap = t.pathParams
 		case "query":
-			if t.QueryParams == nil {
-				t.QueryParams = make(map[string]interface{})
+			if t.queryParams == nil {
+				t.queryParams = make(map[string]interface{})
 			}
-			paramsMap = t.QueryParams
+			paramsMap = t.queryParams
 		case "header":
-			if t.HeaderParams == nil {
-				t.HeaderParams = make(map[string]interface{})
+			if t.headerParams == nil {
+				t.headerParams = make(map[string]interface{})
 			}
-			paramsMap = t.HeaderParams
+			paramsMap = t.headerParams
 		case "body":
-			if t.BodyParams == nil {
-				t.BodyParams = make(map[string]interface{})
+			if t.bodyParams == nil {
+				t.bodyParams = make(map[string]interface{})
 			}
-			paramsMap = t.BodyParams
+			paramsMap = t.bodyParams
 		case "form":
-			if t.FormParams == nil {
-				t.FormParams = make(map[string]interface{})
+			if t.formParams == nil {
+				t.formParams = make(map[string]interface{})
 			}
-			paramsMap = t.FormParams
+			paramsMap = t.formParams
 		}
-		// We don't override the existing parameters
-		if _, ok := paramsMap[params.Name]; ok {
+		// If there is a parameter passed in, just use it.
+		if _, ok := t.Parameters[params.Name]; ok {
+			paramsMap[params.Name] = t.Parameters[params.Name]
 			continue
 		}
 		p, err := GenerateParameter(&params, swagger, db)
@@ -176,9 +209,7 @@ func (plan *TestPlan) AddFromString(data string) error {
 	}
 	for testName, testCase := range caseMap {
 		for _, t := range testCase {
-			if len(t.Method) != 0 {
-				t.Method = strings.ToUpper(t.Method)
-			}
+			t.Init()
 		}
 		err = plan.Add(testName, testCase)
 		if err != nil {
@@ -206,22 +237,23 @@ func (plan *TestPlan) InitFromFile(path string) error {
 }
 
 // Run a named TestCase in the test plan.
-func (plan *TestPlan) Run(name string, swagger *mqswag.Swagger, db mqswag.DB) (err error) {
+func (plan *TestPlan) Run(name string, swagger *mqswag.Swagger, db mqswag.DB, params map[string]interface{}) ([]map[string]interface{}, error) {
 	tc, ok := plan.CaseMap[name]
 	if !ok || len(tc) == 0 {
 		str := fmt.Sprintf("The following test case is not found: %s", name)
 		mqutil.Logger.Println(str)
-		return errors.New(str)
+		return nil, errors.New(str)
 	}
 
+	var output []map[string]interface{}
 	for _, test := range tc {
-		err = test.Run(swagger, db, plan)
+		result, err := test.Run(swagger, db, plan, params)
 		if err != nil {
-			return err
+			return nil, err
 		}
-
+		output = append(output, result...)
 	}
-	return nil
+	return output, nil
 }
 
 // The current global TestPlan

@@ -93,3 +93,5 @@ auto test:
 get pet by status:
   - path: /pet/findByStatus
     method: get
+    parameters:
+      status: sold

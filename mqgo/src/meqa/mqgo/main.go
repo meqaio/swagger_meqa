@@ -46,6 +46,10 @@ func main() {
 	} else {
 		fmt.Printf("\nerr:\n%v", err)
 	}
-	err = mqplan.Current.Run("get pet by status", swagger, mqswag.ObjDB)
+	fmt.Println("====== running get pet by status ======")
+	result, err := mqplan.Current.Run("get pet by status", swagger, mqswag.ObjDB, nil)
+	resultJson, _ := json.Marshal(result)
+	fmt.Printf("\nresult:\n%s", resultJson)
+
 	fmt.Printf("\nerr:\n%v", err)
 }

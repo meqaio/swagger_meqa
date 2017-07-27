@@ -9,6 +9,7 @@ const (
 	ErrOK       = iota // 0
 	ErrInvalid         // invalid parameters
 	ErrNotFound        // resource not found
+	ErrHttp            // Http request failed
 )
 
 // Error implements MQ specific error type.
