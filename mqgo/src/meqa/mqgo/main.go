@@ -46,5 +46,6 @@ func main() {
 	} else {
 		fmt.Printf("\nerr:\n%v", err)
 	}
-	mqplan.Current.Run("create user manual", swagger, mqswag.ObjDB)
+	err = mqplan.Current.Run("get pet by status", swagger, mqswag.ObjDB)
+	fmt.Printf("\nerr:\n%v", err)
 }

@@ -4,7 +4,7 @@
 ---
 # In this example, a user has attributes name, address, phone, id (returned by post)
 create user manual:
-  - path: /users
+  - path: /user
     method: post
     parameters:
       name: john smith
@@ -13,7 +13,7 @@ create user manual:
 
 ---
 create user auto:
-  - path: /users
+  - path: /user
     method: post
 
 ---
@@ -23,17 +23,17 @@ delete user:
 
 ---
 get all users:
-  - path: /users
+  - path: /user
     method: get
 
 ---
 get user:
-  - path: /users/{user_id}
+  - path: /user/{user_id}
     method: get
 
 --- 
 update user:
-  - path: /users/{user_id}
+  - path: /user/{user_id}
     method: update
 
 ---
@@ -89,3 +89,7 @@ auto test:
   - ref: update user
   - ref: delete user
   
+---
+get pet by status:
+  - path: /pet/findByStatus
+    method: get

@@ -15,12 +15,44 @@ import (
 	"meqa/mqutil"
 )
 
+// MapInterfaceToMapString converts the params map (all primitive types with exception of array)
+// before passing to resty.
 func MapInterfaceToMapString(src map[string]interface{}) map[string]string {
 	dst := make(map[string]string)
 	for k, v := range src {
-		dst[k] = fmt.Sprint(v)
+		if ar, ok := v.([]interface{}); ok {
+			str := ""
+			for _, entry := range ar {
+				str += fmt.Sprintf("%v,", entry)
+			}
+			str = strings.TrimRight(str, ",")
+			dst[k] = str
+		} else {
+			dst[k] = fmt.Sprint(v)
+		}
 	}
 	return dst
+}
+
+func GetBaseURL(swagger *mqswag.Swagger) string {
+	// Prefer http, then https, then others.
+	scheme := ""
+	if len(swagger.Schemes) == 0 {
+		scheme = "http"
+	} else {
+		for _, s := range swagger.Schemes {
+			if s == "http" {
+				scheme = s
+				break
+			} else if s == "https" {
+				scheme = s
+			}
+		}
+		if len(scheme) == 0 {
+			scheme = swagger.Schemes[0]
+		}
+	}
+	return scheme + "://" + swagger.Host + swagger.BasePath
 }
 
 // Test represents a test object in the DSL
@@ -52,13 +84,13 @@ func (t *Test) Run(swagger *mqswag.Swagger, db mqswag.DB, plan *TestPlan) error 
 	case resty.MethodGet:
 		// TODO add other types of params
 		resp, err := resty.R().SetQueryParams(MapInterfaceToMapString(t.QueryParams)).
-			Get(swagger.BasePath + "/" + t.Path)
+			Get(GetBaseURL(swagger) + t.Path)
 		// TODO properly process resp. Check against the current DB to see if they match
 		mqutil.Logger.Print(resp)
 
 		return err
 	default:
-		str := fmt.Sprintf("Unknow method in test %s: %v", t.Name, t.Method)
+		str := fmt.Sprintf("Unknown method in test %s: %v", t.Name, t.Method)
 		return errors.New(str)
 	}
 }
@@ -76,14 +108,29 @@ func (t *Test) ResolveParameters(swagger *mqswag.Swagger, db mqswag.DB, plan *Te
 	for _, params := range op.Parameters {
 		switch params.In {
 		case "path":
+			if t.PathParams == nil {
+				t.PathParams = make(map[string]interface{})
+			}
 			paramsMap = t.PathParams
 		case "query":
+			if t.QueryParams == nil {
+				t.QueryParams = make(map[string]interface{})
+			}
 			paramsMap = t.QueryParams
 		case "header":
+			if t.HeaderParams == nil {
+				t.HeaderParams = make(map[string]interface{})
+			}
 			paramsMap = t.HeaderParams
 		case "body":
+			if t.BodyParams == nil {
+				t.BodyParams = make(map[string]interface{})
+			}
 			paramsMap = t.BodyParams
 		case "form":
+			if t.FormParams == nil {
+				t.FormParams = make(map[string]interface{})
+			}
 			paramsMap = t.FormParams
 		}
 		// We don't override the existing parameters
