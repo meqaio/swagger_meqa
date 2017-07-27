@@ -95,6 +95,28 @@ func (t *Test) DecodeResult(resp *resty.Response) ([]map[string]interface{}, err
 	return nil, err
 }
 
+// SetRequestParameters sets the parameters
+func (t *Test) SetRequestParameters(req *resty.Request) {
+	if len(t.queryParams) > 0 {
+		req.SetQueryParams(MapInterfaceToMapString(t.queryParams))
+	}
+	if len(t.bodyParams) > 0 {
+		req.SetBody(t.bodyParams)
+	}
+	if len(t.headerParams) > 0 {
+		req.SetHeaders(MapInterfaceToMapString(t.headerParams))
+	}
+	if len(t.formParams) > 0 {
+		req.SetFormData(MapInterfaceToMapString(t.formParams))
+	}
+	if len(t.pathParams) > 0 {
+		pathParamsStr := MapInterfaceToMapString(t.pathParams)
+		for k, v := range pathParamsStr {
+			strings.Replace(t.Path, "{"+k+"}", v, -1)
+		}
+	}
+}
+
 // Run runs the test. Returns the test result.
 func (t *Test) Run(swagger *mqswag.Swagger, db mqswag.DB, plan *TestPlan, params map[string]interface{}) ([]map[string]interface{}, error) {
 	if len(t.Ref) != 0 {
@@ -111,20 +133,34 @@ func (t *Test) Run(swagger *mqswag.Swagger, db mqswag.DB, plan *TestPlan, params
 		return nil, err
 	}
 
-	// TODO add check for http/https (operation schemes) and pointers
+	req := resty.R()
+	t.SetRequestParameters(req)
+	path := GetBaseURL(swagger) + t.Path
+	var resp *resty.Response
+
 	switch t.Method {
 	case resty.MethodGet:
-		// TODO add other types of params
-		resp, err := resty.R().SetQueryParams(MapInterfaceToMapString(t.queryParams)).
-			Get(GetBaseURL(swagger) + t.Path)
-		if err != nil {
-			return nil, mqutil.NewError(mqutil.ErrHttp, err.Error())
-		}
-		// TODO properly process resp. Check against the current DB to see if they match
-		return t.DecodeResult(resp)
+		resp, err = req.Get(path)
+	case resty.MethodPost:
+		resp, err = req.Post(path)
+	case resty.MethodPut:
+		resp, err = req.Put(path)
+	case resty.MethodDelete:
+		resp, err = req.Delete(path)
+	case resty.MethodPatch:
+		resp, err = req.Patch(path)
+	case resty.MethodHead:
+		resp, err = req.Head(path)
+	case resty.MethodOptions:
+		resp, err = req.Options(path)
 	default:
 		return nil, mqutil.NewError(mqutil.ErrInvalid, fmt.Sprintf("Unknown method in test %s: %v", t.Name, t.Method))
 	}
+	if err != nil {
+		return nil, mqutil.NewError(mqutil.ErrHttp, err.Error())
+	}
+	// TODO properly process resp. Check against the current DB to see if they match
+	return t.DecodeResult(resp)
 }
 
 // ResolveParameters fullfills the parameters for the specified request using the in-mem DB.
