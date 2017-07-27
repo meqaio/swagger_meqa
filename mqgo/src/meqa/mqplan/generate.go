@@ -216,12 +216,23 @@ func generateArray(name string, schema *spec.Schema, swagger *mqswag.Swagger, db
 	}
 
 	var ar []interface{}
+	var hash map[interface{}]interface{}
+	if schema.UniqueItems {
+		hash = make(map[interface{}]interface{})
+	}
+
 	for i := 0; i < numItems; i++ {
 		entry, err := GenerateSchema(name, itemSchema, swagger, db)
 		if err != nil {
 			return nil, err
 		}
+		if hash != nil && hash[entry] != nil {
+			continue
+		}
 		ar = append(ar, entry)
+		if hash != nil {
+			hash[entry] = 1
+		}
 	}
 	return ar, nil
 }
