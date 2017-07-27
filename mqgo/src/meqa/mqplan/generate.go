@@ -112,11 +112,10 @@ func generateString(s *spec.Schema, prefix string) (string, error) {
 		pattern = prefix + "\\d+"
 		length = len(prefix) + 5
 	}
-	g, err := reggen.NewGenerator(pattern)
+	str, err := reggen.Generate(pattern, length)
 	if err != nil {
 		return "", mqutil.NewError(mqutil.ErrInvalid, err.Error())
 	}
-	str := g.Generate(length)
 
 	if len(s.Format) == 0 || s.Format == "password" {
 		return str, nil

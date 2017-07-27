@@ -7,7 +7,6 @@ import (
 	"math/rand"
 	"os"
 	"regexp/syntax"
-	"time"
 )
 
 const runeRangeEnd = 0x10ffff
@@ -21,7 +20,6 @@ type state struct {
 
 type Generator struct {
 	re    *syntax.Regexp
-	rand  *rand.Rand
 	debug bool
 }
 
@@ -67,7 +65,7 @@ func (g *Generator) generate(s *state, re *syntax.Regexp) string {
 			}
 			//fmt.Println("Possible chars: ", possibleChars)
 			if len(possibleChars) > 0 {
-				c := possibleChars[g.rand.Intn(len(possibleChars))]
+				c := possibleChars[rand.Intn(len(possibleChars))]
 				if g.debug {
 					fmt.Printf("Generated rune %c for inverse range %v\n", c, re)
 				}
@@ -77,7 +75,7 @@ func (g *Generator) generate(s *state, re *syntax.Regexp) string {
 		if g.debug {
 			fmt.Println("Char range: ", sum)
 		}
-		r := g.rand.Intn(int(sum))
+		r := rand.Intn(int(sum))
 		var ru rune
 		sum = 0
 		for i := 0; i < len(re.Rune); i += 2 {
@@ -97,7 +95,7 @@ func (g *Generator) generate(s *state, re *syntax.Regexp) string {
 		if op == syntax.OpAnyCharNotNL {
 			chars = printableCharsNoNL
 		}
-		c := chars[g.rand.Intn(len(chars))]
+		c := chars[rand.Intn(len(chars))]
 		return string([]byte{c})
 	case syntax.OpBeginLine:
 	case syntax.OpEndLine:
@@ -113,7 +111,7 @@ func (g *Generator) generate(s *state, re *syntax.Regexp) string {
 	case syntax.OpStar:
 		// Repeat zero or more times
 		res := ""
-		count := g.rand.Intn(s.limit + 1)
+		count := rand.Intn(s.limit + 1)
 		for i := 0; i < count; i++ {
 			for _, r := range re.Sub {
 				res += g.generate(s, r)
@@ -123,7 +121,7 @@ func (g *Generator) generate(s *state, re *syntax.Regexp) string {
 	case syntax.OpPlus:
 		// Repeat one or more times
 		res := ""
-		count := g.rand.Intn(s.limit) + 1
+		count := rand.Intn(s.limit) + 1
 		for i := 0; i < count; i++ {
 			for _, r := range re.Sub {
 				res += g.generate(s, r)
@@ -133,7 +131,7 @@ func (g *Generator) generate(s *state, re *syntax.Regexp) string {
 	case syntax.OpQuest:
 		// Zero or one instances
 		res := ""
-		count := g.rand.Intn(2)
+		count := rand.Intn(2)
 		if g.debug {
 			fmt.Println("Quest", count)
 		}
@@ -152,7 +150,7 @@ func (g *Generator) generate(s *state, re *syntax.Regexp) string {
 		count := 0
 		re.Max = int(math.Min(float64(re.Max), float64(s.limit)))
 		if re.Max > re.Min {
-			count = g.rand.Intn(re.Max - re.Min + 1)
+			count = rand.Intn(re.Max - re.Min + 1)
 		}
 		if g.debug {
 			fmt.Println(re.Max, count)
@@ -174,7 +172,7 @@ func (g *Generator) generate(s *state, re *syntax.Regexp) string {
 		if g.debug {
 			fmt.Println("OpAlternative", re.Sub, len(re.Sub))
 		}
-		i := g.rand.Intn(len(re.Sub))
+		i := rand.Intn(len(re.Sub))
 		return g.generate(s, re.Sub[i])
 	default:
 		fmt.Fprintln(os.Stderr, "[reg-gen] Unhandled op: ", op)
@@ -196,8 +194,7 @@ func NewGenerator(regex string) (*Generator, error) {
 	}
 	//fmt.Println("Compiled re ", re)
 	return &Generator{
-		re:   re,
-		rand: rand.New(rand.NewSource(time.Now().UnixNano())),
+		re: re,
 	}, nil
 }
 
