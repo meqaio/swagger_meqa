@@ -1,12 +1,18 @@
 
 # Example test plan
+---
+get pet by status:
+  - path: /pet/findByStatus
+    method: get
+    queryParams:
+      status: sold
 
 ---
 # In this example, a user has attributes name, address, phone, id (returned by post)
 create user manual:
   - path: /user
     method: post
-    parameters:
+    bodyParams:
       name: john smith
       address: 1st main street, San Jose, CA 95133
       phone: 888-888-8888
@@ -40,19 +46,22 @@ update user:
 create 2 delete 1:
   - name: create1
     ref: create user auto
+    bodyParams:
+      address: fixed address
+      name: fixed name
   - name: create2
     ref: create user auto
-    parameters:
-      name: joe  
+    bodyParams:
+      name: fixed user name
   - ref: get all users
   - ref: get user
-    parameters:
+    pathParams:
       user_id: "%create1.id%"
   - ref: delete user
-    parameters:
+    pathParams:
       user_id: "%create1.id%"
   - ref: get user
-    parameters:
+    pathParams:
       user_id: "%create1.id%"
     expects:
       status: fail
@@ -63,19 +72,19 @@ crud:
     ref: create user auto
   - name: read
     ref: get user
-    parameters:
+    pathParams:
       user_id: "%create.id%"
   - name: update
     ref: update user
-    parameters:
+    pathParams:
       user_id: "%create.id%"
   - name: delete
     ref: delete user
-    parameters:
+    pathParams:
       user_id: "%create.id%"
   - name: read
     ref: get user
-    parameters:
+    pathParams:
       user_id: "%create.id%"
     expects:
       status: fail
@@ -84,14 +93,21 @@ crud:
 auto test:
   - ref: create user auto
   - ref: get user
-    parameters:
+    pathParams:
       user_id: auto
   - ref: update user
   - ref: delete user
   
 ---
-get pet by status:
-  - path: /pet/findByStatus
-    method: get
-    parameters:
+update pet:
+  - path: "/pet/{petId}"
+    method: post
+    pathParams:
+      petId: auto # get one from DB
+    formParams:
+      name: new name from update pet
       status: sold
+    bodyParams: # this forces body to be empty, even if there is a body in spec.
+
+# The rule is, the parameter section should mostly be a map, with the exception
+# of the bodyParams, which can be anything.

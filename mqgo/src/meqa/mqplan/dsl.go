@@ -14,6 +14,7 @@ import (
 	"encoding/json"
 	"meqa/mqswag"
 	"meqa/mqutil"
+	"reflect"
 )
 
 // MapInterfaceToMapString converts the params map (all primitive types with exception of array)
@@ -31,6 +32,30 @@ func MapInterfaceToMapString(src map[string]interface{}) map[string]string {
 		} else {
 			dst[k] = fmt.Sprint(v)
 		}
+	}
+	return dst
+}
+
+// MapIsCompatible checks if the first map has every key in the second.
+func MapIsCompatible(big map[string]interface{}, small map[string]interface{}) bool {
+	for k, _ := range small {
+		if _, ok := big[k]; !ok {
+			return false
+		}
+	}
+	return true
+}
+
+// MapCombine combines two map together. If there is any overlap the dst will be overwritten.
+func MapCombine(dst map[string]interface{}, src map[string]interface{}) map[string]interface{} {
+	if len(dst) == 0 {
+		return src
+	}
+	if len(src) == 0 {
+		return dst
+	}
+	for k, v := range src {
+		dst[k] = v
 	}
 	return dst
 }
@@ -58,25 +83,28 @@ func GetBaseURL(swagger *mqswag.Swagger) string {
 
 // Test represents a test object in the DSL
 type Test struct {
-	Name       string
-	Path       string
-	Method     string
-	Ref        string
-	Parameters map[string]interface{}
-
-	queryParams  map[string]interface{}
-	bodyParams   map[string]interface{}
-	formParams   map[string]interface{}
-	pathParams   map[string]interface{}
-	headerParams map[string]interface{}
+	Name         string
+	Path         string
+	Method       string
+	Ref          string
+	QueryParams  map[string]interface{} `yaml:"queryParams"`
+	BodyParams   interface{}            `yaml:"bodyParams"`
+	FormParams   map[string]interface{} `yaml:"formParams"`
+	PathParams   map[string]interface{} `yaml:"pathParams"`
+	HeaderParams map[string]interface{} `yaml:"headerParams"`
 }
 
 func (t *Test) Init() {
 	if len(t.Method) != 0 {
 		t.Method = strings.ToUpper(t.Method)
 	}
-	if t.Parameters == nil {
-		t.Parameters = make(map[string]interface{})
+	// if BodyParams is map, after unmarshal it is map[interface{}]
+	if bodyMap, ok := t.BodyParams.(map[interface{}]interface{}); ok {
+		newMap := make(map[string]interface{})
+		for k, v := range bodyMap {
+			newMap[fmt.Sprint(k)] = v
+		}
+		t.BodyParams = newMap
 	}
 }
 
@@ -97,40 +125,64 @@ func (t *Test) DecodeResult(resp *resty.Response) ([]map[string]interface{}, err
 
 // SetRequestParameters sets the parameters
 func (t *Test) SetRequestParameters(req *resty.Request) {
-	if len(t.queryParams) > 0 {
-		req.SetQueryParams(MapInterfaceToMapString(t.queryParams))
+	if len(t.QueryParams) > 0 {
+		req.SetQueryParams(MapInterfaceToMapString(t.QueryParams))
 	}
-	if len(t.bodyParams) > 0 {
-		req.SetBody(t.bodyParams)
+	if t.BodyParams != nil {
+		req.SetBody(t.BodyParams)
 	}
-	if len(t.headerParams) > 0 {
-		req.SetHeaders(MapInterfaceToMapString(t.headerParams))
+	if len(t.HeaderParams) > 0 {
+		req.SetHeaders(MapInterfaceToMapString(t.HeaderParams))
 	}
-	if len(t.formParams) > 0 {
-		req.SetFormData(MapInterfaceToMapString(t.formParams))
+	if len(t.FormParams) > 0 {
+		req.SetFormData(MapInterfaceToMapString(t.FormParams))
 	}
-	if len(t.pathParams) > 0 {
-		pathParamsStr := MapInterfaceToMapString(t.pathParams)
-		for k, v := range pathParamsStr {
+	if len(t.PathParams) > 0 {
+		PathParamsStr := MapInterfaceToMapString(t.PathParams)
+		for k, v := range PathParamsStr {
 			strings.Replace(t.Path, "{"+k+"}", v, -1)
 		}
 	}
 }
 
 // Run runs the test. Returns the test result.
-func (t *Test) Run(swagger *mqswag.Swagger, db mqswag.DB, plan *TestPlan, params map[string]interface{}) ([]map[string]interface{}, error) {
-	if len(t.Ref) != 0 {
-		return plan.Run(t.Ref, swagger, db, params)
+func (t *Test) Run(swagger *mqswag.Swagger, db mqswag.DB, plan *TestPlan,
+	parentTest *Test) ([]map[string]interface{}, error) {
+
+	if parentTest != nil {
+		t.QueryParams = MapCombine(t.QueryParams, parentTest.QueryParams)
+		t.PathParams = MapCombine(t.PathParams, parentTest.PathParams)
+		t.HeaderParams = MapCombine(t.HeaderParams, parentTest.HeaderParams)
+		t.FormParams = MapCombine(t.FormParams, parentTest.FormParams)
+
+		if parentTest.BodyParams != nil {
+			if t.BodyParams == nil {
+				t.BodyParams = parentTest.BodyParams
+			} else {
+				// replace with parent only if the types are the same
+				if parentBodyMap, ok := parentTest.BodyParams.(map[string]interface{}); ok {
+					if bodyMap, ok := t.BodyParams.(map[string]interface{}); ok {
+						t.BodyParams = MapCombine(bodyMap, parentBodyMap)
+					}
+				} else {
+					// For non-map types, just replace with parent if they are the same type.
+					if reflect.TypeOf(parentTest.BodyParams) == reflect.TypeOf(t.BodyParams) {
+						t.BodyParams = parentTest.BodyParams
+					}
+				}
+			}
+		}
 	}
 
-	// Add parameters passed in to t's existing parameters. What is passed in from outside
-	// always takes higher priority
-	for k, v := range params {
-		t.Parameters[k] = v
-	}
 	err := t.ResolveParameters(swagger, db, plan)
 	if err != nil {
 		return nil, err
+	}
+
+	// We do this after resolving all parameters. The next level will inherit
+	// what the parent decides.
+	if len(t.Ref) != 0 {
+		return plan.Run(t.Ref, swagger, db, parentTest)
 	}
 
 	req := resty.R()
@@ -173,45 +225,51 @@ func (t *Test) ResolveParameters(swagger *mqswag.Swagger, db mqswag.DB, plan *Te
 	}
 
 	var paramsMap map[string]interface{}
+	var err error
+	var genParam interface{}
 	for _, params := range op.Parameters {
-		switch params.In {
-		case "path":
-			if t.pathParams == nil {
-				t.pathParams = make(map[string]interface{})
+		if params.In == "body" {
+			if t.BodyParams != nil {
+				// There is only one body parameter. No need to check name. In fact, we don't
+				// even store the name in the DSL.
+				continue
 			}
-			paramsMap = t.pathParams
-		case "query":
-			if t.queryParams == nil {
-				t.queryParams = make(map[string]interface{})
+			genParam, err = GenerateParameter(&params, swagger, db)
+			t.BodyParams = genParam
+		} else {
+			switch params.In {
+			case "path":
+				if t.PathParams == nil {
+					t.PathParams = make(map[string]interface{})
+				}
+				paramsMap = t.PathParams
+			case "query":
+				if t.QueryParams == nil {
+					t.QueryParams = make(map[string]interface{})
+				}
+				paramsMap = t.QueryParams
+			case "header":
+				if t.HeaderParams == nil {
+					t.HeaderParams = make(map[string]interface{})
+				}
+				paramsMap = t.HeaderParams
+			case "formData":
+				if t.FormParams == nil {
+					t.FormParams = make(map[string]interface{})
+				}
+				paramsMap = t.FormParams
 			}
-			paramsMap = t.queryParams
-		case "header":
-			if t.headerParams == nil {
-				t.headerParams = make(map[string]interface{})
+
+			// If there is a parameter passed in, just use it. Otherwise generate one.
+			if _, ok := paramsMap[params.Name]; ok {
+				continue
 			}
-			paramsMap = t.headerParams
-		case "body":
-			if t.bodyParams == nil {
-				t.bodyParams = make(map[string]interface{})
-			}
-			paramsMap = t.bodyParams
-		case "form":
-			if t.formParams == nil {
-				t.formParams = make(map[string]interface{})
-			}
-			paramsMap = t.formParams
+			genParam, err = GenerateParameter(&params, swagger, db)
+			paramsMap[params.Name] = genParam
 		}
-		// If there is a parameter passed in, just use it.
-		if _, ok := t.Parameters[params.Name]; ok {
-			paramsMap[params.Name] = t.Parameters[params.Name]
-			continue
-		}
-		p, err := GenerateParameter(&params, swagger, db)
 		if err != nil {
 			return err
 		}
-		paramsMap[params.Name] = p
-		return nil
 	}
 	return nil
 }
@@ -273,7 +331,7 @@ func (plan *TestPlan) InitFromFile(path string) error {
 }
 
 // Run a named TestCase in the test plan.
-func (plan *TestPlan) Run(name string, swagger *mqswag.Swagger, db mqswag.DB, params map[string]interface{}) ([]map[string]interface{}, error) {
+func (plan *TestPlan) Run(name string, swagger *mqswag.Swagger, db mqswag.DB, parentTest *Test) ([]map[string]interface{}, error) {
 	tc, ok := plan.CaseMap[name]
 	if !ok || len(tc) == 0 {
 		str := fmt.Sprintf("The following test case is not found: %s", name)
@@ -283,7 +341,7 @@ func (plan *TestPlan) Run(name string, swagger *mqswag.Swagger, db mqswag.DB, pa
 
 	var output []map[string]interface{}
 	for _, test := range tc {
-		result, err := test.Run(swagger, db, plan, params)
+		result, err := test.Run(swagger, db, plan, parentTest)
 		if err != nil {
 			return nil, err
 		}

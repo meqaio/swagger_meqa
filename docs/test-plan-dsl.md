@@ -15,7 +15,9 @@ A test object is a basic component of the test plan. It defines a test, and has 
 * path: the relative path to root url
 * method: the http method, e.g. GET, POST
 * ref: refers to another test object by name. This overrides (path, method)
-* parameters: a map of key->value pairs.
+* parameters: a list of parameters
+    - name: value
+    - special key: in, e.g. in: path
 
 The parameters allow special values, and defaults to the special value "auto". The meaning of special values are:
 * auto - pick a known good value. While we execute the tests, we keep track of the objects created and deleted. We can choose a good value based on what we know. 
@@ -28,7 +30,12 @@ The parameters allow special values, and defaults to the special value "auto". T
     - UPDATE - update all objects and verifies that http return result.
     - DELETE - delete all known objects.
 
+The parameter can be a map or an array. Parameters passed in from caller will override the lower level test cases' parameters. For instance, if a test named "create user" is constructued to create a user named "user1", and in the test plan we call "create user" with parameters "user2", then we will use "user2".
+
 Each test object can by run by itself. Each one is always run using the existing in-memory state. For instance, if a GET type method is run by itself, it will try to retrieve object the test has created before. If there doesn't exist any object, the test will just verify the failure case.
 
-By default, when running a whole test plan, all the tests are run in sequence.
+When running a whole test plan, all the tests are run in sequence.
 
+## Open Questions
+* How to specify empty map or arrays for negative tests?
+    - Use null value

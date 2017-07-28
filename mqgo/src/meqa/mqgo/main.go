@@ -31,24 +31,14 @@ func main() {
 		mqutil.Logger.Printf("Error loading test plan: %s", err.Error())
 	}
 
-	param, err := mqplan.GenerateParameter(&(swagger.Paths.Paths["/pet/findByStatus"].Get.Parameters[0]), swagger, mqswag.ObjDB)
-	str, _ := json.MarshalIndent(param, "", "    ")
-	if err == nil {
-		fmt.Printf("\n---\n%s", str)
-	} else {
-		fmt.Printf("\nerr:\n%v", err)
-	}
-
-	schema, err := mqplan.GenerateSchema("", swagger.Paths.Paths["/pet"].Post.Parameters[0].Schema, swagger, mqswag.ObjDB)
-	str, _ = json.MarshalIndent(schema, "", "    ")
-	if err == nil {
-		fmt.Printf("\n---\n%s", str)
-	} else {
-		fmt.Printf("\nerr:\n%v", err)
-	}
-	fmt.Println("====== running get pet by status ======")
+	fmt.Println("\n====== running get pet by status ======")
 	result, err := mqplan.Current.Run("get pet by status", swagger, mqswag.ObjDB, nil)
 	resultJson, _ := json.Marshal(result)
+	fmt.Printf("\nresult:\n%s", resultJson)
+
+	fmt.Println("\n====== running create user manual ======")
+	result, err = mqplan.Current.Run("create user manual", swagger, mqswag.ObjDB, nil)
+	resultJson, _ = json.Marshal(result)
 	fmt.Printf("\nresult:\n%s", resultJson)
 
 	fmt.Printf("\nerr:\n%v", err)
