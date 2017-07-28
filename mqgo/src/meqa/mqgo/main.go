@@ -25,19 +25,21 @@ func main() {
 	}
 	fmt.Printf("%v", swagger.Paths.Paths["/pet"].Post)
 
+	mqswag.ObjDB.Init(swagger)
+
 	// Test loading test plan
-	err = mqplan.Current.InitFromFile(testPlanPath)
+	err = mqplan.Current.InitFromFile(testPlanPath, &mqswag.ObjDB)
 	if err != nil {
 		mqutil.Logger.Printf("Error loading test plan: %s", err.Error())
 	}
 
 	fmt.Println("\n====== running get pet by status ======")
-	result, err := mqplan.Current.Run("get pet by status", swagger, mqswag.ObjDB, nil)
+	result, err := mqplan.Current.Run("get pet by status", nil)
 	resultJson, _ := json.Marshal(result)
 	fmt.Printf("\nresult:\n%s", resultJson)
 
 	fmt.Println("\n====== running create user manual ======")
-	result, err = mqplan.Current.Run("create user manual", swagger, mqswag.ObjDB, nil)
+	result, err = mqplan.Current.Run("create user manual", nil)
 	resultJson, _ = json.Marshal(result)
 	fmt.Printf("\nresult:\n%s", resultJson)
 

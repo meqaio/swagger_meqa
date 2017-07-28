@@ -39,9 +39,9 @@ func getOperationByMethod(item *spec.PathItem, method string) *spec.Operation {
 }
 
 // Generate paramter value based on the spec.
-func GenerateParameter(paramSpec *spec.Parameter, swagger *mqswag.Swagger, db mqswag.DB) (interface{}, error) {
+func GenerateParameter(paramSpec *spec.Parameter, db *mqswag.DB) (interface{}, error) {
 	if paramSpec.Schema != nil {
-		return GenerateSchema(paramSpec.Name, paramSpec.Schema, swagger, db)
+		return GenerateSchema(paramSpec.Name, paramSpec.Schema, db)
 	}
 	if len(paramSpec.Enum) != 0 {
 		return generateEnum(paramSpec.Enum)
@@ -58,10 +58,10 @@ func GenerateParameter(paramSpec *spec.Parameter, swagger *mqswag.Swagger, db mq
 		schema = createSchemaFromSimple(&paramSpec.SimpleSchema, &paramSpec.CommonValidations)
 	}
 	if paramSpec.Type == gojsonschema.TYPE_OBJECT {
-		return generateObject("param_", schema, swagger, db)
+		return generateObject("param_", schema, db)
 	}
 	if paramSpec.Type == gojsonschema.TYPE_ARRAY {
-		return generateArray("param_", schema, swagger, db)
+		return generateArray("param_", schema, db)
 	}
 
 	return generateByType(createSchemaFromSimple(&paramSpec.SimpleSchema, &paramSpec.CommonValidations), paramSpec.Name+"_")
@@ -182,7 +182,7 @@ func generateInt(s *spec.Schema) (int64, error) {
 	return i, nil
 }
 
-func generateArray(name string, schema *spec.Schema, swagger *mqswag.Swagger, db mqswag.DB) (interface{}, error) {
+func generateArray(name string, schema *spec.Schema, db *mqswag.DB) (interface{}, error) {
 	var numItems int
 	if schema.MaxItems != nil || schema.MinItems != nil {
 		var maxItems int
@@ -222,7 +222,7 @@ func generateArray(name string, schema *spec.Schema, swagger *mqswag.Swagger, db
 	}
 
 	for i := 0; i < numItems; i++ {
-		entry, err := GenerateSchema(name, itemSchema, swagger, db)
+		entry, err := GenerateSchema(name, itemSchema, db)
 		if err != nil {
 			return nil, err
 		}
@@ -237,10 +237,10 @@ func generateArray(name string, schema *spec.Schema, swagger *mqswag.Swagger, db
 	return ar, nil
 }
 
-func generateObject(name string, schema *spec.Schema, swagger *mqswag.Swagger, db mqswag.DB) (interface{}, error) {
+func generateObject(name string, schema *spec.Schema, db *mqswag.DB) (interface{}, error) {
 	obj := make(map[string]interface{})
 	for k, v := range schema.Properties {
-		o, err := GenerateSchema(name+k+"_", &v, swagger, db)
+		o, err := GenerateSchema(name+k+"_", &v, db)
 		if err != nil {
 			return nil, err
 		}
@@ -273,7 +273,8 @@ func createSchemaFromSimple(s *spec.SimpleSchema, v *spec.CommonValidations) *sp
 	return &schema
 }
 
-func GenerateSchema(name string, schema *spec.Schema, swagger *mqswag.Swagger, db mqswag.DB) (interface{}, error) {
+func GenerateSchema(name string, schema *spec.Schema, db *mqswag.DB) (interface{}, error) {
+	swagger := db.Swagger
 	// Deal with refs.
 	tokens := schema.Ref.GetPointer().DecodedTokens()
 	if len(tokens) != 0 {
@@ -285,7 +286,7 @@ func GenerateSchema(name string, schema *spec.Schema, swagger *mqswag.Swagger, d
 			if !ok {
 				return nil, mqutil.NewError(mqutil.ErrInvalid, fmt.Sprintf("Reference object not found: %s", schema.Ref.GetURL()))
 			}
-			return GenerateSchema(name, &referredSchema, swagger, db)
+			return GenerateSchema(name, &referredSchema, db)
 		}
 		return nil, mqutil.NewError(mqutil.ErrInvalid, fmt.Sprintf("Invalid reference: %s", schema.Ref.GetURL()))
 	}
@@ -297,10 +298,10 @@ func GenerateSchema(name string, schema *spec.Schema, swagger *mqswag.Swagger, d
 		return nil, mqutil.NewError(mqutil.ErrInvalid, "Parameter doesn't have type")
 	}
 	if schema.Type[0] == gojsonschema.TYPE_OBJECT {
-		return generateObject(name, schema, swagger, db)
+		return generateObject(name, schema, db)
 	}
 	if schema.Type[0] == gojsonschema.TYPE_ARRAY {
-		return generateArray(name, schema, swagger, db)
+		return generateArray(name, schema, db)
 	}
 
 	return generateByType(schema, name)

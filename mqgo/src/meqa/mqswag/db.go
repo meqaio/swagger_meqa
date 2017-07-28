@@ -131,11 +131,21 @@ func (db *SchemaDB) Delete(criteria interface{}, matches MatchFunc, desiredCount
 	return count
 }
 
-type DB map[string](*SchemaDB)
+type DB struct {
+	schemas map[string](*SchemaDB)
+	Swagger *Swagger
+}
+
+func (db *DB) Init(s *Swagger) {
+	db.Swagger = s
+	db.schemas = make(map[string](*SchemaDB))
+	for schemaName, schema := range s.Definitions {
+		if _, ok := db.schemas[schemaName]; ok {
+			mqutil.Logger.Printf("warning - schema %s already exists", schemaName)
+		}
+		db.schemas[schemaName] = &SchemaDB{schemaName, Schema(schema), nil}
+	}
+}
 
 // DB holds schema name to Schema mapping.
 var ObjDB DB
-
-func init() {
-	ObjDB = make(map[string](*SchemaDB))
-}

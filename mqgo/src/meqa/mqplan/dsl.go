@@ -92,9 +92,12 @@ type Test struct {
 	FormParams   map[string]interface{} `yaml:"formParams"`
 	PathParams   map[string]interface{} `yaml:"pathParams"`
 	HeaderParams map[string]interface{} `yaml:"headerParams"`
+
+	db *mqswag.DB
 }
 
-func (t *Test) Init() {
+func (t *Test) Init(db *mqswag.DB) {
+	t.db = db
 	if len(t.Method) != 0 {
 		t.Method = strings.ToUpper(t.Method)
 	}
@@ -146,8 +149,7 @@ func (t *Test) SetRequestParameters(req *resty.Request) {
 }
 
 // Run runs the test. Returns the test result.
-func (t *Test) Run(swagger *mqswag.Swagger, db mqswag.DB, plan *TestPlan,
-	parentTest *Test) ([]map[string]interface{}, error) {
+func (t *Test) Run(plan *TestPlan, parentTest *Test) ([]map[string]interface{}, error) {
 
 	if parentTest != nil {
 		t.QueryParams = MapCombine(t.QueryParams, parentTest.QueryParams)
@@ -174,20 +176,20 @@ func (t *Test) Run(swagger *mqswag.Swagger, db mqswag.DB, plan *TestPlan,
 		}
 	}
 
-	err := t.ResolveParameters(swagger, db, plan)
+	err := t.ResolveParameters(plan)
 	if err != nil {
 		return nil, err
 	}
 
 	// We do this after resolving all parameters. The next level will inherit
-	// what the parent decides.
+	// what the parent (this test) decides.
 	if len(t.Ref) != 0 {
-		return plan.Run(t.Ref, swagger, db, parentTest)
+		return plan.Run(t.Ref, t)
 	}
 
 	req := resty.R()
 	t.SetRequestParameters(req)
-	path := GetBaseURL(swagger) + t.Path
+	path := GetBaseURL(t.db.Swagger) + t.Path
 	var resp *resty.Response
 
 	switch t.Method {
@@ -217,8 +219,8 @@ func (t *Test) Run(swagger *mqswag.Swagger, db mqswag.DB, plan *TestPlan,
 
 // ResolveParameters fullfills the parameters for the specified request using the in-mem DB.
 // The resolved parameters will be added to test.Parameters map.
-func (t *Test) ResolveParameters(swagger *mqswag.Swagger, db mqswag.DB, plan *TestPlan) error {
-	pathItem := swagger.Paths.Paths[t.Path]
+func (t *Test) ResolveParameters(plan *TestPlan) error {
+	pathItem := t.db.Swagger.Paths.Paths[t.Path]
 	op := getOperationByMethod(&pathItem, t.Method)
 	if op == nil {
 		return mqutil.NewError(mqutil.ErrNotFound, fmt.Sprintf("Path %s not found in swagger file", t.Path))
@@ -234,7 +236,7 @@ func (t *Test) ResolveParameters(swagger *mqswag.Swagger, db mqswag.DB, plan *Te
 				// even store the name in the DSL.
 				continue
 			}
-			genParam, err = GenerateParameter(&params, swagger, db)
+			genParam, err = GenerateParameter(&params, t.db)
 			t.BodyParams = genParam
 		} else {
 			switch params.In {
@@ -264,7 +266,7 @@ func (t *Test) ResolveParameters(swagger *mqswag.Swagger, db mqswag.DB, plan *Te
 			if _, ok := paramsMap[params.Name]; ok {
 				continue
 			}
-			genParam, err = GenerateParameter(&params, swagger, db)
+			genParam, err = GenerateParameter(&params, t.db)
 			paramsMap[params.Name] = genParam
 		}
 		if err != nil {
@@ -280,6 +282,7 @@ type TestCase []*Test
 type TestPlan struct {
 	CaseMap  map[string](TestCase)
 	CaseList [](TestCase)
+	db       *mqswag.DB
 }
 
 // Add a new TestCase, returns whether the Case is successfully added.
@@ -303,7 +306,7 @@ func (plan *TestPlan) AddFromString(data string) error {
 	}
 	for testName, testCase := range caseMap {
 		for _, t := range testCase {
-			t.Init()
+			t.Init(plan.db)
 		}
 		err = plan.Add(testName, testCase)
 		if err != nil {
@@ -313,7 +316,8 @@ func (plan *TestPlan) AddFromString(data string) error {
 	return nil
 }
 
-func (plan *TestPlan) InitFromFile(path string) error {
+func (plan *TestPlan) InitFromFile(path string, db *mqswag.DB) error {
+	plan.db = db
 	plan.CaseMap = make(map[string]TestCase)
 	plan.CaseList = nil
 
@@ -331,7 +335,7 @@ func (plan *TestPlan) InitFromFile(path string) error {
 }
 
 // Run a named TestCase in the test plan.
-func (plan *TestPlan) Run(name string, swagger *mqswag.Swagger, db mqswag.DB, parentTest *Test) ([]map[string]interface{}, error) {
+func (plan *TestPlan) Run(name string, parentTest *Test) ([]map[string]interface{}, error) {
 	tc, ok := plan.CaseMap[name]
 	if !ok || len(tc) == 0 {
 		str := fmt.Sprintf("The following test case is not found: %s", name)
@@ -341,7 +345,7 @@ func (plan *TestPlan) Run(name string, swagger *mqswag.Swagger, db mqswag.DB, pa
 
 	var output []map[string]interface{}
 	for _, test := range tc {
-		result, err := test.Run(swagger, db, plan, parentTest)
+		result, err := test.Run(plan, parentTest)
 		if err != nil {
 			return nil, err
 		}
