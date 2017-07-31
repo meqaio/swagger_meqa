@@ -534,7 +534,7 @@ func generateInt(s *spec.Schema) (int64, error) {
 	return i, nil
 }
 
-func (t *Test) generateArray(name string, tag *MeqaTag, schema *spec.Schema, db *mqswag.DB) (interface{}, error) {
+func (t *Test) generateArray(name string, parentTag *MeqaTag, schema *spec.Schema, db *mqswag.DB) (interface{}, error) {
 	var numItems int
 	if schema.MaxItems != nil || schema.MinItems != nil {
 		var maxItems int
@@ -565,6 +565,10 @@ func (t *Test) generateArray(name string, tag *MeqaTag, schema *spec.Schema, db 
 		itemSchema = &(schema.Items.Schemas[0])
 	} else {
 		itemSchema = schema.Items.Schema
+	}
+	tag := GetMeqaTag(schema.Description)
+	if tag == nil {
+		tag = parentTag
 	}
 
 	var ar []interface{}
