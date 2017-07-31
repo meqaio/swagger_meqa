@@ -303,14 +303,14 @@
                     {
                         "name": "name",
                         "in": "formData",
-                        "description": "Updated name of the pet @meqa[Pet:name]",
+                        "description": "Updated name of the pet @meqa[Pet:name].update",
                         "required": false,
                         "type": "string"
                     },
                     {
                         "name": "status",
                         "in": "formData",
-                        "description": "Updated status of the pet @meqa[Pet:status]",
+                        "description": "Updated status of the pet @meqa[Pet:status].update",
                         "required": false,
                         "type": "string"
                     }

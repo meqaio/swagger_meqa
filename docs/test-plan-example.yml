@@ -13,7 +13,7 @@ create user manual:
   - path: /user
     method: post
     bodyParams:
-      name: john smith
+      username: johnsmith
       address: 1st main street, San Jose, CA 95133
       phone: 888-888-8888
 

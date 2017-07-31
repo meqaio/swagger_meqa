@@ -4,6 +4,7 @@ import (
 	"errors"
 	"meqa/mqutil"
 	"reflect"
+	"sync"
 
 	"github.com/go-openapi/spec"
 	"github.com/xeipuuv/gojsonschema"
@@ -84,12 +85,12 @@ func (schema *Schema) MatchesMap(obj map[string]interface{}) bool {
 // the schema. We don't build indexes and do linear search. This keeps the searching flexible for now.
 type SchemaDB struct {
 	Name    string
-	Schema  Schema
+	Schema  *Schema
 	Objects []interface{}
 }
 
 // Insert inserts an object into the schema's object list.
-func (db *SchemaDB) Insert(name string, obj interface{}) error {
+func (db *SchemaDB) Insert(obj interface{}) error {
 	if !db.Schema.Matches(obj) {
 		return errors.New("object and schema doesn't match")
 	}
@@ -134,6 +135,7 @@ func (db *SchemaDB) Delete(criteria interface{}, matches MatchFunc, desiredCount
 type DB struct {
 	schemas map[string](*SchemaDB)
 	Swagger *Swagger
+	mutex   sync.Mutex // We don't expect much contention, as such mutex will be fast
 }
 
 func (db *DB) Init(s *Swagger) {
@@ -143,8 +145,50 @@ func (db *DB) Init(s *Swagger) {
 		if _, ok := db.schemas[schemaName]; ok {
 			mqutil.Logger.Printf("warning - schema %s already exists", schemaName)
 		}
-		db.schemas[schemaName] = &SchemaDB{schemaName, Schema(schema), nil}
+		db.schemas[schemaName] = &SchemaDB{schemaName, (*Schema)(&schema), nil}
 	}
+}
+
+func (db *DB) Insert(name string, schema *spec.Schema, obj interface{}) error {
+	db.mutex.Lock()
+	defer db.mutex.Unlock()
+
+	if db.schemas[name] == nil {
+		db.schemas[name] = &SchemaDB{name, (*Schema)(schema), nil}
+	}
+	return db.schemas[name].Insert(obj)
+}
+
+func (db *DB) Find(name string, criteria interface{}, matches MatchFunc, desiredCount int) []interface{} {
+	db.mutex.Lock()
+	defer db.mutex.Unlock()
+
+	if db.schemas[name] == nil {
+		return nil
+	}
+	return db.schemas[name].Find(criteria, matches, desiredCount)
+}
+
+func (db *DB) Delete(name string, criteria interface{}, matches MatchFunc, desiredCount int) int {
+	db.mutex.Lock()
+	defer db.mutex.Unlock()
+
+	if db.schemas[name] == nil {
+		return 0
+	}
+	return db.schemas[name].Delete(criteria, matches, desiredCount)
+}
+
+// FindMatchingSchema finds the schema that matches the obj.
+func (db *DB) FindMatchingSchema(obj interface{}) (string, *spec.Schema) {
+	for name, schemaDB := range db.schemas {
+		schema := schemaDB.Schema
+		if schema.Matches(obj) {
+			mqutil.Logger.Printf("found matching schema: %s", name)
+			return name, (*spec.Schema)(schema)
+		}
+	}
+	return "", nil
 }
 
 // DB holds schema name to Schema mapping.
