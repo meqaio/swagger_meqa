@@ -20,6 +20,8 @@ import (
 
 	"regexp"
 
+	"encoding/json"
+
 	"github.com/go-openapi/spec"
 	"github.com/lucasjones/reggen"
 	"github.com/xeipuuv/gojsonschema"
@@ -35,58 +37,23 @@ const (
 	MethodOptions = "options"
 )
 
+// The operation code in @meqa[...].op for parameters. The op code at the path level
+// is the above Rest methods.
 const (
 	OpRead  = "read"
 	OpWrite = "write"
+)
+
+// The class code in @meqa[class] for responses.
+const (
+	ClassSuccess = "success"
+	ClassFail    = "fail"
 )
 
 type MeqaTag struct {
 	Class     string
 	Property  string
 	Operation string
-}
-
-// MapInterfaceToMapString converts the params map (all primitive types with exception of array)
-// before passing to resty.
-func MapInterfaceToMapString(src map[string]interface{}) map[string]string {
-	dst := make(map[string]string)
-	for k, v := range src {
-		if ar, ok := v.([]interface{}); ok {
-			str := ""
-			for _, entry := range ar {
-				str += fmt.Sprintf("%v,", entry)
-			}
-			str = strings.TrimRight(str, ",")
-			dst[k] = str
-		} else {
-			dst[k] = fmt.Sprint(v)
-		}
-	}
-	return dst
-}
-
-// MapIsCompatible checks if the first map has every key in the second.
-func MapIsCompatible(big map[string]interface{}, small map[string]interface{}) bool {
-	for k, _ := range small {
-		if _, ok := big[k]; !ok {
-			return false
-		}
-	}
-	return true
-}
-
-// MapCombine combines two map together. If there is any overlap the dst will be overwritten.
-func MapCombine(dst map[string]interface{}, src map[string]interface{}) map[string]interface{} {
-	if len(dst) == 0 {
-		return src
-	}
-	if len(src) == 0 {
-		return dst
-	}
-	for k, v := range src {
-		dst[k] = v
-	}
-	return dst
 }
 
 func GetBaseURL(swagger *mqswag.Swagger) string {
@@ -201,56 +168,121 @@ func (t *Test) Init(db *mqswag.DB) {
 	}
 }
 
+func (t *Test) ProcessOneComparison(className string, comp *Comparison, resultArray []map[string]interface{}) error {
+	method := t.Method
+	if t.tag != nil && len(t.tag.Operation) > 0 {
+		method = t.tag.Operation
+	}
+
+	if method == MethodGet {
+		var matchFunc mqswag.MatchFunc
+		if comp.old == nil {
+			matchFunc = func(criteria interface{}, existing interface{}) bool { return true }
+		} else {
+			matchFunc = mqswag.MatchAllFields
+		}
+		dbArray := t.db.Find(className, comp.old, matchFunc, -1)
+		// What we found from the server (resultArray) and from in-memory DB using the same criteria should match.
+		if len(resultArray) != len(dbArray) {
+			return mqutil.NewError(mqutil.ErrHttp, fmt.Sprintf("expecting %d entries got %d entries",
+				len(dbArray), len(resultArray)))
+		}
+
+		// TODO optimize later. Should sort first.
+		for _, entry := range resultArray {
+			found := false
+			for _, dbEntry := range dbArray {
+				if mqutil.MapEquals(entry, dbEntry.(map[string]interface{}), false) {
+					found = true
+					break
+				}
+			}
+			if !found {
+				b, _ := json.Marshal(entry)
+				return mqutil.NewError(mqutil.ErrHttp, fmt.Sprintf("result returned is not found on client\n%s\n",
+					string(b)))
+			}
+		}
+	}
+	return nil
+}
+
 // ProcessResult decodes the response from the server into a result array
 func (t *Test) ProcessResult(resp *resty.Response) error {
 	t.resp = resp
 	status := resp.StatusCode()
 	respObject, ok := t.op.Responses.StatusCodeResponses[status]
-	var response *spec.Response
+	var respSpec *spec.Response
 	if ok {
-		response = &respObject
+		respSpec = &respObject
 	} else {
-		response = t.op.Responses.Default
+		respSpec = t.op.Responses.Default
 	}
-	if response == nil {
+	if respSpec == nil {
 		return nil
 	}
 
-	return nil
-	// Find out what the operation is about. Reading, updating... ?
+	// Check if the response obj and respSchema match
+	respSchema := (*mqswag.Schema)(respSpec.Schema)
+	var resultObj interface{}
+	err := json.Unmarshal(resp.Body(), &resultObj)
+	if err != nil {
+		return mqutil.NewError(mqutil.ErrServerResp, fmt.Sprintf("server response is not json: %s", string(resp.Body())))
+	}
+	if !respSchema.Matches(resp.Body) {
+		return mqutil.NewError(mqutil.ErrServerResp, fmt.Sprintf("server response doesn't match swagger spec: %s", string(resp.Body())))
+	}
 
-	// Try and see if the result is a map or an array.
-	/*
-		var resultArray []map[string]interface{}
-		err := json.Unmarshal(resp.Body(), &resultArray)
-		if err == nil {
-			return resultArray, nil
-		}
+	success := (status >= 200 && status < 300)
+	tag := GetMeqaTag(respSpec.Description)
+	if tag != nil && tag.Class == ClassFail {
+		success = false
+	}
+	if !success {
+		// If it's a failure, discard the object we have in-memory, and report the failure.
+		mqutil.Logger.Printf("=== test failed, response code %d ===", status)
+		return nil
+	}
+
+	var resultArray []map[string]interface{}
+	err = json.Unmarshal(resp.Body(), &resultArray)
+	if err != nil {
 		var resultMap map[string]interface{}
 		err = json.Unmarshal(resp.Body(), &resultMap)
 		if err == nil {
-			return []map[string]interface{}{resultMap}, nil
+			resultArray = []map[string]interface{}{resultMap}
 		}
-		return nil, err
-	*/
+	}
+
+	// Success, replace or verify based on method.
+	for className, compArray := range t.comparisons {
+		for _, c := range compArray {
+			err = t.ProcessOneComparison(className, c, resultArray)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
 }
 
 // SetRequestParameters sets the parameters
 func (t *Test) SetRequestParameters(req *resty.Request) {
 	if len(t.QueryParams) > 0 {
-		req.SetQueryParams(MapInterfaceToMapString(t.QueryParams))
+		req.SetQueryParams(mqutil.MapInterfaceToMapString(t.QueryParams))
 	}
 	if t.BodyParams != nil {
 		req.SetBody(t.BodyParams)
 	}
 	if len(t.HeaderParams) > 0 {
-		req.SetHeaders(MapInterfaceToMapString(t.HeaderParams))
+		req.SetHeaders(mqutil.MapInterfaceToMapString(t.HeaderParams))
 	}
 	if len(t.FormParams) > 0 {
-		req.SetFormData(MapInterfaceToMapString(t.FormParams))
+		req.SetFormData(mqutil.MapInterfaceToMapString(t.FormParams))
 	}
 	if len(t.PathParams) > 0 {
-		PathParamsStr := MapInterfaceToMapString(t.PathParams)
+		PathParamsStr := mqutil.MapInterfaceToMapString(t.PathParams)
 		for k, v := range PathParamsStr {
 			strings.Replace(t.Path, "{"+k+"}", v, -1)
 		}
@@ -261,10 +293,10 @@ func (t *Test) SetRequestParameters(req *resty.Request) {
 func (t *Test) Run(plan *TestPlan, parentTest *Test) ([]map[string]interface{}, error) {
 
 	if parentTest != nil {
-		t.QueryParams = MapCombine(t.QueryParams, parentTest.QueryParams)
-		t.PathParams = MapCombine(t.PathParams, parentTest.PathParams)
-		t.HeaderParams = MapCombine(t.HeaderParams, parentTest.HeaderParams)
-		t.FormParams = MapCombine(t.FormParams, parentTest.FormParams)
+		t.QueryParams = mqutil.MapCombine(t.QueryParams, parentTest.QueryParams)
+		t.PathParams = mqutil.MapCombine(t.PathParams, parentTest.PathParams)
+		t.HeaderParams = mqutil.MapCombine(t.HeaderParams, parentTest.HeaderParams)
+		t.FormParams = mqutil.MapCombine(t.FormParams, parentTest.FormParams)
 
 		if parentTest.BodyParams != nil {
 			if t.BodyParams == nil {
@@ -273,7 +305,7 @@ func (t *Test) Run(plan *TestPlan, parentTest *Test) ([]map[string]interface{}, 
 				// replace with parent only if the types are the same
 				if parentBodyMap, ok := parentTest.BodyParams.(map[string]interface{}); ok {
 					if bodyMap, ok := t.BodyParams.(map[string]interface{}); ok {
-						t.BodyParams = MapCombine(bodyMap, parentBodyMap)
+						t.BodyParams = mqutil.MapCombine(bodyMap, parentBodyMap)
 					}
 				} else {
 					// For non-map types, just replace with parent if they are the same type.

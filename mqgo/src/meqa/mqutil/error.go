@@ -6,10 +6,12 @@ import (
 )
 
 const (
-	ErrOK       = iota // 0
-	ErrInvalid         // invalid parameters
-	ErrNotFound        // resource not found
-	ErrHttp            // Http request failed
+	ErrOK         = iota // 0
+	ErrInvalid           // invalid parameters
+	ErrNotFound          // resource not found
+	ErrHttp              // Http request failed
+	ErrServerResp        // unexpected server response
+	ErrInternal          // unexpected internal error (meqa error)
 )
 
 // Error implements MQ specific error type.

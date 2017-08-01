@@ -99,7 +99,26 @@ func (db *SchemaDB) Insert(obj interface{}) error {
 }
 
 // MatchFunc checks whether the input criteria and an input object matches.
-type MatchFunc func(interface{}, interface{}) bool
+type MatchFunc func(criteria interface{}, existing interface{}) bool
+
+// An implementation of the MatchFunc that returns true if the existing object matches all the fields in the criteria obj.
+func MatchAllFields(criteria interface{}, existing interface{}) bool {
+	cm, ok := criteria.(map[string]interface{})
+	if !ok {
+		return false
+	}
+	em, ok := existing.(map[string]interface{})
+	if !ok {
+		return false
+	}
+	// We only do simple value comparision for now. We know that our search keys are simple types.
+	for k, v := range cm {
+		if em[k] != v {
+			return false
+		}
+	}
+	return true
+}
 
 // Find finds the specified number of objects that match the input criteria.
 func (db *SchemaDB) Find(criteria interface{}, matches MatchFunc, desiredCount int) []interface{} {
@@ -122,6 +141,30 @@ func (db *SchemaDB) Delete(criteria interface{}, matches MatchFunc, desiredCount
 	for i, obj := range db.Objects {
 		if matches(criteria, obj) {
 			db.Objects[i] = db.Objects[count]
+			count++
+			if count >= desiredCount {
+				break
+			}
+		}
+	}
+	db.Objects = db.Objects[count:]
+	return count
+}
+
+// Update finds the matching object, then update with the new one.
+func (db *SchemaDB) Update(criteria interface{}, matches MatchFunc, newObj map[string]interface{}, desiredCount int, patch bool) int {
+	count := 0
+	for i, obj := range db.Objects {
+		if matches(criteria, obj) {
+			m, ok := obj.(map[string]interface{})
+			if !ok {
+				continue
+			}
+			if patch {
+				mqutil.MapCombine(m, newObj)
+			} else {
+				db.Objects[i] = newObj
+			}
 			count++
 			if count >= desiredCount {
 				break
@@ -177,6 +220,16 @@ func (db *DB) Delete(name string, criteria interface{}, matches MatchFunc, desir
 		return 0
 	}
 	return db.schemas[name].Delete(criteria, matches, desiredCount)
+}
+
+func (db *DB) Update(name string, criteria interface{}, matches MatchFunc, newObj map[string]interface{}, desiredCount int, patch bool) int {
+	db.mutex.Lock()
+	defer db.mutex.Unlock()
+
+	if db.schemas[name] == nil {
+		return 0
+	}
+	return db.schemas[name].Update(criteria, matches, newObj, desiredCount, patch)
 }
 
 // FindMatchingSchema finds the schema that matches the obj.
