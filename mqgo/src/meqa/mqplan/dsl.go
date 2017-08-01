@@ -35,10 +35,15 @@ const (
 	MethodOptions = "options"
 )
 
+const (
+	OpRead  = "read"
+	OpWrite = "write"
+)
+
 type MeqaTag struct {
-	Class    string
-	Property string
-	Method   string
+	Class     string
+	Property  string
+	Operation string
 }
 
 // MapInterfaceToMapString converts the params map (all primitive types with exception of array)
@@ -111,7 +116,7 @@ func GetMeqaTag(desc string) *MeqaTag {
 	if len(desc) == 0 {
 		return nil
 	}
-	re := regexp.MustCompile("\\@meqa\\[[a-zA-Z]+\\:?[a-zA-Z]*\\]\\.?[a-zA-Z]*")
+	re := regexp.MustCompile("\\@meqa\\[[a-zA-Z]*\\:?[a-zA-Z]*\\]\\.?[a-zA-Z]*")
 	ar := re.FindAllString(desc, -1)
 
 	// TODO it's possible that we have multiple choices because the server can't be
@@ -141,9 +146,21 @@ func GetMeqaTag(desc string) *MeqaTag {
 // Get: old - the old object, new - the one we get from the server.
 // Delete: old - the existing object, new - nil.
 type Comparison struct {
-	method string
-	old    map[string]interface{} // For put and patch, it stores the keys used in lookup
-	new    map[string]interface{}
+	old map[string]interface{} // For put and patch, it stores the keys used in lookup
+	new map[string]interface{}
+}
+
+func (comp *Comparison) GetMapByOp(op string) map[string]interface{} {
+	if op == OpRead {
+		if comp.old == nil {
+			comp.old = make(map[string]interface{})
+		}
+		return comp.old
+	}
+	if comp.new == nil {
+		comp.new = make(map[string]interface{})
+	}
+	return comp.new
 }
 
 // Test represents a test object in the DSL
@@ -158,6 +175,7 @@ type Test struct {
 	PathParams   map[string]interface{} `yaml:"pathParams"`
 	HeaderParams map[string]interface{} `yaml:"headerParams"`
 
+	tag  *MeqaTag // The tag at the top level that describes the test
 	db   *mqswag.DB
 	op   *spec.Operation
 	resp *resty.Response
@@ -318,6 +336,7 @@ func (t *Test) ResolveParameters(plan *TestPlan) error {
 	if t.op == nil {
 		return mqutil.NewError(mqutil.ErrNotFound, fmt.Sprintf("Path %s not found in swagger file", t.Path))
 	}
+	t.tag = GetMeqaTag(t.op.Description)
 
 	var paramsMap map[string]interface{}
 	var err error
@@ -389,7 +408,7 @@ func getOperationByMethod(item *spec.PathItem, method string) *spec.Operation {
 	return nil
 }
 
-// Generate paramter value based on the spec.
+// GenerateParameter generates paramter value based on the spec.
 func (t *Test) GenerateParameter(paramSpec *spec.Parameter, db *mqswag.DB) (interface{}, error) {
 	tag := GetMeqaTag(paramSpec.Description)
 	if paramSpec.Schema != nil {
@@ -416,7 +435,43 @@ func (t *Test) GenerateParameter(paramSpec *spec.Parameter, db *mqswag.DB) (inte
 		return t.generateArray("param_", tag, schema, db)
 	}
 
-	return generateByType(createSchemaFromSimple(&paramSpec.SimpleSchema, &paramSpec.CommonValidations), paramSpec.Name+"_")
+	data, err := generateByType(createSchemaFromSimple(&paramSpec.SimpleSchema, &paramSpec.CommonValidations), paramSpec.Name+"_")
+	if tag == nil || len(tag.Class) == 0 || len(tag.Property) == 0 {
+		// No explicit tag. Info we have: t.Method, t.tag - indicate what operation we want to do.
+		// t.path - indicate what object we want to operate on. We need to extrace the equivalent
+		// of the tag. This is usually done on server, here we just make a simple effort.
+		// TODO
+		return data, err
+	}
+	// It's possible that we are updating a list of objects. Due to the way we generate parameters,
+	// we will always generate one complete object (both the lookup key and the new data) before we
+	// move on to the next. If we find a collision, we know we need to create a new Comparison object.
+	var op string
+	if len(tag.Operation) > 0 {
+		op = tag.Operation
+	} else {
+		if paramSpec.In == "formData" || paramSpec.In == "body" {
+			op = OpWrite
+		} else {
+			op = OpRead
+		}
+	}
+	var comp *Comparison
+	if t.comparisons[tag.Class] != nil && len(t.comparisons[tag.Class]) > 0 {
+		comp = t.comparisons[tag.Class][len(t.comparisons[tag.Class])-1]
+		m := comp.GetMapByOp(op)
+		if _, ok := m[tag.Property]; !ok {
+			m[tag.Property] = data
+			return data, err
+		}
+	}
+	// Need to create a new compare object
+	comp = &Comparison{}
+	m := comp.GetMapByOp(op)
+	m[tag.Property] = data
+	t.comparisons[tag.Class] = append(t.comparisons[tag.Class], comp)
+
+	return data, err
 }
 
 func generateByType(s *spec.Schema, prefix string) (interface{}, error) {
@@ -614,7 +669,11 @@ func (t *Test) generateObject(name string, parentTag *MeqaTag, schema *spec.Sche
 	var class, method string
 	if tag != nil {
 		class = tag.Class
-		method = tag.Method
+	}
+	if t.tag != nil && len(t.tag.Operation) > 0 {
+		method = t.tag.Operation // At test level the tag indicates the real method
+	} else {
+		method = t.Method
 	}
 	if len(class) == 0 {
 		cl, s := db.FindMatchingSchema(obj)
@@ -624,13 +683,9 @@ func (t *Test) generateObject(name string, parentTag *MeqaTag, schema *spec.Sche
 		}
 		class = cl
 	}
-	if len(method) == 0 {
-		method = t.Method
-	}
 
 	if method == MethodPost {
-		compare := Comparison{method, nil, obj}
-		t.comparisons[class] = append(t.comparisons[class], &compare)
+		t.comparisons[class] = append(t.comparisons[class], &Comparison{nil, obj})
 	} else if method == MethodPut || method == MethodPatch {
 		// It's possible that we are updating a list of objects. Due to the way we generate parameters,
 		// we will always generate one complete object (both the lookup key and the new data) before we
@@ -644,8 +699,7 @@ func (t *Test) generateObject(name string, parentTag *MeqaTag, schema *spec.Sche
 			// During put, having an array of objects with just the "new" part is allowed. This
 			// means the update key is included in the new object.
 		}
-		compare := Comparison{method, nil, obj}
-		t.comparisons[class] = append(t.comparisons[class], &compare)
+		t.comparisons[class] = append(t.comparisons[class], &Comparison{nil, obj})
 	} else {
 		mqutil.Logger.Printf("unexpected: generating object %s for GET method.", class)
 	}
@@ -692,7 +746,7 @@ func (t *Test) GenerateSchema(name string, tag *MeqaTag, schema *spec.Schema, db
 			}
 			var paramTag MeqaTag
 			if tag != nil {
-				paramTag = MeqaTag{tokens[1], tag.Property, tag.Method}
+				paramTag = MeqaTag{tokens[1], tag.Property, tag.Operation}
 			} else {
 				paramTag = MeqaTag{tokens[1], "", ""}
 			}
