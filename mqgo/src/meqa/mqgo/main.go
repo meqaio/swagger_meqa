@@ -37,6 +37,7 @@ func main() {
 	result, err := mqplan.Current.Run("get pet by status", nil)
 	resultJson, _ := json.Marshal(result)
 	fmt.Printf("\nresult:\n%s", resultJson)
+	fmt.Printf("\nerr:\n%v", err)
 
 	fmt.Println("\n====== running create user manual ======")
 	result, err = mqplan.Current.Run("create user manual", nil)

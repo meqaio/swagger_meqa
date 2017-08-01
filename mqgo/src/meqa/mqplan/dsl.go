@@ -113,8 +113,9 @@ func GetMeqaTag(desc string) *MeqaTag {
 // Get: old - the old object, new - the one we get from the server.
 // Delete: old - the existing object, new - nil.
 type Comparison struct {
-	old map[string]interface{} // For put and patch, it stores the keys used in lookup
-	new map[string]interface{}
+	old    map[string]interface{} // For put and patch, it stores the keys used in lookup
+	new    map[string]interface{}
+	schema *spec.Schema
 }
 
 func (comp *Comparison) GetMapByOp(op string) map[string]interface{} {
@@ -168,6 +169,7 @@ func (t *Test) Init(db *mqswag.DB) {
 	}
 }
 
+// ProcessOneComparison processes one comparison object.
 func (t *Test) ProcessOneComparison(className string, comp *Comparison, resultArray []map[string]interface{}) error {
 	method := t.Method
 	if t.tag != nil && len(t.tag.Operation) > 0 {
@@ -203,6 +205,15 @@ func (t *Test) ProcessOneComparison(className string, comp *Comparison, resultAr
 					string(b)))
 			}
 		}
+	} else if method == MethodDelete {
+		t.db.Delete(className, comp.old, mqswag.MatchAllFields, -1)
+	} else if method == MethodPost {
+		return t.db.Insert(className, comp.schema, comp.new)
+	} else if method == MethodPatch || method == MethodPut {
+		count := t.db.Update(className, comp.old, mqswag.MatchAllFields, comp.new, 1, method == MethodPatch)
+		if count != 1 {
+			mqutil.Logger.Printf("Failed to find any entry to update")
+		}
 	}
 	return nil
 }
@@ -222,15 +233,16 @@ func (t *Test) ProcessResult(resp *resty.Response) error {
 		return nil
 	}
 
+	respBody := resp.Body()
 	// Check if the response obj and respSchema match
 	respSchema := (*mqswag.Schema)(respSpec.Schema)
 	var resultObj interface{}
-	err := json.Unmarshal(resp.Body(), &resultObj)
+	err := json.Unmarshal(respBody, &resultObj)
 	if err != nil {
-		return mqutil.NewError(mqutil.ErrServerResp, fmt.Sprintf("server response is not json: %s", string(resp.Body())))
+		return mqutil.NewError(mqutil.ErrServerResp, fmt.Sprintf("server response is not json: %s", string(respBody)))
 	}
-	if !respSchema.Matches(resp.Body) {
-		return mqutil.NewError(mqutil.ErrServerResp, fmt.Sprintf("server response doesn't match swagger spec: %s", string(resp.Body())))
+	if !respSchema.Matches(resultObj, t.db.Swagger) {
+		return mqutil.NewError(mqutil.ErrServerResp, fmt.Sprintf("server response doesn't match swagger spec: %s", string(respBody)))
 	}
 
 	success := (status >= 200 && status < 300)
@@ -245,10 +257,10 @@ func (t *Test) ProcessResult(resp *resty.Response) error {
 	}
 
 	var resultArray []map[string]interface{}
-	err = json.Unmarshal(resp.Body(), &resultArray)
+	err = json.Unmarshal(respBody, &resultArray)
 	if err != nil {
 		var resultMap map[string]interface{}
-		err = json.Unmarshal(resp.Body(), &resultMap)
+		err = json.Unmarshal(respBody, &resultMap)
 		if err == nil {
 			resultArray = []map[string]interface{}{resultMap}
 		}
@@ -497,8 +509,9 @@ func (t *Test) GenerateParameter(paramSpec *spec.Parameter, db *mqswag.DB) (inte
 			return data, err
 		}
 	}
-	// Need to create a new compare object
+	// Need to create a new compare object.
 	comp = &Comparison{}
+	comp.schema = (*spec.Schema)(t.db.Swagger.FindSchemaByName(tag.Class))
 	m := comp.GetMapByOp(op)
 	m[tag.Property] = data
 	t.comparisons[tag.Class] = append(t.comparisons[tag.Class], comp)
@@ -717,7 +730,7 @@ func (t *Test) generateObject(name string, parentTag *MeqaTag, schema *spec.Sche
 	}
 
 	if method == MethodPost {
-		t.comparisons[class] = append(t.comparisons[class], &Comparison{nil, obj})
+		t.comparisons[class] = append(t.comparisons[class], &Comparison{nil, obj, schema})
 	} else if method == MethodPut || method == MethodPatch {
 		// It's possible that we are updating a list of objects. Due to the way we generate parameters,
 		// we will always generate one complete object (both the lookup key and the new data) before we
@@ -731,7 +744,7 @@ func (t *Test) generateObject(name string, parentTag *MeqaTag, schema *spec.Sche
 			// During put, having an array of objects with just the "new" part is allowed. This
 			// means the update key is included in the new object.
 		}
-		t.comparisons[class] = append(t.comparisons[class], &Comparison{nil, obj})
+		t.comparisons[class] = append(t.comparisons[class], &Comparison{nil, obj, schema})
 	} else {
 		mqutil.Logger.Printf("unexpected: generating object %s for GET method.", class)
 	}
@@ -766,25 +779,18 @@ func createSchemaFromSimple(s *spec.SimpleSchema, v *spec.CommonValidations) *sp
 func (t *Test) GenerateSchema(name string, tag *MeqaTag, schema *spec.Schema, db *mqswag.DB) (interface{}, error) {
 	swagger := db.Swagger
 	// Deal with refs.
-	tokens := schema.Ref.GetPointer().DecodedTokens()
-	if len(tokens) != 0 {
-		if len(tokens) != 2 {
-			return nil, mqutil.NewError(mqutil.ErrInvalid, fmt.Sprintf("Invalid reference: %s", schema.Ref.GetURL()))
+	referenceName, referredSchema, err := swagger.GetReferredSchema((*mqswag.Schema)(schema))
+	if err != nil {
+		return nil, err
+	}
+	if referredSchema != nil {
+		var paramTag MeqaTag
+		if tag != nil {
+			paramTag = MeqaTag{referenceName, tag.Property, tag.Operation}
+		} else {
+			paramTag = MeqaTag{referenceName, "", ""}
 		}
-		if tokens[0] == "definitions" {
-			referredSchema, ok := swagger.Definitions[tokens[1]]
-			if !ok {
-				return nil, mqutil.NewError(mqutil.ErrInvalid, fmt.Sprintf("Reference object not found: %s", schema.Ref.GetURL()))
-			}
-			var paramTag MeqaTag
-			if tag != nil {
-				paramTag = MeqaTag{tokens[1], tag.Property, tag.Operation}
-			} else {
-				paramTag = MeqaTag{tokens[1], "", ""}
-			}
-			return t.GenerateSchema(name, &paramTag, &referredSchema, db)
-		}
-		return nil, mqutil.NewError(mqutil.ErrInvalid, fmt.Sprintf("Invalid reference: %s", schema.Ref.GetURL()))
+		return t.GenerateSchema(name, &paramTag, (*spec.Schema)(referredSchema), db)
 	}
 
 	if len(schema.Enum) != 0 {

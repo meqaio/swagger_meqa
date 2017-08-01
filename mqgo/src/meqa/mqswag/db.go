@@ -18,41 +18,56 @@ type Schema spec.Schema
 // Matches checks if the Schema matches the input interface. In proper swagger.json
 // Enums should have types as well. So we don't check for untyped enums.
 // TODO check format, handle AllOf, AnyOf, OneOf
-func (schema *Schema) Matches(object interface{}) bool {
+func (schema *Schema) Matches(object interface{}, swagger *Swagger) bool {
 	if object == nil {
-		return schema.Type[0] == gojsonschema.TYPE_NULL
+		return schema.Type.Contains(gojsonschema.TYPE_NULL)
+	}
+
+	_, referredSchema, err := swagger.GetReferredSchema(schema)
+	if err != nil {
+		mqutil.Logger.Print(err.Error())
+		return false
+	}
+	if referredSchema != nil {
+		return referredSchema.Matches(object, swagger)
 	}
 
 	k := reflect.TypeOf(object).Kind()
 	if k == reflect.Bool {
-		return schema.Type[0] == gojsonschema.TYPE_BOOLEAN
+		return schema.Type.Contains(gojsonschema.TYPE_BOOLEAN)
 	} else if k >= reflect.Int && k <= reflect.Uint64 {
-		return schema.Type[0] == gojsonschema.TYPE_INTEGER || schema.Type[0] == gojsonschema.TYPE_NUMBER
+		return schema.Type.Contains(gojsonschema.TYPE_INTEGER) || schema.Type.Contains(gojsonschema.TYPE_NUMBER)
 	} else if k == reflect.Float32 || k == reflect.Float64 {
-		return schema.Type[0] == gojsonschema.TYPE_NUMBER
+		// After unmarshal, the map only holds floats. It doesn't differentiate int and float.
+		return schema.Type.Contains(gojsonschema.TYPE_INTEGER) || schema.Type.Contains(gojsonschema.TYPE_NUMBER)
+	} else if k == reflect.String {
+		return schema.Type.Contains(gojsonschema.TYPE_STRING)
 	} else if k == reflect.Array || k == reflect.Slice {
-		if schema.Type[0] != gojsonschema.TYPE_ARRAY {
+		if !schema.Type.Contains(gojsonschema.TYPE_ARRAY) {
 			return false
 		}
 		// Check the array elements.
 		itemsSchema := (*Schema)(schema.Items.Schema)
+		if itemsSchema == nil && len(schema.Items.Schemas) > 0 {
+			s := Schema(schema.Items.Schemas[0])
+			itemsSchema = &s
+		}
+		if itemsSchema == nil {
+			return false
+		}
 		ar := object.([]interface{})
 		for _, item := range ar {
-			if !itemsSchema.Matches(item) {
+			if !itemsSchema.Matches(item, swagger) {
 				return false
 			}
 		}
 		return true
 	} else if k == reflect.Map {
-		if schema.Type[0] != gojsonschema.TYPE_OBJECT {
+		if !schema.Type.Contains(gojsonschema.TYPE_OBJECT) {
 			return false
 		}
 		// check the object content.
-		return schema.MatchesMap(object.(map[string]interface{}))
-	} else if k == reflect.String {
-		if schema.Type[0] == gojsonschema.TYPE_STRING {
-			return true
-		}
+		return schema.MatchesMap(object.(map[string]interface{}), swagger)
 	} else {
 		mqutil.Logger.Printf("unknown type: %v", k)
 	}
@@ -60,7 +75,7 @@ func (schema *Schema) Matches(object interface{}) bool {
 }
 
 // MatchesMap checks if the Schema matches the input map.
-func (schema *Schema) MatchesMap(obj map[string]interface{}) bool {
+func (schema *Schema) MatchesMap(obj map[string]interface{}, swagger *Swagger) bool {
 	if obj == nil {
 		return false
 	}
@@ -73,7 +88,7 @@ func (schema *Schema) MatchesMap(obj map[string]interface{}) bool {
 	// check all object's fields are in schema and the types match.
 	for k, v := range obj {
 		if p, ok := schema.Properties[k]; ok {
-			if !((*Schema)(&p)).Matches(v) {
+			if !((*Schema)(&p)).Matches(v, swagger) {
 				return false
 			}
 		}
@@ -91,9 +106,6 @@ type SchemaDB struct {
 
 // Insert inserts an object into the schema's object list.
 func (db *SchemaDB) Insert(obj interface{}) error {
-	if !db.Schema.Matches(obj) {
-		return errors.New("object and schema doesn't match")
-	}
 	db.Objects = append(db.Objects, obj)
 	return nil
 }
@@ -199,6 +211,9 @@ func (db *DB) Insert(name string, schema *spec.Schema, obj interface{}) error {
 	if db.schemas[name] == nil {
 		db.schemas[name] = &SchemaDB{name, (*Schema)(schema), nil}
 	}
+	if !db.schemas[name].Schema.Matches(obj, db.Swagger) {
+		return errors.New("object and schema doesn't match")
+	}
 	return db.schemas[name].Insert(obj)
 }
 
@@ -236,7 +251,7 @@ func (db *DB) Update(name string, criteria interface{}, matches MatchFunc, newOb
 func (db *DB) FindMatchingSchema(obj interface{}) (string, *spec.Schema) {
 	for name, schemaDB := range db.schemas {
 		schema := schemaDB.Schema
-		if schema.Matches(obj) {
+		if schema.Matches(obj, db.Swagger) {
 			mqutil.Logger.Printf("found matching schema: %s", name)
 			return name, (*spec.Schema)(schema)
 		}
