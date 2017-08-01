@@ -170,7 +170,7 @@ func (t *Test) Init(db *mqswag.DB) {
 }
 
 // ProcessOneComparison processes one comparison object.
-func (t *Test) ProcessOneComparison(className string, comp *Comparison, resultArray []map[string]interface{}) error {
+func (t *Test) ProcessOneComparison(className string, comp *Comparison, resultArray []interface{}) error {
 	method := t.Method
 	if t.tag != nil && len(t.tag.Operation) > 0 {
 		method = t.tag.Operation
@@ -193,10 +193,19 @@ func (t *Test) ProcessOneComparison(className string, comp *Comparison, resultAr
 		// TODO optimize later. Should sort first.
 		for _, entry := range resultArray {
 			found := false
-			for _, dbEntry := range dbArray {
-				if mqutil.MapEquals(entry, dbEntry.(map[string]interface{}), false) {
-					found = true
-					break
+			entryMap, _ := entry.(map[string]interface{})
+			if entryMap == nil {
+				if len(dbArray) == 0 {
+					// Server returned array of non-map types. The db shouldn't expect anything.
+					continue
+				}
+			} else {
+				for _, dbEntry := range dbArray {
+					dbentryMap, _ := dbEntry.(map[string]interface{})
+					if dbentryMap != nil && mqutil.MapEquals(entryMap, dbentryMap, false) {
+						found = true
+						break
+					}
 				}
 			}
 			if !found {
@@ -237,12 +246,15 @@ func (t *Test) ProcessResult(resp *resty.Response) error {
 	// Check if the response obj and respSchema match
 	respSchema := (*mqswag.Schema)(respSpec.Schema)
 	var resultObj interface{}
-	err := json.Unmarshal(respBody, &resultObj)
-	if err != nil {
-		return mqutil.NewError(mqutil.ErrServerResp, fmt.Sprintf("server response is not json: %s", string(respBody)))
-	}
-	if !respSchema.Matches(resultObj, t.db.Swagger) {
-		return mqutil.NewError(mqutil.ErrServerResp, fmt.Sprintf("server response doesn't match swagger spec: %s", string(respBody)))
+
+	if len(respBody) > 0 {
+		err := json.Unmarshal(respBody, &resultObj)
+		if err != nil {
+			return mqutil.NewError(mqutil.ErrServerResp, fmt.Sprintf("server response is not json: %s", string(respBody)))
+		}
+		if !respSchema.Matches(resultObj, t.db.Swagger) {
+			return mqutil.NewError(mqutil.ErrServerResp, fmt.Sprintf("server response doesn't match swagger spec: %s", string(respBody)))
+		}
 	}
 
 	success := (status >= 200 && status < 300)
@@ -256,20 +268,14 @@ func (t *Test) ProcessResult(resp *resty.Response) error {
 		return nil
 	}
 
-	var resultArray []map[string]interface{}
-	err = json.Unmarshal(respBody, &resultArray)
-	if err != nil {
-		var resultMap map[string]interface{}
-		err = json.Unmarshal(respBody, &resultMap)
-		if err == nil {
-			resultArray = []map[string]interface{}{resultMap}
-		}
+	resultArray, ok := resultObj.([]interface{})
+	if !ok {
+		resultArray = []interface{}{resultObj}
 	}
-
 	// Success, replace or verify based on method.
 	for className, compArray := range t.comparisons {
 		for _, c := range compArray {
-			err = t.ProcessOneComparison(className, c, resultArray)
+			err := t.ProcessOneComparison(className, c, resultArray)
 			if err != nil {
 				return err
 			}
