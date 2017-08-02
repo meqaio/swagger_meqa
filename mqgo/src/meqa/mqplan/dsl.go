@@ -169,6 +169,67 @@ func (t *Test) Init(db *mqswag.DB) {
 	}
 }
 
+func (t *Test) AddBasicComparison(tag *MeqaTag, paramSpec *spec.Parameter, data interface{}) {
+	if tag == nil || len(tag.Class) == 0 || len(tag.Property) == 0 {
+		// No explicit tag. Info we have: t.Method, t.tag - indicate what operation we want to do.
+		// t.path - indicate what object we want to operate on. We need to extrace the equivalent
+		// of the tag. This is usually done on server, here we just make a simple effort.
+		// TODO
+		return
+	}
+
+	// It's possible that we are updating a list of objects. Due to the way we generate parameters,
+	// we will always generate one complete object (both the lookup key and the new data) before we
+	// move on to the next. If we find a collision, we know we need to create a new Comparison object.
+	var op string
+	if len(tag.Operation) > 0 {
+		op = tag.Operation
+	} else {
+		if paramSpec.In == "formData" || paramSpec.In == "body" {
+			op = OpWrite
+		} else {
+			op = OpRead
+		}
+	}
+	var comp *Comparison
+	if t.comparisons[tag.Class] != nil && len(t.comparisons[tag.Class]) > 0 {
+		comp = t.comparisons[tag.Class][len(t.comparisons[tag.Class])-1]
+		m := comp.GetMapByOp(op)
+		if _, ok := m[tag.Property]; !ok {
+			m[tag.Property] = data
+			return
+		}
+	}
+	// Need to create a new compare object.
+	comp = &Comparison{}
+	comp.schema = (*spec.Schema)(t.db.Swagger.FindSchemaByName(tag.Class))
+	m := comp.GetMapByOp(op)
+	m[tag.Property] = data
+	t.comparisons[tag.Class] = append(t.comparisons[tag.Class], comp)
+}
+
+func (t *Test) AddObjectComparison(class string, method string, obj map[string]interface{}, schema *spec.Schema) {
+	if method == MethodPost {
+		t.comparisons[class] = append(t.comparisons[class], &Comparison{nil, obj, schema})
+	} else if method == MethodPut || method == MethodPatch {
+		// It's possible that we are updating a list of objects. Due to the way we generate parameters,
+		// we will always generate one complete object (both the lookup key and the new data) before we
+		// move on to the next.
+		if t.comparisons[class] != nil && len(t.comparisons[class]) > 0 {
+			last := t.comparisons[class][len(t.comparisons[class])-1]
+			if last.new == nil {
+				last.new = obj
+				return
+			}
+			// During put, having an array of objects with just the "new" part is allowed. This
+			// means the update key is included in the new object.
+		}
+		t.comparisons[class] = append(t.comparisons[class], &Comparison{nil, obj, schema})
+	} else {
+		mqutil.Logger.Printf("unexpected: generating object %s for GET method.", class)
+	}
+}
+
 // ProcessOneComparison processes one comparison object.
 func (t *Test) ProcessOneComparison(className string, comp *Comparison, resultArray []interface{}) error {
 	method := t.Method
@@ -378,6 +439,45 @@ func (t *Test) Run(plan *TestPlan, parentTest *Test) ([]map[string]interface{}, 
 	return nil, t.ProcessResult(resp)
 }
 
+// GetSchemaRootType gets the real object type fo the specified schema. It only returns meaningful
+// data for object and array of object type of parameters. If the parameter is a basic type it returns
+// nil
+func (t *Test) GetSchemaRootType(schema *mqswag.Schema, parentTag *MeqaTag) (*MeqaTag, *mqswag.Schema) {
+	tag := GetMeqaTag(schema.Description)
+	if tag == nil {
+		tag = parentTag
+	}
+	referenceName, referredSchema, err := t.db.Swagger.GetReferredSchema((*mqswag.Schema)(schema))
+	if err != nil {
+		mqutil.Logger.Print(err)
+		return nil, nil
+	}
+	if referredSchema != nil {
+		if tag == nil {
+			tag = &MeqaTag{referenceName, "", ""}
+		}
+		return t.GetSchemaRootType(referredSchema, tag)
+	}
+	if len(schema.Enum) != 0 {
+		return nil, nil
+	}
+	if len(schema.Type) == 0 {
+		return nil, nil
+	}
+	if schema.Type.Contains(gojsonschema.TYPE_ARRAY) {
+		var itemSchema *spec.Schema
+		if len(schema.Items.Schemas) != 0 {
+			itemSchema = &(schema.Items.Schemas[0])
+		} else {
+			itemSchema = schema.Items.Schema
+		}
+		return t.GetSchemaRootType((*mqswag.Schema)(itemSchema), tag)
+	} else if schema.Type.Contains(gojsonschema.TYPE_OBJECT) {
+		return tag, schema
+	}
+	return nil, nil
+}
+
 // ResolveParameters fullfills the parameters for the specified request using the in-mem DB.
 // The resolved parameters will be added to test.Parameters map.
 func (t *Test) ResolveParameters(plan *TestPlan) error {
@@ -396,6 +496,17 @@ func (t *Test) ResolveParameters(plan *TestPlan) error {
 			if t.BodyParams != nil {
 				// There is only one body parameter. No need to check name. In fact, we don't
 				// even store the name in the DSL.
+				objarray := mqutil.InterfaceToArray(t.BodyParams)
+				paramTag, schema := t.GetSchemaRootType((*mqswag.Schema)(params.Schema), GetMeqaTag(params.Description))
+				method := t.Method
+				if t.tag != nil && len(t.tag.Operation) > 0 {
+					method = t.tag.Operation
+				}
+				if schema != nil && paramTag != nil {
+					for _, obj := range objarray {
+						t.AddObjectComparison(paramTag.Class, method, obj, (*spec.Schema)(schema))
+					}
+				}
 				continue
 			}
 			genParam, err = t.GenerateParameter(&params, t.db)
@@ -486,42 +597,8 @@ func (t *Test) GenerateParameter(paramSpec *spec.Parameter, db *mqswag.DB) (inte
 	}
 
 	data, err := generateByType(createSchemaFromSimple(&paramSpec.SimpleSchema, &paramSpec.CommonValidations), paramSpec.Name+"_")
-	if tag == nil || len(tag.Class) == 0 || len(tag.Property) == 0 {
-		// No explicit tag. Info we have: t.Method, t.tag - indicate what operation we want to do.
-		// t.path - indicate what object we want to operate on. We need to extrace the equivalent
-		// of the tag. This is usually done on server, here we just make a simple effort.
-		// TODO
-		return data, err
-	}
-	// It's possible that we are updating a list of objects. Due to the way we generate parameters,
-	// we will always generate one complete object (both the lookup key and the new data) before we
-	// move on to the next. If we find a collision, we know we need to create a new Comparison object.
-	var op string
-	if len(tag.Operation) > 0 {
-		op = tag.Operation
-	} else {
-		if paramSpec.In == "formData" || paramSpec.In == "body" {
-			op = OpWrite
-		} else {
-			op = OpRead
-		}
-	}
-	var comp *Comparison
-	if t.comparisons[tag.Class] != nil && len(t.comparisons[tag.Class]) > 0 {
-		comp = t.comparisons[tag.Class][len(t.comparisons[tag.Class])-1]
-		m := comp.GetMapByOp(op)
-		if _, ok := m[tag.Property]; !ok {
-			m[tag.Property] = data
-			return data, err
-		}
-	}
-	// Need to create a new compare object.
-	comp = &Comparison{}
-	comp.schema = (*spec.Schema)(t.db.Swagger.FindSchemaByName(tag.Class))
-	m := comp.GetMapByOp(op)
-	m[tag.Property] = data
-	t.comparisons[tag.Class] = append(t.comparisons[tag.Class], comp)
 
+	t.AddBasicComparison(tag, paramSpec, data)
 	return data, err
 }
 
@@ -735,26 +812,7 @@ func (t *Test) generateObject(name string, parentTag *MeqaTag, schema *spec.Sche
 		class = cl
 	}
 
-	if method == MethodPost {
-		t.comparisons[class] = append(t.comparisons[class], &Comparison{nil, obj, schema})
-	} else if method == MethodPut || method == MethodPatch {
-		// It's possible that we are updating a list of objects. Due to the way we generate parameters,
-		// we will always generate one complete object (both the lookup key and the new data) before we
-		// move on to the next.
-		if t.comparisons[class] != nil && len(t.comparisons[class]) > 0 {
-			last := t.comparisons[class][len(t.comparisons[class])-1]
-			if last.new == nil {
-				last.new = obj
-				return obj, nil
-			}
-			// During put, having an array of objects with just the "new" part is allowed. This
-			// means the update key is included in the new object.
-		}
-		t.comparisons[class] = append(t.comparisons[class], &Comparison{nil, obj, schema})
-	} else {
-		mqutil.Logger.Printf("unexpected: generating object %s for GET method.", class)
-	}
-
+	t.AddObjectComparison(class, method, obj, schema)
 	return obj, nil
 }
 

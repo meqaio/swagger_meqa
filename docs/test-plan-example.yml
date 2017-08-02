@@ -5,7 +5,7 @@ get pet by status:
   - path: /pet/findByStatus
     method: get
     queryParams:
-      status: sold
+      status: sold,pending
 
 ---
 # In this example, a user has attributes name, address, phone, id (returned by post)

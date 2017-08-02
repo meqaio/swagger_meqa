@@ -59,3 +59,18 @@ func MapEquals(big map[string]interface{}, small map[string]interface{}, strict 
 	}
 	return true
 }
+
+// InterfaceToArray converts interface type to []map[string]interface{}.
+func InterfaceToArray(obj interface{}) []map[string]interface{} {
+	var objarray []map[string]interface{}
+	if a, ok := obj.([]interface{}); ok {
+		if len(a) > 0 {
+			if _, ok := a[0].(map[string]interface{}); ok {
+				objarray = obj.([]map[string]interface{})
+			}
+		}
+	} else if o, ok := obj.(map[string]interface{}); ok {
+		objarray = []map[string]interface{}{o}
+	}
+	return objarray
+}
