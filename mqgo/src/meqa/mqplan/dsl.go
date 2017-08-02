@@ -877,17 +877,20 @@ func generateEnum(e []interface{}) (interface{}, error) {
 	return e[rand.Intn(len(e))], nil
 }
 
-type TestCase []*Test
+type TestCase struct {
+	Tests []*Test
+	Name  string
+}
 
 // Represents all the test cases in the DSL.
 type TestPlan struct {
-	CaseMap  map[string](TestCase)
-	CaseList [](TestCase)
+	CaseMap  map[string](*TestCase)
+	CaseList [](*TestCase)
 	db       *mqswag.DB
 }
 
 // Add a new TestCase, returns whether the Case is successfully added.
-func (plan *TestPlan) Add(name string, testCase TestCase) error {
+func (plan *TestPlan) Add(name string, testCase *TestCase) error {
 	if _, exist := plan.CaseMap[name]; exist {
 		str := fmt.Sprintf("Duplicate name %s found in test plan", name)
 		mqutil.Logger.Println(str)
@@ -899,17 +902,18 @@ func (plan *TestPlan) Add(name string, testCase TestCase) error {
 }
 
 func (plan *TestPlan) AddFromString(data string) error {
-	var caseMap map[string]TestCase
+	var caseMap map[string]([]*Test)
 	err := yaml.Unmarshal([]byte(data), &caseMap)
 	if err != nil {
 		mqutil.Logger.Printf("The following is not a valud TestCase:\n%s", data)
 		return err
 	}
-	for testName, testCase := range caseMap {
-		for _, t := range testCase {
+	for caseName, testList := range caseMap {
+		for _, t := range testList {
 			t.Init(plan.db)
 		}
-		err = plan.Add(testName, testCase)
+		testCase := TestCase{testList, caseName}
+		err = plan.Add(caseName, &testCase)
 		if err != nil {
 			return err
 		}
@@ -919,7 +923,7 @@ func (plan *TestPlan) AddFromString(data string) error {
 
 func (plan *TestPlan) InitFromFile(path string, db *mqswag.DB) error {
 	plan.db = db
-	plan.CaseMap = make(map[string]TestCase)
+	plan.CaseMap = make(map[string]*TestCase)
 	plan.CaseList = nil
 
 	data, err := ioutil.ReadFile(path)
@@ -938,14 +942,14 @@ func (plan *TestPlan) InitFromFile(path string, db *mqswag.DB) error {
 // Run a named TestCase in the test plan.
 func (plan *TestPlan) Run(name string, parentTest *Test) ([]map[string]interface{}, error) {
 	tc, ok := plan.CaseMap[name]
-	if !ok || len(tc) == 0 {
+	if !ok || len(tc.Tests) == 0 {
 		str := fmt.Sprintf("The following test case is not found: %s", name)
 		mqutil.Logger.Println(str)
 		return nil, errors.New(str)
 	}
 
 	var output []map[string]interface{}
-	for _, test := range tc {
+	for _, test := range tc.Tests {
 		result, err := test.Run(plan, parentTest)
 		if err != nil {
 			return nil, err

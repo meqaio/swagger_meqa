@@ -55,16 +55,11 @@ func main() {
 		mqutil.Logger.Printf("Error loading test plan: %s", err.Error())
 	}
 
-	fmt.Println("\n====== running get pet by status ======")
-	result, err := mqplan.Current.Run("get pet by status", nil)
-	resultJson, _ := json.Marshal(result)
-	fmt.Printf("\nresult:\n%s", resultJson)
-	fmt.Printf("\nerr:\n%v", err)
-
-	fmt.Println("\n====== running create user manual ======")
-	result, err = mqplan.Current.Run("create user auto", nil)
-	resultJson, _ = json.Marshal(result)
-	fmt.Printf("\nresult:\n%s", resultJson)
-
-	fmt.Printf("\nerr:\n%v", err)
+	for _, testCase := range mqplan.Current.CaseList {
+		mqutil.Logger.Printf("\n\n======================== Running test case: %s ========================\n", testCase.Name)
+		result, err := mqplan.Current.Run(testCase.Name, nil)
+		resultJson, _ := json.Marshal(result)
+		mqutil.Logger.Printf("result:\n%s", resultJson)
+		mqutil.Logger.Printf("err:\n%v", err)
+	}
 }
