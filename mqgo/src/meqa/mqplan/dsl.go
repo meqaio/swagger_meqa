@@ -132,7 +132,8 @@ func (comp *Comparison) GetMapByOp(op string) map[string]interface{} {
 	return comp.new
 }
 
-// Test represents a test object in the DSL
+// Test represents a test object in the DSL. Extra care needs to be taken to copy the
+// Test before running it, because running it would change the parameter maps.
 type Test struct {
 	Name         string
 	Path         string
@@ -160,7 +161,6 @@ func (t *Test) Init(db *mqswag.DB) {
 	if len(t.Method) != 0 {
 		t.Method = strings.ToLower(t.Method)
 	}
-	t.comparisons = make(map[string]([]*Comparison))
 	// if BodyParams is map, after unmarshal it is map[interface{}]
 	if bodyMap, ok := t.BodyParams.(map[interface{}]interface{}); ok {
 		newMap := make(map[string]interface{})
@@ -169,6 +169,27 @@ func (t *Test) Init(db *mqswag.DB) {
 		}
 		t.BodyParams = newMap
 	}
+}
+
+func (t *Test) Duplicate() *Test {
+	test := *t
+	test.Expect = mqutil.MapCopy(test.Expect)
+	test.QueryParams = mqutil.MapCopy(test.QueryParams)
+	test.FormParams = mqutil.MapCopy(test.FormParams)
+	test.PathParams = mqutil.MapCopy(test.PathParams)
+	test.HeaderParams = mqutil.MapCopy(test.HeaderParams)
+	if m, ok := test.BodyParams.(map[string]interface{}); ok {
+		test.BodyParams = mqutil.MapCopy(m)
+	} else if a, ok := test.BodyParams.([]interface{}); ok {
+		test.BodyParams = mqutil.ArrayCopy(a)
+	}
+
+	test.tag = nil
+	test.op = nil
+	test.resp = nil
+	test.comparisons = make(map[string]([]*Comparison))
+
+	return &test
 }
 
 func (t *Test) AddBasicComparison(tag *MeqaTag, paramSpec *spec.Parameter, data interface{}) {
@@ -320,22 +341,26 @@ func (t *Test) ProcessResult(resp *resty.Response) error {
 		}
 	}
 
+	// success based on return status
 	success := (status >= 200 && status < 300)
 	tag := GetMeqaTag(respSpec.Description)
 	if tag != nil && tag.Class == ClassFail {
 		success = false
 	}
+
+	if t.Expect != nil && t.Expect[ExpectStatus] != nil {
+		expectedStatus := t.Expect[ExpectStatus]
+		if expectedStatus == "fail" {
+			success = !success
+		} else if expectedStatusNum, ok := expectedStatus.(int); ok {
+			success = (expectedStatusNum == status)
+		} else {
+			success = false
+		}
+	}
+
 	if !success {
 		actuallyFailed := true
-		// If it's a failure, discard the object we have in-memory.
-		if t.Expect != nil && t.Expect[ExpectStatus] != nil {
-			expectedStatus := t.Expect[ExpectStatus]
-			if expectedStatus == "fail" {
-				actuallyFailed = false
-			} else if expectedStatusNum, ok := expectedStatus.(int); ok && expectedStatusNum == status {
-				actuallyFailed = false
-			}
-		}
 		if actuallyFailed {
 			mqutil.Logger.Printf("=== test failed, response code %d ===", status)
 		}
@@ -426,8 +451,7 @@ func (t *Test) Run(plan *TestPlan, parentTest *Test) ([]map[string]interface{}, 
 	}
 
 	req := resty.R()
-	t.SetRequestParameters(req)
-	path := GetBaseURL(t.db.Swagger) + t.Path
+	path := GetBaseURL(t.db.Swagger) + t.SetRequestParameters(req)
 	var resp *resty.Response
 
 	switch t.Method {

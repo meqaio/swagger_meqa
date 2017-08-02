@@ -9,7 +9,7 @@ get pet by status:
 
 ---
 # In this example, a user has attributes name, address, phone, id (returned by post)
-create user manual:
+create user:
   - path: /user
     method: post
     bodyParams:
@@ -58,6 +58,11 @@ delete user:
       username: johnsmith
 
 ---
+delete user auto:
+  - path: /user/{username}
+    method: delete
+
+---
 get user after delete:
   - path: /user/{username}
     method: get
@@ -69,10 +74,9 @@ get user after delete:
 ---
 auto test:
   - ref: create user auto
-  - ref: get user
-  - ref: update user
-  - ref: delete user
-  
+  - ref: get user auto
+  - ref: delete user auto
+
 ---
 create 2 delete 1:
   - name: create1

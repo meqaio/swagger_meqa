@@ -87,7 +87,7 @@ func (plan *TestPlan) Run(name string, parentTest *Test) ([]map[string]interface
 
 	var output []map[string]interface{}
 	for _, test := range tc.Tests {
-		result, err := test.Run(plan, parentTest)
+		result, err := test.Duplicate().Run(plan, parentTest)
 		if err != nil {
 			return nil, err
 		}

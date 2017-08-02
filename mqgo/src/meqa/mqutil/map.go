@@ -62,6 +62,39 @@ func MapEquals(big map[string]interface{}, small map[string]interface{}, strict 
 	return true
 }
 
+func MapCopy(src map[string]interface{}) map[string]interface{} {
+	if len(src) == 0 {
+		return nil
+	}
+	dst := make(map[string]interface{})
+	for k, v := range src {
+		if m, ok := v.(map[string]interface{}); ok {
+			v = MapCopy(m)
+		}
+		if a, ok := v.([]interface{}); ok {
+			v = ArrayCopy(a)
+		}
+		dst[k] = v
+	}
+	return dst
+}
+
+func ArrayCopy(src []interface{}) (dst []interface{}) {
+	if len(src) == 0 {
+		return nil
+	}
+	for _, v := range src {
+		if m, ok := v.(map[string]interface{}); ok {
+			v = MapCopy(m)
+		}
+		if a, ok := v.([]interface{}); ok {
+			v = ArrayCopy(a)
+		}
+		dst = append(dst, v)
+	}
+	return dst
+}
+
 func InterfacePrint(m interface{}, prefix string) {
 	jsonBytes, _ := json.Marshal(m)
 	Logger.Printf("%s%s", prefix, string(jsonBytes))
