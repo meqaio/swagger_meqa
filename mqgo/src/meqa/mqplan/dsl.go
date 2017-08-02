@@ -305,7 +305,7 @@ func (t *Test) ProcessResult(resp *resty.Response) error {
 	respSchema := (*mqswag.Schema)(respSpec.Schema)
 	var resultObj interface{}
 
-	if len(respBody) > 0 {
+	if respSchema != nil && len(respBody) > 0 {
 		err := json.Unmarshal(respBody, &resultObj)
 		if err != nil {
 			return mqutil.NewError(mqutil.ErrServerResp, fmt.Sprintf("server response is not json: %s", string(respBody)))
@@ -347,21 +347,26 @@ func (t *Test) ProcessResult(resp *resty.Response) error {
 func (t *Test) SetRequestParameters(req *resty.Request) {
 	if len(t.QueryParams) > 0 {
 		req.SetQueryParams(mqutil.MapInterfaceToMapString(t.QueryParams))
+		mqutil.InterfacePrint(t.QueryParams, "queryParams:\n")
 	}
 	if t.BodyParams != nil {
 		req.SetBody(t.BodyParams)
+		mqutil.InterfacePrint(t.BodyParams, "bodyParams:\n")
 	}
 	if len(t.HeaderParams) > 0 {
 		req.SetHeaders(mqutil.MapInterfaceToMapString(t.HeaderParams))
+		mqutil.InterfacePrint(t.HeaderParams, "headerParams:\n")
 	}
 	if len(t.FormParams) > 0 {
 		req.SetFormData(mqutil.MapInterfaceToMapString(t.FormParams))
+		mqutil.InterfacePrint(t.FormParams, "formParams:\n")
 	}
 	if len(t.PathParams) > 0 {
 		PathParamsStr := mqutil.MapInterfaceToMapString(t.PathParams)
 		for k, v := range PathParamsStr {
-			strings.Replace(t.Path, "{"+k+"}", v, -1)
+			t.Path = strings.Replace(t.Path, "{"+k+"}", v, -1)
 		}
+		mqutil.InterfacePrint(t.PathParams, "pathParams:\n")
 	}
 }
 
@@ -780,7 +785,7 @@ func (t *Test) generateObject(name string, parentTag *MeqaTag, schema *spec.Sche
 		if propertyTag == nil {
 			propertyTag = parentTag
 		}
-		o, err := t.GenerateSchema(name+k+"_", propertyTag, &v, db)
+		o, err := t.GenerateSchema(k+"_", propertyTag, &v, db)
 		if err != nil {
 			return nil, err
 		}

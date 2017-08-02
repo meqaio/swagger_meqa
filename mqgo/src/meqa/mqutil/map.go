@@ -1,6 +1,7 @@
 package mqutil
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 )
@@ -58,6 +59,11 @@ func MapEquals(big map[string]interface{}, small map[string]interface{}, strict 
 		}
 	}
 	return true
+}
+
+func InterfacePrint(m interface{}, prefix string) {
+	jsonBytes, _ := json.Marshal(m)
+	Logger.Printf("%s%s", prefix, string(jsonBytes))
 }
 
 // InterfaceToArray converts interface type to []map[string]interface{}.

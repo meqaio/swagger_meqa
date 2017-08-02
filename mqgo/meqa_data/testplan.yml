@@ -5,7 +5,7 @@ get pet by status:
   - path: /pet/findByStatus
     method: get
     queryParams:
-      status: sold,pending
+      status: sold
 
 ---
 # In this example, a user has attributes name, address, phone, id (returned by post)
@@ -23,24 +23,39 @@ create user auto:
     method: post
 
 ---
-delete user:
-  - path: /users/{user_id}
-    method: delete
-
----
-get all users:
-  - path: /user
-    method: get
-
----
 get user:
-  - path: /user/{user_id}
+  - path: /user/{username}
     method: get
+    pathParams:
+      username: johnsmith
 
 --- 
 update user:
-  - path: /user/{user_id}
-    method: update
+  - path: /user/{username}
+    method: put
+    pathParams:
+      username: johnsmith
+
+---
+get user after update:
+  - path: /user/{username}
+    method: get
+    pathParams:
+      username: johnsmith
+
+---
+delete user:
+  - path: /user/{username}
+    method: delete
+    pathParams:
+      username: johnsmith
+
+---
+get user after delete:
+  - path: /user/{username}
+    method: get
+    pathParams:
+      username: johnsmith
 
 ---
 create 2 delete 1:

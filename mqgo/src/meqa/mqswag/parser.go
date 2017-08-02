@@ -53,6 +53,9 @@ func (swagger *Swagger) FindSchemaByName(name string) *Schema {
 
 // GetReferredSchema returns what the schema refers to, and nil if it doesn't refer to any.
 func (swagger *Swagger) GetReferredSchema(schema *Schema) (string, *Schema, error) {
+	if schema.Ref.GetURL() == nil {
+		return "", nil, nil
+	}
 	tokens := schema.Ref.GetPointer().DecodedTokens()
 	if len(tokens) == 0 {
 		return "", nil, nil
