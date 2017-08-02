@@ -54,7 +54,8 @@ func MapEquals(big map[string]interface{}, small map[string]interface{}, strict 
 		return false
 	}
 	for k, v := range small {
-		if big[k] != v {
+		if big[k] != v && fmt.Sprint(big[k]) != fmt.Sprint(v) {
+			fmt.Printf("key %v: %v %v mismatch", k, big[k], v)
 			return false
 		}
 	}

@@ -132,6 +132,10 @@ func MatchAllFields(criteria interface{}, existing interface{}) bool {
 	return true
 }
 
+func MatchAlways(criteria interface{}, existing interface{}) bool {
+	return true
+}
+
 // Find finds the specified number of objects that match the input criteria.
 func (db *SchemaDB) Find(criteria interface{}, matches MatchFunc, desiredCount int) []interface{} {
 	var result []interface{}
@@ -202,6 +206,15 @@ func (db *DB) Init(s *Swagger) {
 		}
 		db.schemas[schemaName] = &SchemaDB{schemaName, (*Schema)(&schema), nil}
 	}
+}
+
+func (db *DB) GetSchema(name string) *Schema {
+	db.mutex.Lock()
+	defer db.mutex.Unlock()
+	if db.schemas[name] == nil {
+		return nil
+	}
+	return db.schemas[name].Schema
 }
 
 func (db *DB) Insert(name string, schema *spec.Schema, obj interface{}) error {

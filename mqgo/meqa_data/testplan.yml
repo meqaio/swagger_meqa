@@ -14,13 +14,17 @@ create user manual:
     method: post
     bodyParams:
       username: johnsmith
-      address: 1st main street, San Jose, CA 95133
       phone: 888-888-8888
 
 ---
 create user auto:
   - path: /user
     method: post
+
+---
+get user auto:
+  - path: /user/{username}
+    method: get
 
 ---
 get user:
@@ -35,6 +39,9 @@ update user:
     method: put
     pathParams:
       username: johnsmith
+    bodyParams:
+      username: johnsmith
+      phone: 666-666-6666
 
 ---
 get user after update:
@@ -56,6 +63,8 @@ get user after delete:
     method: get
     pathParams:
       username: johnsmith
+    expect:
+      status: 404
 
 ---
 create 2 delete 1:
