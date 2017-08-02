@@ -2,18 +2,40 @@ package main
 
 import (
 	"encoding/json"
+	"flag"
 	"fmt"
+	"os"
 
 	"meqa/mqplan"
 	"meqa/mqswag"
 	"meqa/mqutil"
+	"path/filepath"
+)
+
+const (
+	meqaDataDir     = "meqa_data"
+	swaggerJSONFile = "swagger.json"
+	testPlanFile    = "testplan.yml"
 )
 
 func main() {
-	swaggerJsonPath := "d:\\src\\autoapi\\example-jsons\\petstore.json"
-	testPlanPath := "d:\\src\\autoapi\\docs\\test-plan-example.yml"
-
 	mqutil.Logger = mqutil.NewStdLogger()
+
+	meqaPath := flag.String("meqa", meqaDataDir, "the directory that holds the meqa data and swagger.json files")
+	swaggerFile := flag.String("swagger", swaggerJSONFile, "the swagger.json file name or URL")
+	testPlanFile := flag.String("testplan", testPlanFile, "the test plan file name")
+
+	flag.Parse()
+	swaggerJsonPath := filepath.Join(*meqaPath, *swaggerFile)
+	testPlanPath := filepath.Join(*meqaPath, *testPlanFile)
+	if _, err := os.Stat(swaggerJsonPath); os.IsNotExist(err) {
+		mqutil.Logger.Printf("can't load swagger file at the following location %s", swaggerJsonPath)
+		return
+	}
+	if _, err := os.Stat(testPlanPath); os.IsNotExist(err) {
+		mqutil.Logger.Printf("can't load test plan file at the following location %s", testPlanPath)
+		return
+	}
 
 	// Test loading swagger.json
 	swagger, err := mqswag.CreateSwaggerFromURL(swaggerJsonPath)
@@ -40,7 +62,7 @@ func main() {
 	fmt.Printf("\nerr:\n%v", err)
 
 	fmt.Println("\n====== running create user manual ======")
-	result, err = mqplan.Current.Run("create user manual", nil)
+	result, err = mqplan.Current.Run("create user auto", nil)
 	resultJson, _ = json.Marshal(result)
 	fmt.Printf("\nresult:\n%s", resultJson)
 
