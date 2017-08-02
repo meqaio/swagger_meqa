@@ -359,8 +359,8 @@ func (t *Test) ProcessResult(resp *resty.Response) error {
 	return nil
 }
 
-// SetRequestParameters sets the parameters
-func (t *Test) SetRequestParameters(req *resty.Request) {
+// SetRequestParameters sets the parameters. Returns the new request path.
+func (t *Test) SetRequestParameters(req *resty.Request) string {
 	if len(t.QueryParams) > 0 {
 		req.SetQueryParams(mqutil.MapInterfaceToMapString(t.QueryParams))
 		mqutil.InterfacePrint(t.QueryParams, "queryParams:\n")
@@ -377,13 +377,15 @@ func (t *Test) SetRequestParameters(req *resty.Request) {
 		req.SetFormData(mqutil.MapInterfaceToMapString(t.FormParams))
 		mqutil.InterfacePrint(t.FormParams, "formParams:\n")
 	}
+	path := t.Path
 	if len(t.PathParams) > 0 {
 		PathParamsStr := mqutil.MapInterfaceToMapString(t.PathParams)
 		for k, v := range PathParamsStr {
-			t.Path = strings.Replace(t.Path, "{"+k+"}", v, -1)
+			path = strings.Replace(path, "{"+k+"}", v, -1)
 		}
 		mqutil.InterfacePrint(t.PathParams, "pathParams:\n")
 	}
+	return path
 }
 
 // Run runs the test. Returns the test result.
@@ -414,15 +416,13 @@ func (t *Test) Run(plan *TestPlan, parentTest *Test) ([]map[string]interface{}, 
 		}
 	}
 
+	if len(t.Ref) != 0 {
+		return plan.Run(t.Ref, t)
+	}
+
 	err := t.ResolveParameters(plan)
 	if err != nil {
 		return nil, err
-	}
-
-	// We do this after resolving all parameters. The next level will inherit
-	// what the parent (this test) decides.
-	if len(t.Ref) != 0 {
-		return plan.Run(t.Ref, t)
 	}
 
 	req := resty.R()

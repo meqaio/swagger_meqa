@@ -67,6 +67,13 @@ get user after delete:
       status: 404
 
 ---
+auto test:
+  - ref: create user auto
+  - ref: get user
+  - ref: update user
+  - ref: delete user
+  
+---
 create 2 delete 1:
   - name: create1
     ref: create user auto
@@ -113,15 +120,6 @@ crud:
     expects:
       status: fail
 
----
-auto test:
-  - ref: create user auto
-  - ref: get user
-    pathParams:
-      user_id: auto
-  - ref: update user
-  - ref: delete user
-  
 ---
 update pet:
   - path: "/pet/{petId}"
