@@ -193,6 +193,9 @@ func (t *Test) Duplicate() *Test {
 }
 
 func (t *Test) AddBasicComparison(tag *MeqaTag, paramSpec *spec.Parameter, data interface{}) {
+	if paramSpec == nil {
+		return
+	}
 	if tag == nil || len(tag.Class) == 0 || len(tag.Property) == 0 {
 		// No explicit tag. Info we have: t.Method, t.tag - indicate what operation we want to do.
 		// t.path - indicate what object we want to operate on. We need to extrace the equivalent
@@ -323,7 +326,8 @@ func (t *Test) ProcessResult(resp *resty.Response) error {
 		respSpec = t.op.Responses.Default
 	}
 	if respSpec == nil {
-		return nil
+		// Nothing specified in the swagger.json. Same as an empty spec.
+		respSpec = &spec.Response{}
 	}
 
 	respBody := resp.Body()
@@ -638,44 +642,55 @@ func (t *Test) GenerateParameter(paramSpec *spec.Parameter, db *mqswag.DB) (inte
 		return t.generateArray("param_", tag, schema, db)
 	}
 
-	data, err := t.generateByType(createSchemaFromSimple(&paramSpec.SimpleSchema, &paramSpec.CommonValidations), paramSpec.Name+"_", tag)
+	data, err := t.generateByType(createSchemaFromSimple(&paramSpec.SimpleSchema, &paramSpec.CommonValidations),
+		paramSpec.Name+"_", tag, paramSpec)
 
-	t.AddBasicComparison(tag, paramSpec, data)
 	return data, err
 }
 
-func (t *Test) generateByType(s *spec.Schema, prefix string, parentTag *MeqaTag) (interface{}, error) {
+// Two ways to get to generateByType
+// 1) directly called from GenerateParameter, now we know the type is a parameter, and we want to add to comparison
+// 2) called at bottom level, here we know the object will be added to comparison and not the type primitives.
+func (t *Test) generateByType(s *spec.Schema, prefix string, parentTag *MeqaTag, paramSpec *spec.Parameter) (interface{}, error) {
 	tag := GetMeqaTag(s.Description)
 	if tag == nil {
 		tag = parentTag
 	}
-	if tag != nil && len(tag.Property) > 0 {
-		// Try to get one from the comparison objects.
-		for _, c := range t.comparisons[tag.Class] {
-			if c.old != nil {
-				return c.old[tag.Property], nil
+	if paramSpec != nil {
+		if tag != nil && len(tag.Property) > 0 {
+			// Try to get one from the comparison objects.
+			for _, c := range t.comparisons[tag.Class] {
+				if c.old != nil {
+					return c.old[tag.Property], nil
+				}
 			}
-		}
-		// Get one from in-mem db and populate the comparison structure.
-		ar := t.db.Find(tag.Class, nil, mqswag.MatchAlways, 5)
-		if len(ar) > 0 {
-			obj := ar[rand.Intn(len(ar))].(map[string]interface{})
-			comp := &Comparison{obj, nil, (*spec.Schema)(t.db.GetSchema(tag.Class))}
-			t.comparisons[tag.Class] = append(t.comparisons[tag.Class], comp)
-			return obj[tag.Property], nil
+			// Get one from in-mem db and populate the comparison structure.
+			ar := t.db.Find(tag.Class, nil, mqswag.MatchAlways, 5)
+			if len(ar) > 0 {
+				obj := ar[rand.Intn(len(ar))].(map[string]interface{})
+				comp := &Comparison{obj, nil, (*spec.Schema)(t.db.GetSchema(tag.Class))}
+				t.comparisons[tag.Class] = append(t.comparisons[tag.Class], comp)
+				return obj[tag.Property], nil
+			}
 		}
 	}
 
 	if len(s.Type) != 0 {
+		var result interface{}
+		var err error
 		switch s.Type[0] {
 		case gojsonschema.TYPE_BOOLEAN:
-			return generateBool(s)
+			result, err = generateBool(s)
 		case gojsonschema.TYPE_INTEGER:
-			return generateInt(s)
+			result, err = generateInt(s)
 		case gojsonschema.TYPE_NUMBER:
-			return generateFloat(s)
+			result, err = generateFloat(s)
 		case gojsonschema.TYPE_STRING:
-			return generateString(s, prefix)
+			result, err = generateString(s, prefix)
+		}
+		if result != nil && err == nil {
+			t.AddBasicComparison(tag, paramSpec, result)
+			return result, err
 		}
 	}
 
@@ -933,7 +948,7 @@ func (t *Test) GenerateSchema(name string, tag *MeqaTag, schema *spec.Schema, db
 		return t.generateArray(name, tag, schema, db)
 	}
 
-	return t.generateByType(schema, name, tag)
+	return t.generateByType(schema, name, tag, nil)
 }
 
 func generateEnum(e []interface{}) (interface{}, error) {
