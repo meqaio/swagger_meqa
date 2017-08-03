@@ -82,26 +82,39 @@ func (plan *TestPlan) Init(db *mqswag.DB) {
 }
 
 // Run a named TestCase in the test plan.
-func (plan *TestPlan) Run(name string, parentTest *Test) ([]map[string]interface{}, error) {
+func (plan *TestPlan) Run(name string, parentTest *Test) error {
 	tc, ok := plan.CaseMap[name]
 	if !ok || len(tc.Tests) == 0 {
 		str := fmt.Sprintf("The following test case is not found: %s", name)
 		mqutil.Logger.Println(str)
-		return nil, errors.New(str)
+		return errors.New(str)
 	}
 
-	var output []map[string]interface{}
 	for _, test := range tc.Tests {
+		if len(test.Ref) != 0 {
+			err := plan.Run(test.Ref, test)
+			if err != nil {
+				return err
+			}
+			continue
+		}
+
 		dup := test.Duplicate()
+		if parentTest != nil {
+			dup.CopyParams(parentTest)
+		}
+		dup.ResolveHistoryParameters(&History)
 		History.Append(dup)
-		result, err := dup.Run(plan, parentTest)
+		if parentTest != nil {
+			dup.Name = parentTest.Name // always inherit the name
+		}
+		err := dup.Run(plan)
 		if err != nil {
 			dup.err = err
-			return nil, err
+			return err
 		}
-		output = append(output, result...)
 	}
-	return output, nil
+	return nil
 }
 
 // The current global TestPlan
@@ -117,7 +130,7 @@ type TestHistory struct {
 func (h *TestHistory) GetTest(name string) *Test {
 	h.mutex.Lock()
 	defer h.mutex.Unlock()
-	for i := len(h.tests); i >= 0; i-- {
+	for i := len(h.tests) - 1; i >= 0; i-- {
 		if h.tests[i].Name == name {
 			return h.tests[i]
 		}

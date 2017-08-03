@@ -1,6 +1,29 @@
 
 # Example test plan
 ---
+crud:
+  - name: create
+    ref: create user auto
+  - name: read
+    ref: get user auto
+    pathParams:
+      username: <create.username>
+  - name: update
+    ref: update user auto
+    pathParams:
+      username: <create.username>
+  - name: delete
+    ref: delete user
+    pathParams:
+      username: <create.username>
+  - name: read
+    ref: get user auto
+    pathParams:
+      username: <create.username>
+    expects:
+      status: fail
+
+---
 get pet by status:
   - path: /pet/findByStatus
     method: get
@@ -77,57 +100,10 @@ get user after delete:
       status: 404
 
 ---
-crud:
-  - name: create
-    ref: create user auto
-  - name: read
-    ref: get user auto
-    pathParams:
-      username: "%create.username%"
-  - name: update
-    ref: update user auto
-    pathParams:
-      username: "%create.username%"
-  - name: delete
-    ref: delete user
-    pathParams:
-      username: "%create.username%"
-  - name: read
-    ref: get user auto
-    pathParams:
-      username: "%create.username%"
-    expects:
-      status: fail
-
----
 auto test:
   - ref: create user auto
   - ref: get user auto
   - ref: delete user auto
-
----
-create 2 delete 1:
-  - name: create1
-    ref: create user auto
-    bodyParams:
-      address: fixed address
-      name: fixed name
-  - name: create2
-    ref: create user auto
-    bodyParams:
-      name: fixed user name
-  - ref: get all users
-  - ref: get user
-    pathParams:
-      user_id: "%create1.id%"
-  - ref: delete user
-    pathParams:
-      user_id: "%create1.id%"
-  - ref: get user
-    pathParams:
-      user_id: "%create1.id%"
-    expects:
-      status: fail
 
 ---
 update pet:

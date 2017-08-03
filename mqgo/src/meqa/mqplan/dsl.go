@@ -316,6 +316,20 @@ func (t *Test) ProcessOneComparison(className string, comp *Comparison, resultAr
 	return nil
 }
 
+func (t *Test) GetParamFromComparison(name string, where string) interface{} {
+	for _, compList := range t.comparisons {
+		for _, comp := range compList {
+			if v := comp.new[name]; v != nil && (where == "any" || where == "new") {
+				return v
+			}
+			if v := comp.old[name]; v != nil && (where == "any" || where == "old") {
+				return v
+			}
+		}
+	}
+	return nil
+}
+
 // ProcessResult decodes the response from the server into a result array
 func (t *Test) ProcessResult(resp *resty.Response) error {
 	t.resp = resp
@@ -419,9 +433,7 @@ func (t *Test) SetRequestParameters(req *resty.Request) string {
 	return path
 }
 
-// Run runs the test. Returns the test result.
-func (t *Test) Run(plan *TestPlan, parentTest *Test) ([]map[string]interface{}, error) {
-
+func (t *Test) CopyParams(parentTest *Test) {
 	if parentTest != nil {
 		t.QueryParams = mqutil.MapCombine(t.QueryParams, parentTest.QueryParams)
 		t.PathParams = mqutil.MapCombine(t.PathParams, parentTest.PathParams)
@@ -446,14 +458,14 @@ func (t *Test) Run(plan *TestPlan, parentTest *Test) ([]map[string]interface{}, 
 			}
 		}
 	}
+}
 
-	if len(t.Ref) != 0 {
-		return plan.Run(t.Ref, t)
-	}
+// Run runs the test. Returns the test result.
+func (t *Test) Run(plan *TestPlan) error {
 
 	err := t.ResolveParameters(plan)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	req := resty.R()
@@ -476,15 +488,15 @@ func (t *Test) Run(plan *TestPlan, parentTest *Test) ([]map[string]interface{}, 
 	case MethodOptions:
 		resp, err = req.Options(path)
 	default:
-		return nil, mqutil.NewError(mqutil.ErrInvalid, fmt.Sprintf("Unknown method in test %s: %v", t.Name, t.Method))
+		return mqutil.NewError(mqutil.ErrInvalid, fmt.Sprintf("Unknown method in test %s: %v", t.Name, t.Method))
 	}
 	if err != nil {
-		return nil, mqutil.NewError(mqutil.ErrHttp, err.Error())
+		return mqutil.NewError(mqutil.ErrHttp, err.Error())
 	}
 	// TODO properly process resp. Check against the current DB to see if they match
 	mqutil.Logger.Print(resp.Status())
 	mqutil.Logger.Println(string(resp.Body()))
-	return nil, t.ProcessResult(resp)
+	return t.ProcessResult(resp)
 }
 
 // GetSchemaRootType gets the real object type fo the specified schema. It only returns meaningful
@@ -524,6 +536,62 @@ func (t *Test) GetSchemaRootType(schema *mqswag.Schema, parentTag *MeqaTag) (*Me
 		return tag, schema
 	}
 	return nil, nil
+}
+
+func StringParamsResolveWithHistory(str string, h *TestHistory) interface{} {
+	begin := strings.Index(str, "<")
+	end := strings.Index(str, ">")
+	if end > begin {
+		ar := strings.Split(str[begin+1:end], ".")
+		if len(ar) != 2 {
+			mqutil.Logger.Printf("invalid parameter: %s", str[begin+1:end])
+			return nil
+		}
+		t := h.GetTest(ar[0])
+		if t != nil {
+			return t.GetParamFromComparison(ar[1], "any")
+		}
+	}
+	return nil
+}
+
+func MapParamsResolveWithHistory(paramMap map[string]interface{}, h *TestHistory) {
+	for k, v := range paramMap {
+		if str, ok := v.(string); ok {
+			if result := StringParamsResolveWithHistory(str, h); result != nil {
+				paramMap[k] = result
+			}
+		}
+	}
+}
+
+func ArrayParamsResolveWithHistory(paramArray []interface{}, h *TestHistory) {
+	for i, param := range paramArray {
+		if paramMap, ok := param.(map[string]interface{}); ok {
+			MapParamsResolveWithHistory(paramMap, h)
+		} else if str, ok := param.(string); ok {
+			if result := StringParamsResolveWithHistory(str, h); result != nil {
+				paramArray[i] = result
+			}
+		}
+	}
+}
+
+func (t *Test) ResolveHistoryParameters(h *TestHistory) {
+	MapParamsResolveWithHistory(t.PathParams, h)
+	MapParamsResolveWithHistory(t.FormParams, h)
+	MapParamsResolveWithHistory(t.HeaderParams, h)
+	MapParamsResolveWithHistory(t.QueryParams, h)
+	if bodyMap, ok := t.BodyParams.(map[string]interface{}); ok {
+		MapParamsResolveWithHistory(bodyMap, h)
+	} else if bodyArray, ok := t.BodyParams.([]interface{}); ok {
+		ArrayParamsResolveWithHistory(bodyArray, h)
+	} else if bodyStr, ok := t.BodyParams.(string); ok {
+		result := StringParamsResolveWithHistory(bodyStr, h)
+		if result != nil {
+			t.BodyParams = result
+		}
+	}
 }
 
 // ResolveParameters fullfills the parameters for the specified request using the in-mem DB.

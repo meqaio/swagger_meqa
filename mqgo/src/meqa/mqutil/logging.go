@@ -11,7 +11,7 @@ func NewLogger(out io.Writer) *log.Logger {
 }
 
 func NewStdLogger() *log.Logger {
-	return NewLogger(os.Stderr)
+	return NewLogger(os.Stdout)
 }
 
 // There is only one logger per process.

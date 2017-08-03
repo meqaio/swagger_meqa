@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
@@ -57,9 +56,7 @@ func main() {
 
 	for _, testCase := range mqplan.Current.CaseList {
 		mqutil.Logger.Printf("\n\n======================== Running test case: %s ========================\n", testCase.Name)
-		result, err := mqplan.Current.Run(testCase.Name, nil)
-		resultJson, _ := json.Marshal(result)
-		mqutil.Logger.Printf("result:\n%s", resultJson)
+		err := mqplan.Current.Run(testCase.Name, nil)
 		mqutil.Logger.Printf("err:\n%v", err)
 	}
 }

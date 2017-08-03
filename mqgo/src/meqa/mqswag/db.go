@@ -2,6 +2,7 @@ package mqswag
 
 import (
 	"errors"
+	"fmt"
 	"meqa/mqutil"
 	"reflect"
 	"sync"
@@ -82,6 +83,8 @@ func (schema *Schema) MatchesMap(obj map[string]interface{}, swagger *Swagger) b
 	// check all required fields in Schema are present in the object.
 	for _, requiredName := range schema.Required {
 		if obj[requiredName] == nil {
+			mqutil.Logger.Printf("required field not present: %s", requiredName)
+			panic("")
 			return false
 		}
 	}
@@ -89,6 +92,7 @@ func (schema *Schema) MatchesMap(obj map[string]interface{}, swagger *Swagger) b
 	for k, v := range obj {
 		if p, ok := schema.Properties[k]; ok {
 			if !((*Schema)(&p)).Matches(v, swagger) {
+				mqutil.Logger.Printf("property type mismatch: %s %v", k, p)
 				return false
 			}
 		}
@@ -225,7 +229,8 @@ func (db *DB) Insert(name string, schema *spec.Schema, obj interface{}) error {
 		db.schemas[name] = &SchemaDB{name, (*Schema)(schema), nil}
 	}
 	if !db.schemas[name].Schema.Matches(obj, db.Swagger) {
-		return errors.New("object and schema doesn't match")
+		return errors.New(fmt.Sprintf("object and schema doesn't match, name: %s obj type %v schema type %v",
+			name, reflect.TypeOf(obj).Kind(), db.schemas[name].Schema.Type))
 	}
 	return db.schemas[name].Insert(obj)
 }
