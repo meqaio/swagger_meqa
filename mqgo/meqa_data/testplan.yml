@@ -50,6 +50,11 @@ get user after update:
     pathParams:
       username: johnsmith
 
+--- 
+update user auto:
+  - path: /user/{username}
+    method: put
+
 ---
 delete user:
   - path: /user/{username}
@@ -70,6 +75,29 @@ get user after delete:
       username: johnsmith
     expect:
       status: 404
+
+---
+crud:
+  - name: create
+    ref: create user auto
+  - name: read
+    ref: get user auto
+    pathParams:
+      username: "%create.username%"
+  - name: update
+    ref: update user auto
+    pathParams:
+      username: "%create.username%"
+  - name: delete
+    ref: delete user
+    pathParams:
+      username: "%create.username%"
+  - name: read
+    ref: get user auto
+    pathParams:
+      username: "%create.username%"
+    expects:
+      status: fail
 
 ---
 auto test:
@@ -98,29 +126,6 @@ create 2 delete 1:
   - ref: get user
     pathParams:
       user_id: "%create1.id%"
-    expects:
-      status: fail
-
----
-crud:
-  - name: create
-    ref: create user auto
-  - name: read
-    ref: get user
-    pathParams:
-      user_id: "%create.id%"
-  - name: update
-    ref: update user
-    pathParams:
-      user_id: "%create.id%"
-  - name: delete
-    ref: delete user
-    pathParams:
-      user_id: "%create.id%"
-  - name: read
-    ref: get user
-    pathParams:
-      user_id: "%create.id%"
     expects:
       status: fail
 

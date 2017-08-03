@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"math/rand"
 	"strings"
+	"sync"
 	"time"
 
 	"gopkg.in/yaml.v2"
@@ -59,9 +60,7 @@ func (plan *TestPlan) AddFromString(data string) error {
 }
 
 func (plan *TestPlan) InitFromFile(path string, db *mqswag.DB) error {
-	plan.db = db
-	plan.CaseMap = make(map[string]*TestCase)
-	plan.CaseList = nil
+	plan.Init(db)
 
 	data, err := ioutil.ReadFile(path)
 	if err != nil {
@@ -76,6 +75,12 @@ func (plan *TestPlan) InitFromFile(path string, db *mqswag.DB) error {
 	return nil
 }
 
+func (plan *TestPlan) Init(db *mqswag.DB) {
+	plan.db = db
+	plan.CaseMap = make(map[string]*TestCase)
+	plan.CaseList = nil
+}
+
 // Run a named TestCase in the test plan.
 func (plan *TestPlan) Run(name string, parentTest *Test) ([]map[string]interface{}, error) {
 	tc, ok := plan.CaseMap[name]
@@ -87,8 +92,11 @@ func (plan *TestPlan) Run(name string, parentTest *Test) ([]map[string]interface
 
 	var output []map[string]interface{}
 	for _, test := range tc.Tests {
-		result, err := test.Duplicate().Run(plan, parentTest)
+		dup := test.Duplicate()
+		History.Append(dup)
+		result, err := dup.Run(plan, parentTest)
 		if err != nil {
+			dup.err = err
 			return nil, err
 		}
 		output = append(output, result...)
@@ -98,6 +106,31 @@ func (plan *TestPlan) Run(name string, parentTest *Test) ([]map[string]interface
 
 // The current global TestPlan
 var Current TestPlan
+
+// TestHistory records the execution result of all the tests
+type TestHistory struct {
+	tests []*Test
+	mutex sync.Mutex
+}
+
+// GetTest gets a test by its name
+func (h *TestHistory) GetTest(name string) *Test {
+	h.mutex.Lock()
+	defer h.mutex.Unlock()
+	for i := len(h.tests); i >= 0; i-- {
+		if h.tests[i].Name == name {
+			return h.tests[i]
+		}
+	}
+	return nil
+}
+func (h *TestHistory) Append(t *Test) {
+	h.mutex.Lock()
+	defer h.mutex.Unlock()
+	h.tests = append(h.tests, t)
+}
+
+var History TestHistory
 
 func init() {
 	rand.Seed(int64(time.Now().Second()))

@@ -146,14 +146,15 @@ type Test struct {
 	PathParams   map[string]interface{} `yaml:"pathParams"`
 	HeaderParams map[string]interface{} `yaml:"headerParams"`
 
+	// Map of Object name (matching definitions) to the Comparison object.
+	// This tracks what objects we need to add to DB at the end of test.
+	comparisons map[string]([]*Comparison)
+
 	tag  *MeqaTag // The tag at the top level that describes the test
 	db   *mqswag.DB
 	op   *spec.Operation
 	resp *resty.Response
-
-	// Map of Object name (matching definitions) to the Comparison object.
-	// This tracks what objects we need to add to DB at the end of test.
-	comparisons map[string]([]*Comparison)
+	err  error
 }
 
 func (t *Test) Init(db *mqswag.DB) {
@@ -188,6 +189,7 @@ func (t *Test) Duplicate() *Test {
 	test.op = nil
 	test.resp = nil
 	test.comparisons = make(map[string]([]*Comparison))
+	test.err = nil
 
 	return &test
 }
