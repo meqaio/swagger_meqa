@@ -435,6 +435,7 @@ func (t *Test) SetRequestParameters(req *resty.Request) string {
 
 func (t *Test) CopyParams(parentTest *Test) {
 	if parentTest != nil {
+		t.Expect = mqutil.MapCopy(parentTest.Expect)
 		t.QueryParams = mqutil.MapCombine(t.QueryParams, parentTest.QueryParams)
 		t.PathParams = mqutil.MapCombine(t.PathParams, parentTest.PathParams)
 		t.HeaderParams = mqutil.MapCombine(t.HeaderParams, parentTest.HeaderParams)
@@ -463,6 +464,7 @@ func (t *Test) CopyParams(parentTest *Test) {
 // Run runs the test. Returns the test result.
 func (t *Test) Run(plan *TestPlan) error {
 
+	mqutil.Logger.Print("\n--- " + t.Name)
 	err := t.ResolveParameters(plan)
 	if err != nil {
 		return err

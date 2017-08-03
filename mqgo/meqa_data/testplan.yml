@@ -20,7 +20,7 @@ crud:
     ref: get user auto
     pathParams:
       username: <create.username>
-    expects:
+    expect:
       status: fail
 
 ---
