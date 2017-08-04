@@ -191,7 +191,6 @@ func (db *SchemaDB) Update(criteria interface{}, matches MatchFunc, newObj map[s
 			}
 		}
 	}
-	db.Objects = db.Objects[count:]
 	return count
 }
 
@@ -208,7 +207,9 @@ func (db *DB) Init(s *Swagger) {
 		if _, ok := db.schemas[schemaName]; ok {
 			mqutil.Logger.Printf("warning - schema %s already exists", schemaName)
 		}
-		db.schemas[schemaName] = &SchemaDB{schemaName, (*Schema)(&schema), nil}
+		// Note that schema variable is reused in the loop
+		schemaCopy := schema
+		db.schemas[schemaName] = &SchemaDB{schemaName, (*Schema)(&schemaCopy), nil}
 	}
 }
 
@@ -226,7 +227,9 @@ func (db *DB) Insert(name string, schema *spec.Schema, obj interface{}) error {
 	defer db.mutex.Unlock()
 
 	if db.schemas[name] == nil {
-		db.schemas[name] = &SchemaDB{name, (*Schema)(schema), nil}
+		// To be consistent with the other place, we will make a copy
+		schemaCopy := *schema
+		db.schemas[name] = &SchemaDB{name, (*Schema)(&schemaCopy), nil}
 	}
 	if !db.schemas[name].Schema.Matches(obj, db.Swagger) {
 		return errors.New(fmt.Sprintf("object and schema doesn't match, name: %s obj type %v schema type %v",

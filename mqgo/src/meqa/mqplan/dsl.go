@@ -275,6 +275,8 @@ func (t *Test) ProcessOneComparison(className string, comp *Comparison, resultAr
 		dbArray := t.db.Find(className, comp.old, matchFunc, -1)
 		// What we found from the server (resultArray) and from in-memory DB using the same criteria should match.
 		if len(resultArray) != len(dbArray) {
+			resultBytes, _ := json.Marshal(resultArray)
+			mqutil.Logger.Print(string(resultBytes))
 			return mqutil.NewError(mqutil.ErrHttp, fmt.Sprintf("expecting %d entries got %d entries",
 				len(dbArray), len(resultArray)))
 		}
@@ -387,9 +389,11 @@ func (t *Test) ProcessResult(resp *resty.Response) error {
 		return nil
 	}
 
-	resultArray, ok := resultObj.([]interface{})
-	if !ok {
-		resultArray = []interface{}{resultObj}
+	var resultArray []interface{}
+	if resultObj != nil {
+		if resultArray, ok = resultObj.([]interface{}); !ok {
+			resultArray = []interface{}{resultObj}
+		}
 	}
 	// Success, replace or verify based on method.
 	for className, compArray := range t.comparisons {
@@ -655,6 +659,7 @@ func (t *Test) ResolveParameters(plan *TestPlan) error {
 
 			// If there is a parameter passed in, just use it. Otherwise generate one.
 			if _, ok := paramsMap[params.Name]; ok {
+				t.AddBasicComparison(GetMeqaTag(params.Description), &params, paramsMap[params.Name])
 				continue
 			}
 			genParam, err = t.GenerateParameter(&params, t.db)

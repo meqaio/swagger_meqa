@@ -15,11 +15,11 @@ crud:
   - name: delete
     ref: delete user
     pathParams:
-      username: <create.username>
+      username: <update.username>
   - name: read
     ref: get user auto
     pathParams:
-      username: <create.username>
+      username: <delete.username>
     expect:
       status: fail
 
