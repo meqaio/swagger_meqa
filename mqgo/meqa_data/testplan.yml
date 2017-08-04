@@ -5,7 +5,7 @@ crud:
   - name: create
     ref: create user auto
   - name: read
-    ref: get user auto
+    ref: get user
     pathParams:
       username: <create.username>
   - name: update
