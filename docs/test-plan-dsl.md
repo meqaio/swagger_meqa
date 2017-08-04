@@ -62,7 +62,7 @@ The parameters allow special values, and defaults to the special value "auto". T
     - GET - get all objects one by one and verifies the values.
     - PUT/PATCH - update all objects.
     - DELETE - delete all known objects.
-* <test name.parameter name> - use the parameter value in a previous test.
+* `<test name.parameter name>` - use the parameter value in a previous test.
 
 Parameters passed in from caller will override the lower level test cases' parameters. For instance, if a test named "create user" is constructued to create a user named "user1", and in the test plan we call "create user" with parameters "user2", then we will use "user2".
 
