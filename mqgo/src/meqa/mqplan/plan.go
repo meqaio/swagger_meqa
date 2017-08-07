@@ -25,6 +25,7 @@ type TestPlan struct {
 	CaseMap  map[string](*TestCase)
 	CaseList [](*TestCase)
 	db       *mqswag.DB
+	swagger  *mqswag.Swagger
 }
 
 // Add a new TestCase, returns whether the Case is successfully added.
@@ -60,7 +61,7 @@ func (plan *TestPlan) AddFromString(data string) error {
 }
 
 func (plan *TestPlan) InitFromFile(path string, db *mqswag.DB) error {
-	plan.Init(db)
+	plan.Init(db.Swagger, db)
 
 	data, err := ioutil.ReadFile(path)
 	if err != nil {
@@ -75,8 +76,9 @@ func (plan *TestPlan) InitFromFile(path string, db *mqswag.DB) error {
 	return nil
 }
 
-func (plan *TestPlan) Init(db *mqswag.DB) {
+func (plan *TestPlan) Init(swagger *mqswag.Swagger, db *mqswag.DB) {
 	plan.db = db
+	plan.swagger = swagger
 	plan.CaseMap = make(map[string]*TestCase)
 	plan.CaseList = nil
 }

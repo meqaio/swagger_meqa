@@ -24,16 +24,6 @@ import (
 	"github.com/xeipuuv/gojsonschema"
 )
 
-const (
-	MethodGet     = "get"
-	MethodPut     = "put"
-	MethodPost    = "post"
-	MethodDelete  = "delete"
-	MethodHead    = "head"
-	MethodPatch   = "patch"
-	MethodOptions = "options"
-)
-
 // The operation code in @meqa[...].op for parameters. The op code at the path level
 // is the above Rest methods.
 const (
@@ -237,9 +227,9 @@ func (t *Test) AddBasicComparison(tag *MeqaTag, paramSpec *spec.Parameter, data 
 }
 
 func (t *Test) AddObjectComparison(class string, method string, obj map[string]interface{}, schema *spec.Schema) {
-	if method == MethodPost {
+	if method == mqswag.MethodPost {
 		t.comparisons[class] = append(t.comparisons[class], &Comparison{nil, obj, schema})
-	} else if method == MethodPut || method == MethodPatch {
+	} else if method == mqswag.MethodPut || method == mqswag.MethodPatch {
 		// It's possible that we are updating a list of objects. Due to the way we generate parameters,
 		// we will always generate one complete object (both the lookup key and the new data) before we
 		// move on to the next.
@@ -265,7 +255,7 @@ func (t *Test) ProcessOneComparison(className string, comp *Comparison, resultAr
 		method = t.tag.Operation
 	}
 
-	if method == MethodGet {
+	if method == mqswag.MethodGet {
 		var matchFunc mqswag.MatchFunc
 		if comp.old == nil {
 			matchFunc = mqswag.MatchAlways
@@ -305,12 +295,12 @@ func (t *Test) ProcessOneComparison(className string, comp *Comparison, resultAr
 					string(b)))
 			}
 		}
-	} else if method == MethodDelete {
+	} else if method == mqswag.MethodDelete {
 		t.db.Delete(className, comp.old, mqswag.MatchAllFields, -1)
-	} else if method == MethodPost {
+	} else if method == mqswag.MethodPost {
 		return t.db.Insert(className, comp.schema, comp.new)
-	} else if method == MethodPatch || method == MethodPut {
-		count := t.db.Update(className, comp.old, mqswag.MatchAllFields, comp.new, 1, method == MethodPatch)
+	} else if method == mqswag.MethodPatch || method == mqswag.MethodPut {
+		count := t.db.Update(className, comp.old, mqswag.MatchAllFields, comp.new, 1, method == mqswag.MethodPatch)
 		if count != 1 {
 			mqutil.Logger.Printf("Failed to find any entry to update")
 		}
@@ -479,19 +469,19 @@ func (t *Test) Run(plan *TestPlan) error {
 	var resp *resty.Response
 
 	switch t.Method {
-	case MethodGet:
+	case mqswag.MethodGet:
 		resp, err = req.Get(path)
-	case MethodPost:
+	case mqswag.MethodPost:
 		resp, err = req.Post(path)
-	case MethodPut:
+	case mqswag.MethodPut:
 		resp, err = req.Put(path)
-	case MethodDelete:
+	case mqswag.MethodDelete:
 		resp, err = req.Delete(path)
-	case MethodPatch:
+	case mqswag.MethodPatch:
 		resp, err = req.Patch(path)
-	case MethodHead:
+	case mqswag.MethodHead:
 		resp, err = req.Head(path)
-	case MethodOptions:
+	case mqswag.MethodOptions:
 		resp, err = req.Options(path)
 	default:
 		return mqutil.NewError(mqutil.ErrInvalid, fmt.Sprintf("Unknown method in test %s: %v", t.Name, t.Method))
@@ -674,19 +664,19 @@ func (t *Test) ResolveParameters(plan *TestPlan) error {
 
 func getOperationByMethod(item *spec.PathItem, method string) *spec.Operation {
 	switch method {
-	case MethodGet:
+	case mqswag.MethodGet:
 		return item.Get
-	case MethodPost:
+	case mqswag.MethodPost:
 		return item.Post
-	case MethodPut:
+	case mqswag.MethodPut:
 		return item.Put
-	case MethodDelete:
+	case mqswag.MethodDelete:
 		return item.Delete
-	case MethodPatch:
+	case mqswag.MethodPatch:
 		return item.Patch
-	case MethodHead:
+	case mqswag.MethodHead:
 		return item.Head
-	case MethodOptions:
+	case mqswag.MethodOptions:
 		return item.Options
 	}
 	return nil
