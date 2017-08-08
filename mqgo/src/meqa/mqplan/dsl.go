@@ -15,8 +15,6 @@ import (
 	"meqa/mqutil"
 	"reflect"
 
-	"regexp"
-
 	"encoding/json"
 
 	"github.com/go-openapi/spec"
@@ -41,12 +39,6 @@ const (
 	ExpectStatus = "status"
 )
 
-type MeqaTag struct {
-	Class     string
-	Property  string
-	Operation string
-}
-
 func GetBaseURL(swagger *mqswag.Swagger) string {
 	// Prefer http, then https, then others.
 	scheme := ""
@@ -66,37 +58,6 @@ func GetBaseURL(swagger *mqswag.Swagger) string {
 		}
 	}
 	return scheme + "://" + swagger.Host + swagger.BasePath
-}
-
-// GetMeqaTag extracts the @meqa tags.
-// Example. for  @meqa[Pet:Name].update, return Pet, Name, update
-func GetMeqaTag(desc string) *MeqaTag {
-	if len(desc) == 0 {
-		return nil
-	}
-	re := regexp.MustCompile("\\@meqa\\[[a-zA-Z]*\\:?[a-zA-Z]*\\]\\.?[a-zA-Z]*")
-	ar := re.FindAllString(desc, -1)
-
-	// TODO it's possible that we have multiple choices because the server can't be
-	// certain. However, we only process one right now.
-	if len(ar) == 0 {
-		return nil
-	}
-	var class, property string
-	meqa := ar[0][6:]
-	colon := strings.IndexRune(meqa, ':')
-	right := strings.IndexRune(meqa, ']')
-	if colon > 0 {
-		class = meqa[:colon]
-		property = meqa[colon+1 : right]
-	} else {
-		class = meqa[0:right]
-		property = ""
-	}
-	if right+1 == len(meqa) {
-		return &MeqaTag{class, property, ""}
-	}
-	return &MeqaTag{class, property, meqa[right+2:]}
 }
 
 // Post: old - nil, new - the new object we create.
@@ -140,7 +101,7 @@ type Test struct {
 	// This tracks what objects we need to add to DB at the end of test.
 	comparisons map[string]([]*Comparison)
 
-	tag  *MeqaTag // The tag at the top level that describes the test
+	tag  *mqswag.MeqaTag // The tag at the top level that describes the test
 	db   *mqswag.DB
 	op   *spec.Operation
 	resp *resty.Response
@@ -184,7 +145,7 @@ func (t *Test) Duplicate() *Test {
 	return &test
 }
 
-func (t *Test) AddBasicComparison(tag *MeqaTag, paramSpec *spec.Parameter, data interface{}) {
+func (t *Test) AddBasicComparison(tag *mqswag.MeqaTag, paramSpec *spec.Parameter, data interface{}) {
 	if paramSpec == nil {
 		return
 	}
@@ -355,7 +316,7 @@ func (t *Test) ProcessResult(resp *resty.Response) error {
 
 	// success based on return status
 	success := (status >= 200 && status < 300)
-	tag := GetMeqaTag(respSpec.Description)
+	tag := mqswag.GetMeqaTag(respSpec.Description)
 	if tag != nil && tag.Class == ClassFail {
 		success = false
 	}
@@ -498,8 +459,8 @@ func (t *Test) Run(plan *TestPlan) error {
 // GetSchemaRootType gets the real object type fo the specified schema. It only returns meaningful
 // data for object and array of object type of parameters. If the parameter is a basic type it returns
 // nil
-func (t *Test) GetSchemaRootType(schema *mqswag.Schema, parentTag *MeqaTag) (*MeqaTag, *mqswag.Schema) {
-	tag := GetMeqaTag(schema.Description)
+func (t *Test) GetSchemaRootType(schema *mqswag.Schema, parentTag *mqswag.MeqaTag) (*mqswag.MeqaTag, *mqswag.Schema) {
+	tag := mqswag.GetMeqaTag(schema.Description)
 	if tag == nil {
 		tag = parentTag
 	}
@@ -510,7 +471,7 @@ func (t *Test) GetSchemaRootType(schema *mqswag.Schema, parentTag *MeqaTag) (*Me
 	}
 	if referredSchema != nil {
 		if tag == nil {
-			tag = &MeqaTag{referenceName, "", ""}
+			tag = &mqswag.MeqaTag{referenceName, "", ""}
 		}
 		return t.GetSchemaRootType(referredSchema, tag)
 	}
@@ -598,7 +559,7 @@ func (t *Test) ResolveParameters(plan *TestPlan) error {
 	if t.op == nil {
 		return mqutil.NewError(mqutil.ErrNotFound, fmt.Sprintf("Path %s not found in swagger file", t.Path))
 	}
-	t.tag = GetMeqaTag(t.op.Description)
+	t.tag = mqswag.GetMeqaTag(t.op.Description)
 
 	var paramsMap map[string]interface{}
 	var err error
@@ -609,7 +570,7 @@ func (t *Test) ResolveParameters(plan *TestPlan) error {
 				// There is only one body parameter. No need to check name. In fact, we don't
 				// even store the name in the DSL.
 				objarray := mqutil.InterfaceToArray(t.BodyParams)
-				paramTag, schema := t.GetSchemaRootType((*mqswag.Schema)(params.Schema), GetMeqaTag(params.Description))
+				paramTag, schema := t.GetSchemaRootType((*mqswag.Schema)(params.Schema), mqswag.GetMeqaTag(params.Description))
 				method := t.Method
 				if t.tag != nil && len(t.tag.Operation) > 0 {
 					method = t.tag.Operation
@@ -649,7 +610,7 @@ func (t *Test) ResolveParameters(plan *TestPlan) error {
 
 			// If there is a parameter passed in, just use it. Otherwise generate one.
 			if _, ok := paramsMap[params.Name]; ok {
-				t.AddBasicComparison(GetMeqaTag(params.Description), &params, paramsMap[params.Name])
+				t.AddBasicComparison(mqswag.GetMeqaTag(params.Description), &params, paramsMap[params.Name])
 				continue
 			}
 			genParam, err = t.GenerateParameter(&params, t.db)
@@ -684,7 +645,7 @@ func getOperationByMethod(item *spec.PathItem, method string) *spec.Operation {
 
 // GenerateParameter generates paramter value based on the spec.
 func (t *Test) GenerateParameter(paramSpec *spec.Parameter, db *mqswag.DB) (interface{}, error) {
-	tag := GetMeqaTag(paramSpec.Description)
+	tag := mqswag.GetMeqaTag(paramSpec.Description)
 	if paramSpec.Schema != nil {
 		return t.GenerateSchema(paramSpec.Name, tag, paramSpec.Schema, db)
 	}
@@ -718,8 +679,8 @@ func (t *Test) GenerateParameter(paramSpec *spec.Parameter, db *mqswag.DB) (inte
 // Two ways to get to generateByType
 // 1) directly called from GenerateParameter, now we know the type is a parameter, and we want to add to comparison
 // 2) called at bottom level, here we know the object will be added to comparison and not the type primitives.
-func (t *Test) generateByType(s *spec.Schema, prefix string, parentTag *MeqaTag, paramSpec *spec.Parameter) (interface{}, error) {
-	tag := GetMeqaTag(s.Description)
+func (t *Test) generateByType(s *spec.Schema, prefix string, parentTag *mqswag.MeqaTag, paramSpec *spec.Parameter) (interface{}, error) {
+	tag := mqswag.GetMeqaTag(s.Description)
 	if tag == nil {
 		tag = parentTag
 	}
@@ -862,7 +823,7 @@ func generateInt(s *spec.Schema) (int64, error) {
 	return i, nil
 }
 
-func (t *Test) generateArray(name string, parentTag *MeqaTag, schema *spec.Schema, db *mqswag.DB) (interface{}, error) {
+func (t *Test) generateArray(name string, parentTag *mqswag.MeqaTag, schema *spec.Schema, db *mqswag.DB) (interface{}, error) {
 	var numItems int
 	if schema.MaxItems != nil || schema.MinItems != nil {
 		var maxItems int
@@ -894,7 +855,7 @@ func (t *Test) generateArray(name string, parentTag *MeqaTag, schema *spec.Schem
 	} else {
 		itemSchema = schema.Items.Schema
 	}
-	tag := GetMeqaTag(schema.Description)
+	tag := mqswag.GetMeqaTag(schema.Description)
 	if tag == nil {
 		tag = parentTag
 	}
@@ -921,10 +882,10 @@ func (t *Test) generateArray(name string, parentTag *MeqaTag, schema *spec.Schem
 	return ar, nil
 }
 
-func (t *Test) generateObject(name string, parentTag *MeqaTag, schema *spec.Schema, db *mqswag.DB) (interface{}, error) {
+func (t *Test) generateObject(name string, parentTag *mqswag.MeqaTag, schema *spec.Schema, db *mqswag.DB) (interface{}, error) {
 	obj := make(map[string]interface{})
 	for k, v := range schema.Properties {
-		propertyTag := GetMeqaTag(v.Description)
+		propertyTag := mqswag.GetMeqaTag(v.Description)
 		if propertyTag == nil {
 			propertyTag = parentTag
 		}
@@ -935,7 +896,7 @@ func (t *Test) generateObject(name string, parentTag *MeqaTag, schema *spec.Sche
 		obj[k] = o
 	}
 
-	tag := GetMeqaTag(schema.Description)
+	tag := mqswag.GetMeqaTag(schema.Description)
 	if tag == nil {
 		tag = parentTag
 	}
@@ -985,7 +946,7 @@ func createSchemaFromSimple(s *spec.SimpleSchema, v *spec.CommonValidations) *sp
 	return &schema
 }
 
-func (t *Test) GenerateSchema(name string, tag *MeqaTag, schema *spec.Schema, db *mqswag.DB) (interface{}, error) {
+func (t *Test) GenerateSchema(name string, tag *mqswag.MeqaTag, schema *spec.Schema, db *mqswag.DB) (interface{}, error) {
 	swagger := db.Swagger
 	// Deal with refs.
 	referenceName, referredSchema, err := swagger.GetReferredSchema((*mqswag.Schema)(schema))
@@ -993,11 +954,11 @@ func (t *Test) GenerateSchema(name string, tag *MeqaTag, schema *spec.Schema, db
 		return nil, err
 	}
 	if referredSchema != nil {
-		var paramTag MeqaTag
+		var paramTag mqswag.MeqaTag
 		if tag != nil {
-			paramTag = MeqaTag{referenceName, tag.Property, tag.Operation}
+			paramTag = mqswag.MeqaTag{referenceName, tag.Property, tag.Operation}
 		} else {
-			paramTag = MeqaTag{referenceName, "", ""}
+			paramTag = mqswag.MeqaTag{referenceName, "", ""}
 		}
 		return t.GenerateSchema(name, &paramTag, (*spec.Schema)(referredSchema), db)
 	}

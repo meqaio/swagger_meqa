@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"meqa/mqutil"
+	"regexp"
 	"strings"
 
 	"github.com/go-openapi/loads"
@@ -44,6 +45,43 @@ const (
 	MethodPatch   = "patch"
 	MethodOptions = "options"
 )
+
+type MeqaTag struct {
+	Class     string
+	Property  string
+	Operation string
+}
+
+// GetMeqaTag extracts the @meqa tags.
+// Example. for  @meqa[Pet:Name].update, return Pet, Name, update
+func GetMeqaTag(desc string) *MeqaTag {
+	if len(desc) == 0 {
+		return nil
+	}
+	re := regexp.MustCompile("\\@meqa\\[[a-zA-Z]*\\:?[a-zA-Z]*\\]\\.?[a-zA-Z]*")
+	ar := re.FindAllString(desc, -1)
+
+	// TODO it's possible that we have multiple choices because the server can't be
+	// certain. However, we only process one right now.
+	if len(ar) == 0 {
+		return nil
+	}
+	var class, property string
+	meqa := ar[0][6:]
+	colon := strings.IndexRune(meqa, ':')
+	right := strings.IndexRune(meqa, ']')
+	if colon > 0 {
+		class = meqa[:colon]
+		property = meqa[colon+1 : right]
+	} else {
+		class = meqa[0:right]
+		property = ""
+	}
+	if right+1 == len(meqa) {
+		return &MeqaTag{class, property, ""}
+	}
+	return &MeqaTag{class, property, meqa[right+2:]}
+}
 
 type Swagger spec.Swagger
 
@@ -97,8 +135,30 @@ func GetName(dagName string) string {
 	return strings.Split(dagName, FieldSeparator)[1]
 }
 
-func GetDAGName(t string, n string, method string) string {
-	return t + FieldSeparator + n + FieldSeparator + method
+func GetMethod(dagName string) string {
+	return strings.Split(dagName, FieldSeparator)[2]
+}
+
+func GetDAGName(t string, n string, m string) string {
+	return t + FieldSeparator + n + FieldSeparator + m
+}
+
+func AddOperationParams(op *spec.Operation, dag *DAG, node *DAGNode) {
+	for _, param := range op.Parameters {
+		tag := GetMeqaTag(param.Description)
+		if tag != nil {
+			c := dag.NameMap[GetDAGName(TypeDef, tag.Class, "")]
+			if c != nil {
+				err := node.AddChild(c)
+				if err != nil {
+					panic(err)
+				}
+				continue
+			}
+		}
+
+		// Check if it refers to a class in definition
+	}
 }
 
 func (swagger *Swagger) AddToDAG(dag *DAG) error {
