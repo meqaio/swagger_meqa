@@ -143,7 +143,12 @@ func GetDAGName(t string, n string, m string) string {
 	return t + FieldSeparator + n + FieldSeparator + m
 }
 
-func AddOperationParams(op *spec.Operation, dag *DAG, node *DAGNode) {
+func AddOperation(pathName string, method string, op *spec.Operation, swagger *Swagger, dag *DAG) error {
+	node, err := dag.NewNode(GetDAGName(TypeOp, pathName, method), op)
+	if err != nil {
+		return err
+	}
+
 	for _, param := range op.Parameters {
 		tag := GetMeqaTag(param.Description)
 		if tag != nil {
@@ -151,51 +156,88 @@ func AddOperationParams(op *spec.Operation, dag *DAG, node *DAGNode) {
 			if c != nil {
 				err := node.AddChild(c)
 				if err != nil {
-					panic(err)
+					return err
 				}
 				continue
 			}
 		}
 
 		// Check if it refers to a class in definition
+		if param.Schema != nil {
+			referenceName, _, err := swagger.GetReferredSchema((*Schema)(param.Schema))
+			if err != nil {
+				return err
+			}
+			if len(referenceName) == 0 {
+				continue
+			}
+			c := dag.NameMap[GetDAGName(TypeDef, referenceName, "")]
+			if c != nil {
+				err := node.AddChild(c)
+				if err != nil {
+					return err
+				}
+				continue
+			}
+		}
 	}
+	return nil
 }
 
 func (swagger *Swagger) AddToDAG(dag *DAG) error {
-	addordie := func(t string, n string, m string, d interface{}) {
-		_, err := dag.NewNode(GetDAGName(t, n, m), d)
-		if err != nil {
-			panic(err)
-		}
-	}
 	// Add all definitions
 	for name, schema := range swagger.Definitions {
 		schemaCopy := schema // must make a copy first, the schema variable is reused in the loop scope
-		addordie(TypeDef, name, "", &schemaCopy)
+		_, err := dag.NewNode(GetDAGName(TypeDef, name, ""), &schemaCopy)
+		if err != nil {
+			// Name should be unique, so we don't expect this to fail.
+			panic(err)
+		}
 	}
 
 	// Add all operations
 	for pathName, pathItem := range swagger.Paths.Paths {
 		if op := pathItem.Get; op != nil {
-			addordie(TypeOp, pathName, MethodGet, op)
+			err := AddOperation(pathName, MethodGet, op, swagger, dag)
+			if err != nil {
+				return err
+			}
 		}
 		if op := pathItem.Put; op != nil {
-			addordie(TypeOp, pathName, MethodPut, op)
+			err := AddOperation(pathName, MethodPut, op, swagger, dag)
+			if err != nil {
+				return err
+			}
 		}
 		if op := pathItem.Post; op != nil {
-			addordie(TypeOp, pathName, MethodPost, op)
+			err := AddOperation(pathName, MethodPost, op, swagger, dag)
+			if err != nil {
+				return err
+			}
 		}
 		if op := pathItem.Delete; op != nil {
-			addordie(TypeOp, pathName, MethodDelete, op)
+			err := AddOperation(pathName, MethodDelete, op, swagger, dag)
+			if err != nil {
+				return err
+			}
 		}
 		if op := pathItem.Patch; op != nil {
-			addordie(TypeOp, pathName, MethodPatch, op)
+			err := AddOperation(pathName, MethodPatch, op, swagger, dag)
+			if err != nil {
+				return err
+			}
 		}
 		if op := pathItem.Head; op != nil {
-			addordie(TypeOp, pathName, MethodHead, op)
+			err := AddOperation(pathName, MethodHead, op, swagger, dag)
+			if err != nil {
+				return err
+			}
 		}
 		if op := pathItem.Options; op != nil {
-			addordie(TypeOp, pathName, MethodOptions, op)
+			err := AddOperation(pathName, MethodOptions, op, swagger, dag)
+			if err != nil {
+				return err
+			}
 		}
 	}
 	return nil
