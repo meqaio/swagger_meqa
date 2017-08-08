@@ -9,6 +9,8 @@ const (
 	DAGDepth = 1000
 )
 
+// The traversal order is from this node to children. The children depend on the parent.
+// The children's weight would be bigger than the parent.
 type DAGNode struct {
 	Name     string
 	Weight   int
@@ -18,30 +20,39 @@ type DAGNode struct {
 	dag *DAG
 }
 
-// AdjustWeight changes the node's weight to that of max(children) + 1
-func (node *DAGNode) AdjustWeight() error {
-	maxChildrenWeight := 0
-	for _, n := range node.Children {
-		if n.Weight > maxChildrenWeight {
-			maxChildrenWeight = n.Weight
+// AdjustWeight changes the children's weight to be at least this node's weight + 1
+func (node *DAGNode) AdjustChildrenWeight() error {
+	for _, c := range node.Children {
+		if c.Weight <= node.Weight {
+			err := node.dag.AdjustNodeWeight(c, node.Weight+1)
+			if err != nil {
+				return err
+			}
 		}
 	}
-	if maxChildrenWeight+1 != node.Weight {
-		return node.dag.AdjustNodeWeight(node, maxChildrenWeight+1)
-	}
 	return nil
+}
+
+func (node *DAGNode) CheckChildrenWeight() bool {
+	for _, c := range node.Children {
+		if c.Weight <= node.Weight {
+			return false
+		}
+	}
+	return true
 }
 
 func (node *DAGNode) AddChild(child *DAGNode) error {
 	// Checks like these aren't necessary once our code works correctly. For now it makes catching bugs easier.
 	for _, c := range node.Children {
 		if c.Name == child.Name {
-			return mqutil.NewError(mqutil.ErrInvalid, fmt.Sprintf("adding node to an existing name: %v", child))
+			// Objects have unique name, therefore child has unique name.
+			return nil
 		}
 	}
 	node.Children = append(node.Children, child)
-	if child.Weight >= node.Weight {
-		return node.AdjustWeight()
+	if child.Weight <= node.Weight {
+		return node.AdjustChildrenWeight()
 	}
 	return nil
 }
@@ -66,7 +77,7 @@ func (dag *DAG) NewNode(name string, data interface{}) (*DAGNode, error) {
 }
 
 func (dag *DAG) AddNode(node *DAGNode) error {
-	if node == nil || node.Weight < 0 || node.Weight >= DAGDepth || node.dag != nil {
+	if node == nil || node.Weight < 0 || node.Weight >= DAGDepth || node.dag != dag {
 		return mqutil.NewError(mqutil.ErrInvalid, fmt.Sprintf("adding an invalid DAG Node: %v", node))
 	}
 	if dag.NameMap[node.Name] != nil {
@@ -90,6 +101,7 @@ func (dag *DAG) AdjustNodeWeight(node *DAGNode, newWeight int) error {
 			dag.WeightList[node.Weight] = l[1:]
 			node.Weight = newWeight
 			dag.WeightList[node.Weight] = append(dag.WeightList[node.Weight], node)
+			node.AdjustChildrenWeight()
 			return nil
 		}
 	}
@@ -120,6 +132,18 @@ func (dag *DAG) IterateByWeight(f DAGIterFunc) error {
 		}
 	}
 	return nil
+}
+
+func (dag *DAG) CheckWeight() {
+	checkChildren := func(previous *DAGNode, current *DAGNode) error {
+		mqutil.Logger.Printf("name: %s weight: %d", current.Name, current.Weight)
+		ok := current.CheckChildrenWeight()
+		if !ok {
+			panic("bad weight detected")
+		}
+		return nil
+	}
+	dag.IterateByWeight(checkChildren)
 }
 
 func NewDAG() *DAG {

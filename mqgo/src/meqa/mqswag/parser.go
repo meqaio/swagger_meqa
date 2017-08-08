@@ -143,23 +143,36 @@ func GetDAGName(t string, n string, m string) string {
 	return t + FieldSeparator + n + FieldSeparator + m
 }
 
+func AddDef(name string, schema *Schema, swagger *Swagger, dag *DAG) error {
+	_, err := dag.NewNode(GetDAGName(TypeDef, name, ""), schema)
+	if err != nil {
+		// Name should be unique, so we don't expect this to fail.
+		return err
+	}
+	return nil
+}
+
 func AddOperation(pathName string, method string, op *spec.Operation, swagger *Swagger, dag *DAG) error {
 	node, err := dag.NewNode(GetDAGName(TypeOp, pathName, method), op)
 	if err != nil {
 		return err
 	}
 
+	// This node depends on the nodes that are part of the input parameters. The input parameters
+	// are children.
 	for _, param := range op.Parameters {
 		tag := GetMeqaTag(param.Description)
 		if tag != nil {
 			c := dag.NameMap[GetDAGName(TypeDef, tag.Class, "")]
-			if c != nil {
-				err := node.AddChild(c)
-				if err != nil {
-					return err
-				}
-				continue
+			if c == nil {
+				return mqutil.NewError(mqutil.ErrInvalid, fmt.Sprintf("tag doesn't point to a definition: %s",
+					param.Description))
 			}
+			err := node.AddChild(c)
+			if err != nil {
+				return err
+			}
+			continue
 		}
 
 		// Check if it refers to a class in definition
@@ -172,26 +185,29 @@ func AddOperation(pathName string, method string, op *spec.Operation, swagger *S
 				continue
 			}
 			c := dag.NameMap[GetDAGName(TypeDef, referenceName, "")]
-			if c != nil {
-				err := node.AddChild(c)
-				if err != nil {
-					return err
-				}
-				continue
+			if c == nil {
+				return mqutil.NewError(mqutil.ErrInvalid, fmt.Sprintf("schema doesn't point to a definition: %s",
+					referenceName))
 			}
+			err = node.AddChild(c)
+			if err != nil {
+				return err
+			}
+			continue
 		}
 	}
+
+	// The nodes that are part of outputs depends on this operation. The outputs are parents.
 	return nil
 }
 
 func (swagger *Swagger) AddToDAG(dag *DAG) error {
 	// Add all definitions
 	for name, schema := range swagger.Definitions {
-		schemaCopy := schema // must make a copy first, the schema variable is reused in the loop scope
-		_, err := dag.NewNode(GetDAGName(TypeDef, name, ""), &schemaCopy)
+		schemaCopy := Schema(schema) // must make a copy first, the schema variable is reused in the loop scope
+		err := AddDef(name, &schemaCopy, swagger, dag)
 		if err != nil {
-			// Name should be unique, so we don't expect this to fail.
-			panic(err)
+			return err
 		}
 	}
 

@@ -1,6 +1,19 @@
 {
     "version": "0.2.0",
     "configurations": [
+        {
+            "name": "mqgen",
+            "type": "go",
+            "request": "launch",
+            "mode": "exec",
+            "remotePath": "",
+            "port": 2345,
+            "host": "127.0.0.1",
+            "program": "${workspaceRoot}/mqgo/bin/mqgen.exe",
+            "env": {},
+            "args": ["-meqa", "d:\\src\\autoapi\\mqgo\\tmp"],
+            "showLog": true
+        },
     {
         "name": "Python",
         "type": "python",

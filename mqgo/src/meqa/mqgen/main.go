@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"meqa/mqplan"
 	"os"
 
 	"meqa/mqswag"
@@ -40,6 +39,11 @@ func main() {
 	if err != nil {
 		mqutil.Logger.Printf("Error: %s", err.Error())
 	}
+	dag := mqswag.NewDAG()
+	err = swagger.AddToDAG(dag)
+	if err != nil {
+		mqutil.Logger.Printf("Error: %s", err.Error())
+	}
 
-	mqplan.Current.Init(swagger, nil)
+	dag.CheckWeight()
 }
