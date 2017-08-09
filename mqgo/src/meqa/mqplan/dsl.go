@@ -287,12 +287,14 @@ func (t *Test) GetParamFromComparison(name string, where string) interface{} {
 func (t *Test) ProcessResult(resp *resty.Response) error {
 	t.resp = resp
 	status := resp.StatusCode()
-	respObject, ok := t.op.Responses.StatusCodeResponses[status]
 	var respSpec *spec.Response
-	if ok {
-		respSpec = &respObject
-	} else {
-		respSpec = t.op.Responses.Default
+	if t.op.Responses != nil {
+		respObject, ok := t.op.Responses.StatusCodeResponses[status]
+		if ok {
+			respSpec = &respObject
+		} else {
+			respSpec = t.op.Responses.Default
+		}
 	}
 	if respSpec == nil {
 		// Nothing specified in the swagger.json. Same as an empty spec.
@@ -341,6 +343,7 @@ func (t *Test) ProcessResult(resp *resty.Response) error {
 	}
 
 	var resultArray []interface{}
+	var ok bool
 	if resultObj != nil {
 		if resultArray, ok = resultObj.([]interface{}); !ok {
 			resultArray = []interface{}{resultObj}
