@@ -159,16 +159,16 @@ func AddOperation(pathName string, method string, op *spec.Operation, swagger *S
 	}
 
 	// This node depends on the nodes that are part of the input parameters. The input parameters
-	// are children.
+	// are parents of this node.
 	for _, param := range op.Parameters {
 		tag := GetMeqaTag(param.Description)
 		if tag != nil {
-			c := dag.NameMap[GetDAGName(TypeDef, tag.Class, "")]
-			if c == nil {
+			pNode := dag.NameMap[GetDAGName(TypeDef, tag.Class, "")]
+			if pNode == nil {
 				return mqutil.NewError(mqutil.ErrInvalid, fmt.Sprintf("tag doesn't point to a definition: %s",
 					param.Description))
 			}
-			err := node.AddChild(c)
+			err := pNode.AddChild(node)
 			if err != nil {
 				return err
 			}
@@ -184,12 +184,12 @@ func AddOperation(pathName string, method string, op *spec.Operation, swagger *S
 			if len(referenceName) == 0 {
 				continue
 			}
-			c := dag.NameMap[GetDAGName(TypeDef, referenceName, "")]
-			if c == nil {
+			pNode := dag.NameMap[GetDAGName(TypeDef, referenceName, "")]
+			if pNode == nil {
 				return mqutil.NewError(mqutil.ErrInvalid, fmt.Sprintf("schema doesn't point to a definition: %s",
 					referenceName))
 			}
-			err = node.AddChild(c)
+			err = pNode.AddChild(node)
 			if err != nil {
 				return err
 			}
