@@ -152,6 +152,55 @@ func AddDef(name string, schema *Schema, swagger *Swagger, dag *DAG) error {
 	return nil
 }
 
+// collects all the objects referred to by the schema. All the object names are put into
+// the specified map.
+func CollectSchemaDependencies(schema *Schema, swagger *Swagger, dag *DAG, collection map[string]interface{}, post bool) error {
+	iterFunc := func(swagger *Swagger, schema *Schema, context map[string]interface{}) error {
+		tag := GetMeqaTag(schema.Description)
+		if tag != nil {
+			// If there is a tag, and the tag's operation (which is always correct)
+			// doesn't match what we want to collect, then skip.
+			if post && len(tag.Operation) > 0 && tag.Operation != MethodPost {
+				return nil
+			}
+			if !post && len(tag.Operation) > 0 && tag.Operation == MethodPost {
+				return nil
+			}
+			if len(tag.Class) > 0 {
+				context[tag.Class] = 1
+			}
+		}
+
+		referenceName, _, err := swagger.GetReferredSchema((*Schema)(schema))
+		if len(referenceName) > 0 {
+			context[referenceName] = 1
+		}
+		return err
+	}
+
+	return schema.Iterate(iterFunc, collection, swagger)
+}
+
+func AddTagsToNode(node *DAGNode, dag *DAG, tags map[string]interface{}, asChild bool) error {
+	var err error
+	for className, _ := range tags {
+		pNode := dag.NameMap[GetDAGName(TypeDef, className, "")]
+		if pNode == nil {
+			return mqutil.NewError(mqutil.ErrInvalid, fmt.Sprintf("tag doesn't point to a definition: %s",
+				className))
+		}
+		if asChild {
+			err = node.AddChild(pNode)
+		} else {
+			err = pNode.AddChild(node)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func AddOperation(pathName string, method string, op *spec.Operation, swagger *Swagger, dag *DAG) error {
 	node, err := dag.NewNode(GetDAGName(TypeOp, pathName, method), op)
 	if err != nil {
@@ -159,45 +208,70 @@ func AddOperation(pathName string, method string, op *spec.Operation, swagger *S
 	}
 
 	// This node depends on the nodes that are part of the input parameters. The input parameters
-	// are parents of this node.
+	// are parents of this node. This is the
 	for _, param := range op.Parameters {
+		tags := make(map[string]interface{})
 		tag := GetMeqaTag(param.Description)
-		if tag != nil {
-			pNode := dag.NameMap[GetDAGName(TypeDef, tag.Class, "")]
-			if pNode == nil {
-				return mqutil.NewError(mqutil.ErrInvalid, fmt.Sprintf("tag doesn't point to a definition: %s",
-					param.Description))
-			}
-			err := pNode.AddChild(node)
-			if err != nil {
-				return err
+		if tag != nil && len(tag.Class) > 0 {
+			if tag.Operation == "" || tag.Operation != MethodPost {
+				tags[tag.Class] = 1
 			}
 			continue
 		}
 
-		// Check if it refers to a class in definition
+		var schema *Schema
 		if param.Schema != nil {
-			referenceName, _, err := swagger.GetReferredSchema((*Schema)(param.Schema))
-			if err != nil {
-				return err
-			}
-			if len(referenceName) == 0 {
-				continue
-			}
-			pNode := dag.NameMap[GetDAGName(TypeDef, referenceName, "")]
-			if pNode == nil {
-				return mqutil.NewError(mqutil.ErrInvalid, fmt.Sprintf("schema doesn't point to a definition: %s",
-					referenceName))
-			}
-			err = pNode.AddChild(node)
-			if err != nil {
-				return err
-			}
-			continue
+			schema = (*Schema)(param.Schema)
+		} else {
+			// construct a full schema from simple ones
+			schema = CreateSchemaFromSimple(&param.SimpleSchema, &param.CommonValidations)
+		}
+		err = CollectSchemaDependencies(schema, swagger, dag, tags, false)
+		if err != nil {
+			return err
+		}
+		err = AddTagsToNode(node, dag, tags, false)
+		if err != nil {
+			return err
 		}
 	}
 
-	// The nodes that are part of outputs depends on this operation. The outputs are parents.
+	// The nodes that are part of outputs depends on this operation. The outputs are children.
+	// We have to be careful here. Get operations will also return objects. The outputs
+	// are only the children for "post" (create) operations.
+	tag := GetMeqaTag(op.Description)
+	if (tag != nil && tag.Operation != MethodPost) || (tag == nil && method != MethodPost) {
+		return nil
+	}
+	addResponseAsChildren := func(schema *spec.Schema) error {
+		tags := make(map[string]interface{})
+		err := CollectSchemaDependencies((*Schema)(schema), swagger, dag, tags, true)
+		if err != nil {
+			return err
+		}
+		err = AddTagsToNode(node, dag, tags, true)
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+
+	if op.Responses != nil {
+		if respSpec := op.Responses.Default; respSpec != nil && respSpec.Schema != nil {
+			err := addResponseAsChildren(respSpec.Schema)
+			if err != nil {
+				return err
+			}
+		}
+		for _, respSpec := range op.Responses.StatusCodeResponses {
+			if respSpec.Schema != nil {
+				err := addResponseAsChildren(respSpec.Schema)
+				if err != nil {
+					return err
+				}
+			}
+		}
+	}
 	return nil
 }
 

@@ -664,7 +664,7 @@ func (t *Test) GenerateParameter(paramSpec *spec.Parameter, db *mqswag.DB) (inte
 		schema = paramSpec.Schema
 	} else {
 		// construct a full schema from simple ones
-		schema = createSchemaFromSimple(&paramSpec.SimpleSchema, &paramSpec.CommonValidations)
+		schema = (*spec.Schema)(mqswag.CreateSchemaFromSimple(&paramSpec.SimpleSchema, &paramSpec.CommonValidations))
 	}
 	if paramSpec.Type == gojsonschema.TYPE_OBJECT {
 		return t.generateObject("param_", tag, schema, db)
@@ -673,10 +673,7 @@ func (t *Test) GenerateParameter(paramSpec *spec.Parameter, db *mqswag.DB) (inte
 		return t.generateArray("param_", tag, schema, db)
 	}
 
-	data, err := t.generateByType(createSchemaFromSimple(&paramSpec.SimpleSchema, &paramSpec.CommonValidations),
-		paramSpec.Name+"_", tag, paramSpec)
-
-	return data, err
+	return t.generateByType(schema, paramSpec.Name+"_", tag, paramSpec)
 }
 
 // Two ways to get to generateByType
@@ -923,30 +920,6 @@ func (t *Test) generateObject(name string, parentTag *mqswag.MeqaTag, schema *sp
 
 	t.AddObjectComparison(class, method, obj, schema)
 	return obj, nil
-}
-
-func createSchemaFromSimple(s *spec.SimpleSchema, v *spec.CommonValidations) *spec.Schema {
-	schema := spec.Schema{}
-	schema.AddType(s.Type, s.Format)
-	if s.Items != nil {
-		schema.Items = &spec.SchemaOrArray{}
-		schema.Items.Schema = createSchemaFromSimple(&s.Items.SimpleSchema, &s.Items.CommonValidations)
-	}
-	schema.Default = s.Default
-	schema.Enum = v.Enum
-	schema.ExclusiveMaximum = v.ExclusiveMaximum
-	schema.ExclusiveMinimum = v.ExclusiveMinimum
-	schema.Maximum = v.Maximum
-	schema.Minimum = v.Minimum
-	schema.MaxItems = v.MaxItems
-	schema.MaxLength = v.MaxLength
-	schema.MinItems = v.MinItems
-	schema.MinLength = v.MinLength
-	schema.MultipleOf = v.MultipleOf
-	schema.Pattern = v.Pattern
-	schema.UniqueItems = v.UniqueItems
-
-	return &schema
 }
 
 func (t *Test) GenerateSchema(name string, tag *mqswag.MeqaTag, schema *spec.Schema, db *mqswag.DB) (interface{}, error) {

@@ -16,6 +16,30 @@ import (
 // Schema is the swagger spec schema.
 type Schema spec.Schema
 
+func CreateSchemaFromSimple(s *spec.SimpleSchema, v *spec.CommonValidations) *Schema {
+	schema := spec.Schema{}
+	schema.AddType(s.Type, s.Format)
+	if s.Items != nil {
+		schema.Items = &spec.SchemaOrArray{}
+		schema.Items.Schema = (*spec.Schema)(CreateSchemaFromSimple(&s.Items.SimpleSchema, &s.Items.CommonValidations))
+	}
+	schema.Default = s.Default
+	schema.Enum = v.Enum
+	schema.ExclusiveMaximum = v.ExclusiveMaximum
+	schema.ExclusiveMinimum = v.ExclusiveMinimum
+	schema.Maximum = v.Maximum
+	schema.Minimum = v.Minimum
+	schema.MaxItems = v.MaxItems
+	schema.MaxLength = v.MaxLength
+	schema.MinItems = v.MinItems
+	schema.MinLength = v.MinLength
+	schema.MultipleOf = v.MultipleOf
+	schema.Pattern = v.Pattern
+	schema.UniqueItems = v.UniqueItems
+
+	return (*Schema)(&schema)
+}
+
 // Matches checks if the Schema matches the input interface. In proper swagger.json
 // Enums should have types as well. So we don't check for untyped enums.
 // TODO check format, handle AllOf, AnyOf, OneOf
@@ -98,6 +122,48 @@ func (schema *Schema) MatchesMap(obj map[string]interface{}, swagger *Swagger) b
 		}
 	}
 	return true
+}
+
+type SchemaIterator func(swagger *Swagger, schema *Schema, context map[string]interface{}) error
+
+// IterateSchema descends down the starting schema and call the iterator function for all the child schemas.
+// The iteration order is parent first then children. It will abort on error.
+func (schema *Schema) Iterate(iterFunc SchemaIterator, context map[string]interface{}, swagger *Swagger) error {
+	err := iterFunc(swagger, schema, context)
+	if err != nil {
+		return err
+	}
+
+	// Deal with refs.
+	_, referredSchema, err := swagger.GetReferredSchema(schema)
+	if err != nil {
+		return err
+	}
+	if referredSchema != nil {
+		return referredSchema.Iterate(iterFunc, context, swagger)
+	}
+
+	if schema.Type.Contains(gojsonschema.TYPE_OBJECT) {
+		for _, v := range schema.Properties {
+			err = (*Schema)(&v).Iterate(iterFunc, context, swagger)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	if schema.Type.Contains(gojsonschema.TYPE_ARRAY) {
+		var itemSchema *spec.Schema
+		if len(schema.Items.Schemas) != 0 {
+			itemSchema = &(schema.Items.Schemas[0])
+		} else {
+			itemSchema = schema.Items.Schema
+		}
+		err = (*Schema)(itemSchema).Iterate(iterFunc, context, swagger)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // SchemaDB is our in-memory DB. It is organized around Schemas. Each schema maintains a list of objects that matches
