@@ -140,7 +140,9 @@ func (schema *Schema) Iterate(iterFunc SchemaIterator, context map[string]interf
 		return err
 	}
 	if referredSchema != nil {
-		return referredSchema.Iterate(iterFunc, context, swagger)
+		// We don't want to go down nested schemas.
+		return iterFunc(swagger, referredSchema, context)
+		// return referredSchema.Iterate(iterFunc, context, swagger)
 	}
 
 	if schema.Type.Contains(gojsonschema.TYPE_OBJECT) {

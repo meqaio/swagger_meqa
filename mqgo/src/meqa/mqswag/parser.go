@@ -201,7 +201,7 @@ func AddTagsToNode(node *DAGNode, dag *DAG, tags map[string]interface{}, asChild
 	return nil
 }
 
-func AddParameters(params []spec.Parameter, swagger *Swagger, dag *DAG, tags map[string]interface{}, post bool) error {
+func CollectParamDependencies(params []spec.Parameter, swagger *Swagger, dag *DAG, tags map[string]interface{}, post bool) error {
 	for _, param := range params {
 		tag := GetMeqaTag(param.Description)
 		if tag != nil && len(tag.Class) > 0 {
@@ -255,7 +255,7 @@ func AddOperation(pathName string, method string, op *spec.Operation, swagger *S
 				}
 			}
 		}
-		err = AddParameters(op.Parameters, swagger, dag, creates, true)
+		err = CollectParamDependencies(op.Parameters, swagger, dag, creates, true)
 		if err != nil {
 			return err
 		}
@@ -268,7 +268,7 @@ func AddOperation(pathName string, method string, op *spec.Operation, swagger *S
 	// This node depends on the nodes that are part of the input parameters. The input parameters
 	// are parents of this node. This is the
 	tags := make(map[string]interface{})
-	err = AddParameters(op.Parameters, swagger, dag, tags, false)
+	err = CollectParamDependencies(op.Parameters, swagger, dag, tags, false)
 	if err != nil {
 		return err
 	}
