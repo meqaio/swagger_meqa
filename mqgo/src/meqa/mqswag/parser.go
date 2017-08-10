@@ -201,6 +201,32 @@ func AddTagsToNode(node *DAGNode, dag *DAG, tags map[string]interface{}, asChild
 	return nil
 }
 
+func AddParameters(params []spec.Parameter, swagger *Swagger, dag *DAG, tags map[string]interface{}, post bool) error {
+	for _, param := range params {
+		tag := GetMeqaTag(param.Description)
+		if tag != nil && len(tag.Class) > 0 {
+			// Maybe we should also add checks for whether it's in body or formData.
+			if (!post && tag.Operation != MethodPost) || (post && tag.Operation == MethodPost) {
+				tags[tag.Class] = 1
+			}
+			continue
+		}
+
+		var schema *Schema
+		if param.Schema != nil {
+			schema = (*Schema)(param.Schema)
+		} else {
+			// construct a full schema from simple ones
+			schema = CreateSchemaFromSimple(&param.SimpleSchema, &param.CommonValidations)
+		}
+		err := CollectSchemaDependencies(schema, swagger, dag, tags, post)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func AddOperation(pathName string, method string, op *spec.Operation, swagger *Swagger, dag *DAG) error {
 	node, err := dag.NewNode(GetDAGName(TypeOp, pathName, method), op)
 	if err != nil {
@@ -228,36 +254,23 @@ func AddOperation(pathName string, method string, op *spec.Operation, swagger *S
 					}
 				}
 			}
-			err = AddTagsToNode(node, dag, creates, true)
-			if err != nil {
-				return err
-			}
+		}
+		err = AddParameters(op.Parameters, swagger, dag, creates, true)
+		if err != nil {
+			return err
+		}
+		err = AddTagsToNode(node, dag, creates, true)
+		if err != nil {
+			return err
 		}
 	}
 
 	// This node depends on the nodes that are part of the input parameters. The input parameters
 	// are parents of this node. This is the
 	tags := make(map[string]interface{})
-	for _, param := range op.Parameters {
-		tag := GetMeqaTag(param.Description)
-		if tag != nil && len(tag.Class) > 0 {
-			if tag.Operation != MethodPost {
-				tags[tag.Class] = 1
-			}
-			continue
-		}
-
-		var schema *Schema
-		if param.Schema != nil {
-			schema = (*Schema)(param.Schema)
-		} else {
-			// construct a full schema from simple ones
-			schema = CreateSchemaFromSimple(&param.SimpleSchema, &param.CommonValidations)
-		}
-		err = CollectSchemaDependencies(schema, swagger, dag, tags, false)
-		if err != nil {
-			return err
-		}
+	err = AddParameters(op.Parameters, swagger, dag, tags, false)
+	if err != nil {
+		return err
 	}
 	// If we know for sure we create something, we remove it from parameters.
 	for k := range creates {
