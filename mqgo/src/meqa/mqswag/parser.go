@@ -227,6 +227,27 @@ func CollectParamDependencies(params []spec.Parameter, swagger *Swagger, dag *DA
 	return nil
 }
 
+func CollectResponseDependencies(responses *spec.Responses, swagger *Swagger, dag *DAG, tags map[string]interface{}, post bool) error {
+	if responses == nil {
+		return nil
+	}
+	if respSpec := responses.Default; respSpec != nil && respSpec.Schema != nil {
+		err := CollectSchemaDependencies((*Schema)(respSpec.Schema), swagger, dag, tags, post)
+		if err != nil {
+			return err
+		}
+	}
+	for _, respSpec := range responses.StatusCodeResponses {
+		if respSpec.Schema != nil {
+			err := CollectSchemaDependencies((*Schema)(respSpec.Schema), swagger, dag, tags, post)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
 func AddOperation(pathName string, method string, op *spec.Operation, swagger *Swagger, dag *DAG) error {
 	node, err := dag.NewNode(GetDAGName(TypeOp, pathName, method), op)
 	if err != nil {
@@ -238,22 +259,11 @@ func AddOperation(pathName string, method string, op *spec.Operation, swagger *S
 	// are only the children for "post" (create) operations.
 	tag := GetMeqaTag(op.Description)
 	creates := make(map[string]interface{})
+	tags := make(map[string]interface{})
 	if (tag != nil && tag.Operation == MethodPost) || (tag == nil && method == MethodPost) {
-		if op.Responses != nil {
-			if respSpec := op.Responses.Default; respSpec != nil && respSpec.Schema != nil {
-				err := CollectSchemaDependencies((*Schema)(respSpec.Schema), swagger, dag, creates, true)
-				if err != nil {
-					return err
-				}
-			}
-			for _, respSpec := range op.Responses.StatusCodeResponses {
-				if respSpec.Schema != nil {
-					err := CollectSchemaDependencies((*Schema)(respSpec.Schema), swagger, dag, creates, true)
-					if err != nil {
-						return err
-					}
-				}
-			}
+		err = CollectResponseDependencies(op.Responses, swagger, dag, creates, true)
+		if err != nil {
+			return err
 		}
 		err = CollectParamDependencies(op.Parameters, swagger, dag, creates, true)
 		if err != nil {
@@ -264,10 +274,17 @@ func AddOperation(pathName string, method string, op *spec.Operation, swagger *S
 			return err
 		}
 	}
+	if (tag != nil && tag.Operation != MethodPost) || (tag == nil && method == MethodGet) {
+		// For gets, we must provide some parameter in the input to get the output. It means
+		// the outputs should exist on server before we make the GET call.
+		err = CollectResponseDependencies(op.Responses, swagger, dag, tags, false)
+		if err != nil {
+			return err
+		}
+	}
 
 	// This node depends on the nodes that are part of the input parameters. The input parameters
 	// are parents of this node. This is the
-	tags := make(map[string]interface{})
 	err = CollectParamDependencies(op.Parameters, swagger, dag, tags, false)
 	if err != nil {
 		return err
