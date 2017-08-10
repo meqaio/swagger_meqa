@@ -207,13 +207,41 @@ func AddOperation(pathName string, method string, op *spec.Operation, swagger *S
 		return err
 	}
 
+	// The nodes that are part of outputs depends on this operation. The outputs are children.
+	// We have to be careful here. Get operations will also return objects. The outputs
+	// are only the children for "post" (create) operations.
+	tag := GetMeqaTag(op.Description)
+	creates := make(map[string]interface{})
+	if (tag != nil && tag.Operation == MethodPost) || (tag == nil && method == MethodPost) {
+		if op.Responses != nil {
+			if respSpec := op.Responses.Default; respSpec != nil && respSpec.Schema != nil {
+				err := CollectSchemaDependencies((*Schema)(respSpec.Schema), swagger, dag, creates, true)
+				if err != nil {
+					return err
+				}
+			}
+			for _, respSpec := range op.Responses.StatusCodeResponses {
+				if respSpec.Schema != nil {
+					err := CollectSchemaDependencies((*Schema)(respSpec.Schema), swagger, dag, creates, true)
+					if err != nil {
+						return err
+					}
+				}
+			}
+			err = AddTagsToNode(node, dag, creates, true)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
 	// This node depends on the nodes that are part of the input parameters. The input parameters
 	// are parents of this node. This is the
+	tags := make(map[string]interface{})
 	for _, param := range op.Parameters {
-		tags := make(map[string]interface{})
 		tag := GetMeqaTag(param.Description)
 		if tag != nil && len(tag.Class) > 0 {
-			if tag.Operation == "" || tag.Operation != MethodPost {
+			if tag.Operation != MethodPost {
 				tags[tag.Class] = 1
 			}
 			continue
@@ -230,49 +258,12 @@ func AddOperation(pathName string, method string, op *spec.Operation, swagger *S
 		if err != nil {
 			return err
 		}
-		err = AddTagsToNode(node, dag, tags, false)
-		if err != nil {
-			return err
-		}
 	}
-
-	// The nodes that are part of outputs depends on this operation. The outputs are children.
-	// We have to be careful here. Get operations will also return objects. The outputs
-	// are only the children for "post" (create) operations.
-	tag := GetMeqaTag(op.Description)
-	if (tag != nil && tag.Operation != MethodPost) || (tag == nil && method != MethodPost) {
-		return nil
+	// If we know for sure we create something, we remove it from parameters.
+	for k := range creates {
+		delete(tags, k)
 	}
-	addResponseAsChildren := func(schema *spec.Schema) error {
-		tags := make(map[string]interface{})
-		err := CollectSchemaDependencies((*Schema)(schema), swagger, dag, tags, true)
-		if err != nil {
-			return err
-		}
-		err = AddTagsToNode(node, dag, tags, true)
-		if err != nil {
-			return err
-		}
-		return nil
-	}
-
-	if op.Responses != nil {
-		if respSpec := op.Responses.Default; respSpec != nil && respSpec.Schema != nil {
-			err := addResponseAsChildren(respSpec.Schema)
-			if err != nil {
-				return err
-			}
-		}
-		for _, respSpec := range op.Responses.StatusCodeResponses {
-			if respSpec.Schema != nil {
-				err := addResponseAsChildren(respSpec.Schema)
-				if err != nil {
-					return err
-				}
-			}
-		}
-	}
-	return nil
+	return AddTagsToNode(node, dag, tags, false)
 }
 
 func (swagger *Swagger) AddToDAG(dag *DAG) error {

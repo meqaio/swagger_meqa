@@ -38,6 +38,7 @@ func (node *DAGNode) CheckChildrenWeight() bool {
 		if c.Weight <= node.Weight {
 			return false
 		}
+		mqutil.Logger.Printf("child: %s", c.Name)
 	}
 	return true
 }
