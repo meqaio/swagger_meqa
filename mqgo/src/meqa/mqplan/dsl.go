@@ -86,16 +86,16 @@ func (comp *Comparison) GetMapByOp(op string) map[string]interface{} {
 // Test represents a test object in the DSL. Extra care needs to be taken to copy the
 // Test before running it, because running it would change the parameter maps.
 type Test struct {
-	Name         string
-	Path         string
-	Method       string
-	Ref          string
-	Expect       map[string]interface{}
-	QueryParams  map[string]interface{} `yaml:"queryParams"`
-	BodyParams   interface{}            `yaml:"bodyParams"`
-	FormParams   map[string]interface{} `yaml:"formParams"`
-	PathParams   map[string]interface{} `yaml:"pathParams"`
-	HeaderParams map[string]interface{} `yaml:"headerParams"`
+	Name         string                 `yaml:"name,omitempty"`
+	Path         string                 `yaml:"path,omitempty"`
+	Method       string                 `yaml:"method,omitempty"`
+	Ref          string                 `yaml:"ref,omitempty"`
+	Expect       map[string]interface{} `yaml:"expect,omitempty"`
+	QueryParams  map[string]interface{} `yaml:"queryParams,omitempty"`
+	BodyParams   interface{}            `yaml:"bodyParams,omitempty"`
+	FormParams   map[string]interface{} `yaml:"formParams,omitempty"`
+	PathParams   map[string]interface{} `yaml:"pathParams,omitempty"`
+	HeaderParams map[string]interface{} `yaml:"headerParams,omitempty"`
 
 	// Map of Object name (matching definitions) to the Comparison object.
 	// This tracks what objects we need to add to DB at the end of test.

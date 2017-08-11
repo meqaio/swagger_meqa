@@ -46,7 +46,9 @@ func GenerateTestsForObject(create *mqswag.DAGNode, obj *mqswag.DAGNode, plan *T
 		testCase.Tests = append(testCase.Tests, CreateTestFromOp(create, testId))
 		testCase.Tests = append(testCase.Tests, CreateTestFromOp(child, testId))
 	}
-	plan.Add(testCase)
+	if len(testCase.Tests) > 0 {
+		plan.Add(testCase)
+	}
 
 	// A loop where we go through all the child operations
 	testId = 1
@@ -60,7 +62,9 @@ func GenerateTestsForObject(create *mqswag.DAGNode, obj *mqswag.DAGNode, plan *T
 		testId++
 		testCase.Tests = append(testCase.Tests, CreateTestFromOp(child, testId))
 	}
-	plan.Add(testCase)
+	if len(testCase.Tests) > 0 {
+		plan.Add(testCase)
+	}
 
 	return nil
 }
