@@ -155,7 +155,7 @@ func AddDef(name string, schema *Schema, swagger *Swagger, dag *DAG) error {
 // collects all the objects referred to by the schema. All the object names are put into
 // the specified map.
 func CollectSchemaDependencies(schema *Schema, swagger *Swagger, dag *DAG, collection map[string]interface{}, post bool) error {
-	iterFunc := func(swagger *Swagger, schema *Schema, context map[string]interface{}) error {
+	iterFunc := func(swagger *Swagger, schemaName string, schema *Schema, context map[string]interface{}) error {
 		tag := GetMeqaTag(schema.Description)
 		if tag != nil {
 			// If there is a tag, and the tag's operation (which is always correct)
@@ -171,11 +171,10 @@ func CollectSchemaDependencies(schema *Schema, swagger *Swagger, dag *DAG, colle
 			}
 		}
 
-		referenceName, _, err := swagger.GetReferredSchema((*Schema)(schema))
-		if len(referenceName) > 0 {
-			context[referenceName] = 1
+		if len(schemaName) > 0 {
+			context[schemaName] = 1
 		}
-		return err
+		return nil
 	}
 
 	return schema.Iterate(iterFunc, collection, swagger)

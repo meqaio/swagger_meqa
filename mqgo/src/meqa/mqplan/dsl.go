@@ -306,13 +306,33 @@ func (t *Test) ProcessResult(resp *resty.Response) error {
 	respSchema := (*mqswag.Schema)(respSpec.Schema)
 	var resultObj interface{}
 
-	if respSchema != nil && len(respBody) > 0 {
-		err := json.Unmarshal(respBody, &resultObj)
-		if err != nil {
-			return mqutil.NewError(mqutil.ErrServerResp, fmt.Sprintf("server response is not json: %s", string(respBody)))
+	if respSchema != nil {
+		if len(respBody) > 0 {
+			err := json.Unmarshal(respBody, &resultObj)
+			if err == nil {
+				if !respSchema.Matches(resultObj, t.db.Swagger) {
+					return mqutil.NewError(mqutil.ErrServerResp, fmt.Sprintf("server response doesn't match swagger spec: %s", string(respBody)))
+				}
+			} else if !respSchema.Type.Contains(gojsonschema.TYPE_STRING) {
+				return mqutil.NewError(mqutil.ErrServerResp, fmt.Sprintf("server response doesn't match swagger spec: %s", string(respBody)))
+			}
+		} else {
+			// If schema is an array, then not having a body is OK
+			if !respSchema.Type.Contains(gojsonschema.TYPE_ARRAY) {
+				return mqutil.NewError(mqutil.ErrServerResp, fmt.Sprintf("swagger.spec expects a non-empty response, but response body is actually empty"))
+			}
 		}
-		if !respSchema.Matches(resultObj, t.db.Swagger) {
-			return mqutil.NewError(mqutil.ErrServerResp, fmt.Sprintf("server response doesn't match swagger spec: %s", string(respBody)))
+
+		// Remove the comparison objects that 1) swagger doesn't expect back 2) we didn't modify
+		for className, compList := range t.comparisons {
+			count := 0
+			for i, comp := range compList {
+				if comp.new == nil && !respSchema.Contains(className, t.db.Swagger) {
+					compList[i] = compList[count]
+					count++
+				}
+			}
+			t.comparisons[className] = compList[count:]
 		}
 	}
 

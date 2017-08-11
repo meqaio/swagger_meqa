@@ -40,7 +40,7 @@
             "host": "127.0.0.1",
             "program": "${workspaceRoot}/mqgo/bin/mqgo.exe",
             "env": {},
-            "args": ["-meqa", "d:\\src\\autoapi\\mqgo\\meqa_data"],
+            "args": ["-meqa", "d:\\src\\autoapi\\mqgo\\tmp"],
             "showLog": true
         }
     ]
