@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"math/rand"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -29,13 +30,13 @@ type TestPlan struct {
 }
 
 // Add a new TestCase, returns whether the Case is successfully added.
-func (plan *TestPlan) Add(name string, testCase *TestCase) error {
-	if _, exist := plan.CaseMap[name]; exist {
-		str := fmt.Sprintf("Duplicate name %s found in test plan", name)
+func (plan *TestPlan) Add(testCase *TestCase) error {
+	if _, exist := plan.CaseMap[testCase.Name]; exist {
+		str := fmt.Sprintf("Duplicate name %s found in test plan", testCase.Name)
 		mqutil.Logger.Println(str)
 		return errors.New(str)
 	}
-	plan.CaseMap[name] = testCase
+	plan.CaseMap[testCase.Name] = testCase
 	plan.CaseList = append(plan.CaseList, testCase)
 	return nil
 }
@@ -52,7 +53,7 @@ func (plan *TestPlan) AddFromString(data string) error {
 			t.Init(plan.db)
 		}
 		testCase := TestCase{testList, caseName}
-		err = plan.Add(caseName, &testCase)
+		err = plan.Add(&testCase)
 		if err != nil {
 			return err
 		}
@@ -72,6 +73,31 @@ func (plan *TestPlan) InitFromFile(path string, db *mqswag.DB) error {
 	chunks := strings.Split(string(data), "---")
 	for _, chunk := range chunks {
 		plan.AddFromString(chunk)
+	}
+	return nil
+}
+
+func (plan *TestPlan) DumpToFile(path string) error {
+	f, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	for _, testCase := range plan.CaseList {
+		count, err := f.WriteString("---\n")
+		if err != nil {
+			return err
+		}
+		testMap := map[string]interface{}{testCase.Name: testCase.Tests}
+		caseBytes, err := yaml.Marshal(testMap)
+		if err != nil {
+			return err
+		}
+		count, err = f.Write(caseBytes)
+		if count != len(caseBytes) || err != nil {
+			panic("writing test case failed")
+		}
 	}
 	return nil
 }
