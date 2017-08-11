@@ -23,6 +23,7 @@ func main() {
 	meqaPath := flag.String("meqa", meqaDataDir, "the directory that holds the meqa data and swagger.json files")
 	swaggerFile := flag.String("swagger", swaggerJSONFile, "the swagger.json file name or URL")
 	testPlanFile := flag.String("testplan", testPlanFile, "the test plan file name")
+	testToRun := flag.String("test", "all", "the test to run")
 
 	flag.Parse()
 	swaggerJsonPath := filepath.Join(*meqaPath, *swaggerFile)
@@ -54,9 +55,14 @@ func main() {
 		mqutil.Logger.Printf("Error loading test plan: %s", err.Error())
 	}
 
-	for _, testCase := range mqplan.Current.CaseList {
-		mqutil.Logger.Printf("\n\n======================== Running test case: %s ========================\n", testCase.Name)
-		err := mqplan.Current.Run(testCase.Name, nil)
+	if *testToRun == "all" {
+		for _, testCase := range mqplan.Current.CaseList {
+			mqutil.Logger.Printf("\n\n======================== Running test case: %s ========================\n", testCase.Name)
+			err := mqplan.Current.Run(testCase.Name, nil)
+			mqutil.Logger.Printf("err:\n%v", err)
+		}
+	} else {
+		err := mqplan.Current.Run(*testToRun, nil)
 		mqutil.Logger.Printf("err:\n%v", err)
 	}
 }

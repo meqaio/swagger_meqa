@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 )
 
 // MapInterfaceToMapString converts the params map (all primitive types with exception of array)
@@ -35,6 +36,41 @@ func MapIsCompatible(big map[string]interface{}, small map[string]interface{}) b
 	return true
 }
 
+func TimeCompare(v1 interface{}, v2 interface{}) bool {
+	s1, ok := v1.(string)
+	if !ok {
+		return false
+	}
+	s2, ok := v2.(string)
+	if !ok {
+		return false
+	}
+	var t time.Time
+	var s string
+	var b1, b2 bool
+	t1, err := time.Parse(time.RFC3339, s1)
+	if err == nil {
+		t = t1
+		s = s2
+		b1 = true
+	}
+	t2, err := time.Parse(time.RFC3339, s2)
+	if err == nil {
+		t = t2
+		s = s1
+		b2 = true
+	}
+	if b1 && b2 {
+		return t1 == t2
+	}
+	if !b1 && !b2 {
+		return false
+	}
+	// One of b1 and b2 is true, now t point to time and s point to a potential time string
+	// that's not RFC3339 format. We make a guess buy searching for a few key elements.
+	return strings.Contains(s, fmt.Sprintf("%d", t.Second())) && strings.Contains(s, fmt.Sprintf("%d", t.Minute()))
+}
+
 // MapCombine combines two map together. If there is any overlap the dst will be overwritten.
 func MapCombine(dst map[string]interface{}, src map[string]interface{}) map[string]interface{} {
 	if len(dst) == 0 {
@@ -54,7 +90,7 @@ func MapEquals(big map[string]interface{}, small map[string]interface{}, strict 
 		return false
 	}
 	for k, v := range small {
-		if big[k] != v && fmt.Sprint(big[k]) != fmt.Sprint(v) {
+		if big[k] != v && fmt.Sprint(big[k]) != fmt.Sprint(v) && !TimeCompare(big[k], v) {
 			fmt.Printf("key %v: %v %v mismatch", k, big[k], v)
 			return false
 		}

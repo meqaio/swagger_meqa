@@ -735,6 +735,8 @@ func (t *Test) generateByType(s *spec.Schema, prefix string, parentTag *mqswag.M
 			result, err = generateFloat(s)
 		case gojsonschema.TYPE_STRING:
 			result, err = generateString(s, prefix)
+		case "file":
+			result, err = reggen.Generate("[0-9]+", 200)
 		}
 		if result != nil && err == nil {
 			t.AddBasicComparison(tag, paramSpec, result)

@@ -108,7 +108,6 @@ func (schema *Schema) MatchesMap(obj map[string]interface{}, swagger *Swagger) b
 	for _, requiredName := range schema.Required {
 		if obj[requiredName] == nil {
 			mqutil.Logger.Printf("required field not present: %s", requiredName)
-			panic("")
 			return false
 		}
 	}
