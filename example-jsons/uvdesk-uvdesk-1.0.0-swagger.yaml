@@ -1,0 +1,4662 @@
+swagger: '2.0'
+info:
+  version: '1.0.0'
+  title: Uvdesk api
+  description: The UVdesk API correlates with the Representational State Transfer category (REST) that allows to perform several actions like reading, editing, deleting, adding data of the helpdesk system. Here, we are using subdomain in base path and Token Url. user must modify subdomain to his/her uvdesk subdomain for api access. If you want to download and use api client from top right section. Also then, you must replace subdomain with your subdomain name at uvdesk in downloaded client's baseUrl.
+  termsOfService: "https://www.uvdesk.com/en/terms"
+  contact:
+    email: "support@uvdesk.com"
+externalDocs:
+  description: "Find out more about uvdesk api"
+  url: "https://www.uvdesk.com/en/api-doc/"
+schemes:
+- https
+consumes:
+- application/json
+produces:
+- application/json
+paths:
+  /ticket/{id}.{_format}:
+    get:
+      description: View a ticket
+      tags:
+        - Ticket
+      summary: View a ticket
+      operationId: get_api-ticket
+      produces:
+      - application/json
+      parameters:
+      - name: id
+        in: path
+        required: true
+        type: string
+        description: 'This api uses ticket IncrementId, while all other uses ticket id'
+      - name: _format
+        in: path
+        required: true
+        enum:
+        - json
+        type: string
+        description: ''
+      responses:
+        200:
+          description: ''
+          schema:
+            type: object
+          examples: {}
+        404:
+          description: Returned when the page is not found
+          schema: {}
+      x-unitTests: []
+      x-operation-settings:
+        CollectParameters: false
+        AllowDynamicQueryParameters: false
+        AllowDynamicFormParameters: false
+        IsMultiContentStreaming: false        
+    put:
+      description: Edit given ticket
+      tags:
+        - Ticket
+      summary: Edit given ticket
+      operationId: put_api-ticket
+      produces:
+      - application/json
+      consumes:
+      - application/x-www-form-urlencoded
+      parameters:
+      - name: id
+        in: path
+        required: true
+        type: string
+        description: ''
+      - name: _format
+        in: path
+        required: true
+        enum:
+        - json
+        type: string
+        description: ''
+      - name: type
+        in: formData
+        required: false
+        type: string
+        description: 1|2|3|4|5|6 for open|pending|resolved|closed|Spam|Answered repectively
+      - name: from
+        in: formData
+        required: false
+        type: string
+        description: email address
+      - name: reply
+        in: formData
+        required: false
+        type: string
+        description: reply content
+      - name: subject
+        in: formData
+        required: false
+        type: string
+        description: ticket subject
+      responses:
+        200:
+          description: ''
+      x-unitTests: []
+      x-operation-settings:
+        CollectParameters: false
+        AllowDynamicQueryParameters: false
+        AllowDynamicFormParameters: false
+        IsMultiContentStreaming: false
+    delete:
+      description: Delete a given ticket
+      tags:
+        - Ticket
+      summary: Delete a given ticket
+      operationId: delete_api-ticket
+      produces:
+      - application/json
+      parameters:
+      - name: id
+        in: path
+        required: true
+        type: string
+        description: ''
+      - name: _format
+        in: path
+        required: true
+        enum:
+        - json
+        type: string
+        description: ''
+      responses:
+        200:
+          description: ''
+        400:
+          description: Returned when Bad Request
+          schema: {}
+        404:
+          description: Returned when the page is not found
+          schema: {}
+      x-unitTests: []
+      x-operation-settings:
+        CollectParameters: false
+        AllowDynamicQueryParameters: false
+        AllowDynamicFormParameters: false
+        IsMultiContentStreaming: false
+    patch:
+      description: Edit given ticket's properties
+      tags:
+        - Ticket
+      summary: Edit given ticket's properties
+      operationId: patch_api-ticket
+      produces:
+      - application/json
+      consumes:
+      - application/x-www-form-urlencoded
+      parameters:
+      - name: id
+        in: path
+        required: true
+        type: string
+        description: ''
+      - name: _format
+        in: path
+        required: true
+        enum:
+        - json
+        type: string
+        description: ''
+      - name: editType
+        in: formData
+        required: false
+        type: string
+        description: 'property type that you want to edit. options : status|type|priority|group|label|star'
+      - name: value
+        in: formData
+        required: false
+        type: string
+        description: value for corresponding property, optional for editType:star
+      responses:
+        200:
+          description: ''
+        400:
+          description: Returned when Bad Request
+          schema: {}
+        404:
+          description: Returned when the page is not found
+          schema: {}
+      x-unitTests: []
+      x-operation-settings:
+        CollectParameters: false
+        AllowDynamicQueryParameters: false
+        AllowDynamicFormParameters: false
+        IsMultiContentStreaming: false
+  /ticket/{id}/collaborator.{_format}:
+    post:
+      description: Add collaborator for Ticket
+      tags:
+        - Ticket
+      summary: Add collaborator for Ticket
+      operationId: post_api-ticket-collaborator
+      produces:
+      - application/json
+      consumes:
+      - application/x-www-form-urlencoded
+      parameters:
+      - name: id
+        in: path
+        required: true
+        type: string
+        description: ''
+      - name: _format
+        in: path
+        required: true
+        enum:
+        - json
+        type: string
+        description: ''
+      - name: email
+        in: formData
+        required: false
+        type: string
+        description: collaborator email
+      responses:
+        200:
+          description: ''
+      x-unitTests: []
+      x-operation-settings:
+        CollectParameters: false
+        AllowDynamicQueryParameters: false
+        AllowDynamicFormParameters: false
+        IsMultiContentStreaming: false
+    delete:
+      description: Remove collaborator from Ticket
+      tags:
+        - Ticket
+      summary: Remove collaborator from Ticket
+      operationId: delete_api-ticket-collaborator
+      produces:
+      - application/json
+      consumes:
+      - application/x-www-form-urlencoded
+      parameters:
+      - name: id
+        in: path
+        required: true
+        type: string
+        description: ''
+      - name: _format
+        in: path
+        required: true
+        enum:
+        - json
+        type: string
+        description: ''
+      - name: collaboratorId
+        in: formData
+        required: false
+        type: string
+        description: collaborator's Id
+      responses:
+        200:
+          description: ''
+      x-unitTests: []
+      x-operation-settings:
+        CollectParameters: false
+        AllowDynamicQueryParameters: false
+        AllowDynamicFormParameters: false
+        IsMultiContentStreaming: false
+  /ticket/attachment/{id}.{_format}:
+    get:
+      description: download attachment
+      tags:
+        - Ticket
+      summary: download attachment
+      operationId: get_api-ticket-attachment
+      produces:
+      - application/json
+      parameters:
+      - name: id
+        in: path
+        required: true
+        type: string
+        description: ''
+      - name: _format
+        in: path
+        required: true
+        enum:
+        - json
+        type: string
+        description: ''
+      responses:
+        200:
+          description: ''
+          schema:
+            type: object
+          examples: {}
+      x-unitTests: []
+      x-operation-settings:
+        CollectParameters: false
+        AllowDynamicQueryParameters: false
+        AllowDynamicFormParameters: false
+        IsMultiContentStreaming: false
+  /tickets.{_format}:
+    get:
+      description: Return a Collection of Tickets
+      tags:
+        - Tickets
+      summary: Return a Collection of Tickets
+      operationId: get_api-tickets
+      produces:
+      - application/json
+      parameters:
+      - name: _format
+        in: path
+        required: true
+        enum:
+        - json
+        type: string
+        description: ''
+      - name: new
+        in: query
+        required: false
+        type: string
+        description: ''
+      - name: unassigned
+        in: query
+        required: false
+        type: string
+        description: ''
+      - name: mine
+        in: query
+        required: false
+        type: string
+        description: ''
+      - name: starred
+        in: query
+        required: false
+        type: string
+        description: ''
+      - name: trashed
+        in: query
+        required: false
+        type: string
+        description: ''
+      - name: label
+        in: query
+        required: false
+        type: string
+        description: labelId
+      - name: status
+        in: query
+        required: false
+        type: string
+        description: statusId
+      - name: agent
+        in: query
+        required: false
+        type: string
+        description: agentId
+      - name: customer
+        in: query
+        required: false
+        type: string
+        description: customerId
+      - name: priority
+        in: query
+        required: false
+        type: string
+        description: priorityId
+      - name: group
+        in: query
+        required: false
+        type: string
+        description: groupId
+      - name: team
+        in: query
+        required: false
+        type: string
+        description: teamId
+      - name: tags
+        in: query
+        required: false
+        type: string
+        description: tagId
+      - name: mailbox
+        in: query
+        required: false
+        type: string
+        description: mailboxId
+      - name: sort
+        in: query
+        required: false
+        type: string
+        description: ''
+      - name: page
+        in: query
+        required: false
+        type: string
+        description: ''
+      - name: search
+        in: query
+        required: false
+        type: string
+        description: search for Ticket
+      - name: actAsType
+        in: query
+        required: false
+        type: string
+        description: 'admin can actAs customer, options: customer, agent'
+      - name: actAsEmail
+        in: query
+        required: false
+        type: string
+        description: email of acted user
+      responses:
+        200:
+          description: ''
+          schema:
+            type: object
+          examples: {}
+      x-unitTests: []
+      x-operation-settings:
+        CollectParameters: false
+        AllowDynamicQueryParameters: false
+        AllowDynamicFormParameters: false
+        IsMultiContentStreaming: false
+    post:
+      description: Add ticket
+      tags:
+        - Tickets
+      summary: Add ticket
+      operationId: post_api-tickets
+      produces:
+      - application/json
+      consumes:
+      - application/x-www-form-urlencoded
+      parameters:
+      - name: _format
+        in: path
+        required: true
+        enum:
+        - json
+        type: string
+        description: ''
+      - name: type
+        in: formData
+        required: false
+        type: string
+        description: 1|2|3|4|5|6 for open|pending|resolved|closed|Spam|Answered repectively
+      - name: name
+        in: formData
+        required: false
+        type: string
+        description: ticket name
+      - name: from
+        in: formData
+        required: false
+        type: string
+        description: email address
+      - name: reply
+        in: formData
+        required: false
+        type: string
+        description: reply content
+      - name: subject
+        in: formData
+        required: false
+        type: string
+        description: ticket subject
+      - name: customFields
+        in: formData
+        required: false
+        type: string
+        description: custom fields (if present) could be provided
+      - name: actAsType
+        in: formData
+        required: false
+        type: string
+        description: admin can actAsType customer, agent
+      - name: actAsEmail
+        in: formData
+        required: false
+        type: string
+        description: provide when acting as agent
+      responses:
+        200:
+          description: ''
+        400:
+          description: Returned when Bad Request
+          schema: {}
+        401:
+          description: Returned when helpdesk expired
+          schema: {}
+        404:
+          description: Returned when the page is not found
+          schema: {}
+      x-unitTests: []
+      x-operation-settings:
+        CollectParameters: false
+        AllowDynamicQueryParameters: false
+        AllowDynamicFormParameters: false
+        IsMultiContentStreaming: false
+    delete:
+      description: Delete multiple Tickets
+      tags:
+        - Tickets
+      summary: Delete multiple Tickets
+      operationId: delete_api-tickets
+      produces:
+      - application/json
+      consumes:
+      - application/x-www-form-urlencoded
+      parameters:
+      - name: _format
+        in: path
+        required: true
+        enum:
+        - json
+        type: string
+        description: ''
+      - name: ids
+        in: formData
+        required: false
+        type: string
+        description: ticket ids to be deleted
+      responses:
+        200:
+          description: ''
+        400:
+          description: Returned when Bad Request
+          schema: {}
+      x-unitTests: []
+      x-operation-settings:
+        CollectParameters: false
+        AllowDynamicQueryParameters: false
+        AllowDynamicFormParameters: false
+        IsMultiContentStreaming: false
+  /tickets/agent.{_format}:
+    put:
+      description: Assign Agent to multiple Tickets
+      tags:
+        - Tickets
+      summary: Assign Agent to multiple Tickets
+      operationId: put_api-tickets-agent
+      produces:
+      - application/json
+      consumes:
+      - application/x-www-form-urlencoded
+      parameters:
+      - name: _format
+        in: path
+        required: true
+        enum:
+        - json
+        type: string
+        description: ''
+      - name: ids
+        in: formData
+        required: false
+        type: string
+        description: ticket ids
+      - name: agentId
+        in: formData
+        required: false
+        type: string
+        description: agent id
+      responses:
+        200:
+          description: ''
+        400:
+          description: Returned when Bad Request
+          schema: {}
+      x-unitTests: []
+      x-operation-settings:
+        CollectParameters: false
+        AllowDynamicQueryParameters: false
+        AllowDynamicFormParameters: false
+        IsMultiContentStreaming: false
+  /tickets/group.{_format}:
+    put:
+      description: change Group of multiple Tickets
+      tags:
+        - Tickets
+      summary: change Group of multiple Tickets
+      operationId: put_api-tickets-group
+      produces:
+      - application/json
+      consumes:
+      - application/x-www-form-urlencoded
+      parameters:
+      - name: _format
+        in: path
+        required: true
+        enum:
+        - json
+        type: string
+        description: ''
+      - name: ids
+        in: formData
+        required: false
+        type: string
+        description: ticket ids
+      - name: groupId
+        in: formData
+        required: false
+        type: string
+        description: group id
+      responses:
+        200:
+          description: ''
+      x-unitTests: []
+      x-operation-settings:
+        CollectParameters: false
+        AllowDynamicQueryParameters: false
+        AllowDynamicFormParameters: false
+        IsMultiContentStreaming: false
+  /tickets/label.{_format}:
+    put:
+      description: add label to multiple Tickets
+      tags:
+        - Tickets
+      summary: add label to multiple Tickets
+      operationId: put_api-tickets-label
+      produces:
+      - application/json
+      consumes:
+      - application/x-www-form-urlencoded
+      parameters:
+      - name: _format
+        in: path
+        required: true
+        enum:
+        - json
+        type: string
+        description: ''
+      - name: ids
+        in: formData
+        required: false
+        type: string
+        description: ticket ids
+      - name: labelId
+        in: formData
+        required: false
+        type: string
+        description: label id
+      responses:
+        200:
+          description: ''
+        400:
+          description: Returned when Bad Request
+          schema: {}
+      x-unitTests: []
+      x-operation-settings:
+        CollectParameters: false
+        AllowDynamicQueryParameters: false
+        AllowDynamicFormParameters: false
+        IsMultiContentStreaming: false
+  /tickets/priority.{_format}:
+    put:
+      description: change Priority of multiple Tickets
+      tags:
+        - Tickets
+      summary: change Priority of multiple Tickets
+      operationId: put_api-tickets-priority
+      produces:
+      - application/json
+      consumes:
+      - application/x-www-form-urlencoded
+      parameters:
+      - name: _format
+        in: path
+        required: true
+        enum:
+        - json
+        type: string
+        description: ''
+      - name: ids
+        in: formData
+        required: false
+        type: string
+        description: ticket ids
+      - name: priorityId
+        in: formData
+        required: false
+        type: string
+        description: priority id
+      responses:
+        200:
+          description: ''
+        400:
+          description: Returned when Bad Request
+          schema: {}
+      x-unitTests: []
+      x-operation-settings:
+        CollectParameters: false
+        AllowDynamicQueryParameters: false
+        AllowDynamicFormParameters: false
+        IsMultiContentStreaming: false
+  /tickets/restore.{_format}:
+    put:
+      description: Restore multiple Tickets
+      tags:
+        - Tickets
+      summary: Restore multiple Tickets
+      operationId: put_api-tickets-restore
+      produces:
+      - application/json
+      consumes:
+      - application/x-www-form-urlencoded
+      parameters:
+      - name: _format
+        in: path
+        required: true
+        enum:
+        - json
+        type: string
+        description: ''
+      - name: ids
+        in: formData
+        required: false
+        type: string
+        description: ticket ids to be restored
+      responses:
+        200:
+          description: ''
+        400:
+          description: Returned when Bad Request
+          schema: {}
+        404:
+          description: Returned when the page is not found
+          schema: {}
+      x-unitTests: []
+      x-operation-settings:
+        CollectParameters: false
+        AllowDynamicQueryParameters: false
+        AllowDynamicFormParameters: false
+        IsMultiContentStreaming: false
+  /tickets/status.{_format}:
+    put:
+      description: change Status of multiple Tickets
+      tags:
+        - Tickets
+      summary: change Status of multiple Tickets
+      operationId: put_api-tickets-status
+      produces:
+      - application/json
+      consumes:
+      - application/x-www-form-urlencoded
+      parameters:
+      - name: _format
+        in: path
+        required: true
+        enum:
+        - json
+        type: string
+        description: ''
+      - name: ids
+        in: formData
+        required: false
+        type: string
+        description: ticket ids
+      - name: statusId
+        in: formData
+        required: false
+        type: string
+        description: status id
+      responses:
+        200:
+          description: ''
+        400:
+          description: Returned when Bad Request
+          schema: {}
+      x-unitTests: []
+      x-operation-settings:
+        CollectParameters: false
+        AllowDynamicQueryParameters: false
+        AllowDynamicFormParameters: false
+        IsMultiContentStreaming: false
+  /tickets/trash.{_format}:
+    put:
+      description: Trash multiple Tickets
+      tags:
+        - Tickets
+      summary: Trash multiple Tickets
+      operationId: put_api-tickets-trash
+      produces:
+      - application/json
+      consumes:
+      - application/x-www-form-urlencoded
+      parameters:
+      - name: _format
+        in: path
+        required: true
+        enum:
+        - json
+        type: string
+        description: ''
+      - name: ids
+        in: formData
+        required: false
+        type: string
+        description: ticket ids to be trashed
+      responses:
+        200:
+          description: ''
+      x-unitTests: []
+      x-operation-settings:
+        CollectParameters: false
+        AllowDynamicQueryParameters: false
+        AllowDynamicFormParameters: false
+        IsMultiContentStreaming: false
+  /ticket/{id}/tags.{_format}:
+    post:
+      description: Add Tag from Ticket
+      tags:
+        - Tickets
+      summary: Add Tag from Ticket
+      operationId: post_api-ticket-tags
+      produces:
+      - application/json
+      consumes:
+      - application/x-www-form-urlencoded
+      parameters:
+      - name: id
+        in: path
+        required: true
+        type: string
+        description: ''
+      - name: _format
+        in: path
+        required: true
+        enum:
+        - json
+        type: string
+        description: ''
+      - name: name
+        in: formData
+        required: false
+        type: string
+        description: tagname required for POST
+      responses:
+        200:
+          description: ''
+        400:
+          description: Returned when Bad Request
+          schema: {}
+        404:
+          description: Returned when the page is not found
+          schema: {}
+      x-unitTests: []
+      x-operation-settings:
+        CollectParameters: false
+        AllowDynamicQueryParameters: false
+        AllowDynamicFormParameters: false
+        IsMultiContentStreaming: false
+    delete:
+      description: delete Tag from Ticket
+      tags:
+        - Tickets
+      summary: delete Tag from Ticket
+      operationId: delete_api-ticket-tags
+      produces:
+      - application/json
+      consumes:
+      - application/x-www-form-urlencoded
+      parameters:
+      - name: id
+        in: path
+        required: true
+        type: string
+        description: ''
+      - name: _format
+        in: path
+        required: true
+        enum:
+        - json
+        type: string
+        description: ''
+      - name: name
+        in: formData
+        required: false
+        type: string
+        description: tagname required for POST
+      responses:
+        200:
+          description: ''
+        400:
+          description: Returned when Bad Request
+          schema: {}
+        404:
+          description: Returned when the page is not found
+          schema: {}
+      x-unitTests: []
+      x-operation-settings:
+        CollectParameters: false
+        AllowDynamicQueryParameters: false
+        AllowDynamicFormParameters: false
+        IsMultiContentStreaming: false
+  /filters.{_format}:
+    get:
+      description: Get filter data
+      tags:
+        - Filter
+      summary: Get filter data
+      operationId: get_api-filters
+      produces:
+      - application/json
+      parameters:
+      - name: _format
+        in: path
+        required: true
+        enum:
+        - json
+        type: string
+        description: ''
+      - name: group
+        in: query
+        required: false
+        type: integer
+        format: int32
+        description: to get group data
+      - name: usergroup
+        in: query
+        required: false
+        type: integer
+        format: int32
+        description: to get group data with corresponding subgroups
+      - name: team
+        in: query
+        required: false
+        type: integer
+        format: int32
+        description: to get team data
+      - name: type
+        in: query
+        required: false
+        type: integer
+        format: int32
+        description: to get type data
+      - name: priority
+        in: query
+        required: false
+        type: integer
+        format: int32
+        description: to get priority data
+      - name: tag
+        in: query
+        required: false
+        type: integer
+        format: int32
+        description: to get tag data
+      - name: mailbox
+        in: query
+        required: false
+        type: integer
+        format: int32
+        description: to get mailbox data
+      - name: agent
+        in: query
+        required: false
+        type: integer
+        format: int32
+        description: to get agent data
+      - name: customer
+        in: query
+        required: false
+        type: integer
+        format: int32
+        description: to get customer data
+      - name: source
+        in: query
+        required: false
+        type: integer
+        format: int32
+        description: to get source data
+      - name: userdata
+        in: query
+        required: false
+        type: integer
+        format: int32
+        description: to get current user's data like roles
+      responses:
+        200:
+          description: ''
+          schema:
+            type: object
+          examples: {}
+      x-unitTests: []
+      x-operation-settings:
+        CollectParameters: false
+        AllowDynamicQueryParameters: false
+        AllowDynamicFormParameters: false
+        IsMultiContentStreaming: false
+  /sub-groups.{_format}:
+    get:
+      description: View Subgroups
+      tags:
+        - Team/subgroup
+      summary: View Subgroups
+      operationId: get_api-sub-groups
+      produces:
+      - application/json
+      parameters:
+      - name: _locale
+        in: path
+        required: true
+        type: string
+        description: ''
+      - name: _format
+        in: path
+        required: true
+        enum:
+        - json
+        - html
+        type: string
+        description: ''
+      - name: sort
+        in: query
+        required: false
+        type: string
+        description: ''
+      - name: isActive
+        in: query
+        required: false
+        type: string
+        description: 0|1
+      - name: search
+        in: query
+        required: false
+        type: string
+        description: search
+      responses:
+        200:
+          description: ''
+          schema:
+            type: object
+          examples: {}
+      x-unitTests: []
+      x-operation-settings:
+        CollectParameters: false
+        AllowDynamicQueryParameters: false
+        AllowDynamicFormParameters: false
+        IsMultiContentStreaming: false
+    post:
+      description: Add Subgroup
+      tags:
+        - Team/subgroup
+      summary: Add Subgroup
+      operationId: post_api-sub-groups
+      produces:
+      - application/json
+      consumes:
+      - application/x-www-form-urlencoded
+      parameters:
+      - name: _locale
+        in: path
+        required: true
+        type: string
+        description: ''
+      - name: _format
+        in: path
+        required: true
+        enum:
+        - json
+        - html
+        type: string
+        description: ''
+      - name: name
+        in: formData
+        required: false
+        type: string
+        description: name
+      - name: description
+        in: formData
+        required: false
+        type: string
+        description: description
+      - name: groups
+        in: formData
+        required: false
+        type: string
+        description: array of subgroup ids
+      - name: users
+        in: formData
+        required: false
+        type: string
+        description: array of users for subgroup/team
+  /sub-group/{id}.{_format}:
+    put:
+      description: modify Subgroup
+      tags:
+        - Team/subgroup
+      summary: modify Subgroup
+      operationId: put_api-sub-group
+      produces:
+      - application/json
+      consumes:
+      - application/x-www-form-urlencoded
+      parameters:
+      - name: _locale
+        in: path
+        required: true
+        type: string
+        description: ''
+      - name: id
+        in: path
+        required: true
+        type: string
+        description: ''
+      - name: _format
+        in: path
+        required: true
+        enum:
+        - json
+        - html
+        type: string
+        description: ''
+      - name: name
+        in: formData
+        required: false
+        type: string
+        description: name
+      - name: description
+        in: formData
+        required: false
+        type: string
+        description: description
+      - name: groups
+        in: formData
+        required: false
+        type: string
+        description: array of subgroup ids
+      - name: users
+        in: formData
+        required: false
+        type: string
+        description: array of users for subgroup/team
+      responses:
+        200:
+          description: ''
+        400:
+          description: Returned when Bad Request
+          schema: {}
+        404:
+          description: Returned when the resource is not found
+          schema: {}
+      x-unitTests: []
+      x-operation-settings:
+        CollectParameters: false
+        AllowDynamicQueryParameters: false
+        AllowDynamicFormParameters: false
+        IsMultiContentStreaming: false
+    delete:
+      description: Delete existing Subgroup
+      tags:
+        - Team/subgroup
+      summary: Delete existing Subgroup
+      operationId: delete_api-sub-group
+      produces:
+      - application/json
+      parameters:
+      - name: _locale
+        in: path
+        required: true
+        type: string
+        description: ''
+      - name: id
+        in: path
+        required: true
+        type: string
+        description: ''
+      - name: _format
+        in: path
+        required: true
+        enum:
+        - json
+        - html
+        type: string
+        description: ''
+      responses:
+        200:
+          description: ''
+      x-unitTests: []
+      x-operation-settings:
+        CollectParameters: false
+        AllowDynamicQueryParameters: false
+        AllowDynamicFormParameters: false
+        IsMultiContentStreaming: false
+  /tag/{id}.{_format}:
+    put:
+      description: edit existing Tag
+      tags:
+        - Tag
+      summary: edit existing Tag
+      operationId: put_api-tag
+      produces:
+      - application/json
+      consumes:
+      - application/x-www-form-urlencoded
+      parameters:
+      - name: id
+        in: path
+        required: true
+        type: string
+        description: ''
+      - name: _format
+        in: path
+        required: true
+        enum:
+        - json
+        type: string
+        description: ''
+      - name: name
+        in: formData
+        required: false
+        type: string
+        description: new tag name
+      responses:
+        200:
+          description: ''
+        400:
+          description: Returned when Bad Request
+          schema: {}
+        404:
+          description: Returned when the page is not found
+          schema: {}
+      x-unitTests: []
+      x-operation-settings:
+        CollectParameters: false
+        AllowDynamicQueryParameters: false
+        AllowDynamicFormParameters: false
+        IsMultiContentStreaming: false
+    delete:
+      description: delete a given Tag
+      tags:
+        - Tag
+      summary: delete a given Tag
+      operationId: delete_api-tag
+      produces:
+      - application/json
+      parameters:
+      - name: id
+        in: path
+        required: true
+        type: string
+        description: ''
+      - name: _format
+        in: path
+        required: true
+        enum:
+        - json
+        type: string
+        description: ''
+  /article/{article}/tags.{_format}:
+    post:
+      description: Add tag from article
+      tags:
+        - Tag
+      summary: Add tag from article
+      operationId: post_api-article-tags
+      produces:
+      - application/json
+      consumes:
+      - application/x-www-form-urlencoded
+      parameters:
+      - name: article
+        in: path
+        required: true
+        type: string
+        description: ''
+      - name: _format
+        in: path
+        required: true
+        enum:
+        - json
+        type: string
+        description: ''
+      - name: name
+        in: formData
+        required: false
+        type: string
+        description: tagname required for POST
+      - name: id
+        in: formData
+        required: false
+        type: string
+        description: tagId required for DELETE
+      responses:
+        200:
+          description: ''
+        400:
+          description: Returned when Bad Request
+          schema: {}
+        404:
+          description: Returned when the page is not found
+          schema: {}
+      x-unitTests: []
+      x-operation-settings:
+        CollectParameters: false
+        AllowDynamicQueryParameters: false
+        AllowDynamicFormParameters: false
+        IsMultiContentStreaming: false
+    delete:
+      description: delete tag from article
+      tags:
+        - Tag
+      summary: delete tag from article
+      operationId: delete_api-article-tags
+      produces:
+      - application/json
+      consumes:
+      - application/x-www-form-urlencoded
+      parameters:
+      - name: article
+        in: path
+        required: true
+        type: string
+        description: ''
+      - name: _format
+        in: path
+        required: true
+        enum:
+        - json
+        type: string
+        description: ''
+      - name: name
+        in: formData
+        required: false
+        type: string
+        description: tagname required for POST
+      - name: id
+        in: formData
+        required: false
+        type: string
+        description: tagId required for DELETE
+      responses:
+        200:
+          description: ''
+        400:
+          description: Returned when Bad Request
+          schema: {}
+        404:
+          description: Returned when the page is not found
+          schema: {}
+      x-unitTests: []
+      x-operation-settings:
+        CollectParameters: false
+        AllowDynamicQueryParameters: false
+        AllowDynamicFormParameters: false
+        IsMultiContentStreaming: false
+  /members.{_format}:
+    get:
+      description: Return a collection of members
+      tags:
+        - Agent
+      summary: Return a collection of members
+      operationId: get_api-members
+      produces:
+      - application/json
+      parameters:
+      - name: _format
+        in: path
+        required: true
+        enum:
+        - json
+        type: string
+        description: ''
+      - name: starred
+        in: query
+        required: false
+        type: string
+        description: ''
+      - name: isActive
+        in: query
+        required: false
+        type: string
+        description: ''
+      - name: sort
+        in: query
+        required: false
+        type: string
+        description: ''
+      - name: page
+        in: query
+        required: false
+        type: string
+        description: ''
+      - name: search
+        in: query
+        required: false
+        type: string
+        description: search in all member's name and email
+      - name: fullList
+        in: query
+        required: false
+        type: string
+        description: To get All members without pagination and with minimum data
+      responses:
+        200:
+          description: ''
+          schema:
+            type: object
+          examples: {}
+      x-unitTests: []
+      x-operation-settings:
+        CollectParameters: false
+        AllowDynamicQueryParameters: false
+        AllowDynamicFormParameters: false
+        IsMultiContentStreaming: false
+    post:
+      description: Add new Member
+      tags:
+        - Agent
+      summary: Add new Member
+      operationId: post_api-members
+      produces:
+      - application/json
+      consumes:
+      - application/x-www-form-urlencoded
+      parameters:
+      - name: _format
+        in: path
+        required: true
+        enum:
+        - json
+        type: string
+        description: ''
+      - name: firstName
+        in: formData
+        required: false
+        type: string
+        description: first name
+      - name: lastName
+        in: formData
+        required: false
+        type: string
+        description: last name
+      - name: email
+        in: formData
+        required: false
+        type: string
+        description: email
+      - name: contactNumber
+        in: formData
+        required: false
+        type: string
+        description: contact number
+      - name: signature
+        in: formData
+        required: false
+        type: string
+        description: user's signature
+      - name: timezone
+        in: formData
+        required: false
+        type: string
+        description: timezone like Asia/Kolkata
+      - name: password
+        in: formData
+        required: false
+        type: string
+        description: provide password in form of array of 'first' and  'second'
+      responses:
+        200:
+          description: ''
+        400:
+          description: Returned when Bad Request
+          schema: {}
+        404:
+          description: Returned when the resource is not found
+          schema: {}
+      x-unitTests: []
+      x-operation-settings:
+        CollectParameters: false
+        AllowDynamicQueryParameters: false
+        AllowDynamicFormParameters: false
+        IsMultiContentStreaming: false
+  /member/{id}.{_format}:
+    get:
+      description: View a member
+      tags:
+        - Agent
+      summary: View a member
+      operationId: get_api-member
+      produces:
+      - application/json
+      parameters:
+      - name: id
+        in: path
+        required: true
+        type: string
+        description: ''
+      - name: _format
+        in: path
+        required: true
+        enum:
+        - json
+        type: string
+        description: ''
+      responses:
+        200:
+          description: ''
+          schema:
+            type: object
+          examples: {}
+      x-unitTests: []
+      x-operation-settings:
+        CollectParameters: false
+        AllowDynamicQueryParameters: false
+        AllowDynamicFormParameters: false
+        IsMultiContentStreaming: false
+    put:
+      description: edit existing member
+      tags:
+        - Agent
+      summary: edit existing member
+      operationId: put_api-member
+      produces:
+      - application/json
+      consumes:
+      - application/x-www-form-urlencoded
+      parameters:
+      - name: id
+        in: path
+        required: true
+        type: string
+        description: ''
+      - name: _format
+        in: path
+        required: true
+        enum:
+        - json
+        type: string
+        description: ''
+      - name: firstName
+        in: formData
+        required: false
+        type: string
+        description: first name
+      - name: lastName
+        in: formData
+        required: false
+        type: string
+        description: last name
+      - name: email
+        in: formData
+        required: false
+        type: string
+        description: email
+      - name: contactNumber
+        in: formData
+        required: false
+        type: string
+        description: contact number
+      - name: signature
+        in: formData
+        required: false
+        type: string
+        description: user's signature
+      - name: timezone
+        in: formData
+        required: false
+        type: string
+        description: timezone like Asia/Kolkata
+      - name: password
+        in: formData
+        required: false
+        type: string
+        description: provide password in form of array of 'first' and  'second'
+      responses:
+        200:
+          description: ''
+        400:
+          description: Returned when Bad Request
+          schema: {}
+        403:
+          description: Returned when Access forbidden
+          schema: {}
+        404:
+          description: Returned when the resource is not found
+          schema: {}
+      x-unitTests: []
+      x-operation-settings:
+        CollectParameters: false
+        AllowDynamicQueryParameters: false
+        AllowDynamicFormParameters: false
+        IsMultiContentStreaming: false
+    delete:
+      description: Delete a given member
+      tags:
+        - Agent
+      summary: Delete a given member
+      operationId: delete_api-member
+      produces:
+      - application/json
+      parameters:
+      - name: id
+        in: path
+        required: true
+        type: string
+        description: ''
+      - name: _format
+        in: path
+        required: true
+        enum:
+        - json
+        type: string
+        description: ''
+      responses:
+        200:
+          description: ''
+        404:
+          description: Returned when the resource is not found
+          schema: {}
+      x-unitTests: []
+      x-operation-settings:
+        CollectParameters: false
+        AllowDynamicQueryParameters: false
+        AllowDynamicFormParameters: false
+        IsMultiContentStreaming: false
+  /agent-privileges.{_format}:
+    get:
+      description: View all privilege
+      tags:
+        - Agent privilege
+      summary: View all privilege
+      operationId: get_api-agent-privileges
+      produces:
+      - application/json
+      parameters:
+      - name: _format
+        in: path
+        required: true
+        enum:
+        - json
+        type: string
+        description: ''
+      - name: sort
+        in: query
+        required: false
+        type: string
+        description: ''
+      - name: search
+        in: query
+        required: false
+        type: string
+        description: search
+      responses:
+        200:
+          description: ''
+          schema:
+            type: object
+          examples: {}
+      x-unitTests: []
+      x-operation-settings:
+        CollectParameters: false
+        AllowDynamicQueryParameters: false
+        AllowDynamicFormParameters: false
+        IsMultiContentStreaming: false
+    post:
+      description: Add privilege
+      tags:
+        - Agent privilege
+      summary: Add privilege
+      operationId: post_api-agent-privileges
+      produces:
+      - application/json
+      consumes:
+      - application/x-www-form-urlencoded
+      parameters:
+      - name: _format
+        in: path
+        required: true
+        enum:
+        - json
+        type: string
+        description: ''
+      - name: name
+        in: formData
+        required: false
+        type: string
+        description: name
+      - name: description
+        in: formData
+        required: false
+        type: string
+        description: description
+      - name: privileges
+        in: formData
+        required: false
+        type: string
+        description: array of privileges required like ROLE_AGENT_CREATE_TASK
+      responses:
+        200:
+          description: ''
+        400:
+          description: Returned when Bad Request
+          schema: {}
+        404:
+          description: Returned when the resource is not found
+          schema: {}
+      x-unitTests: []
+      x-operation-settings:
+        CollectParameters: false
+        AllowDynamicQueryParameters: false
+        AllowDynamicFormParameters: false
+        IsMultiContentStreaming: false
+  /agent-privilege/{id}.{_format}:
+    put:
+      description: Add privilege
+      tags:
+        - Agent privilege
+      summary: Add privilege
+      operationId: put_api-agent-privilege
+      produces:
+      - application/json
+      consumes:
+      - application/x-www-form-urlencoded
+      parameters:
+      - name: _format
+        in: path
+        required: true
+        enum:
+        - json
+        type: string
+        description: ''      
+      - name: id
+        in: path
+        required: true
+        type: string
+        description: ''
+      - name: name
+        in: formData
+        required: false
+        type: string
+        description: name
+      - name: description
+        in: formData
+        required: false
+        type: string
+        description: description
+      - name: privileges
+        in: formData
+        required: false
+        type: string
+        description: array of privileges required like ROLE_AGENT_CREATE_TASK
+      responses:
+        200:
+          description: ''
+        400:
+          description: Returned when Bad Request
+          schema: {}
+        404:
+          description: Returned when the resource is not found
+          schema: {}
+      x-unitTests: []
+      x-operation-settings:
+        CollectParameters: false
+        AllowDynamicQueryParameters: false
+        AllowDynamicFormParameters: false
+        IsMultiContentStreaming: false
+    delete:
+      description: Delete existing privilege
+      tags:
+        - Agent privilege
+      summary: Delete existing privilege
+      operationId: delete_api-agent-privilege
+      produces:
+      - application/json
+      parameters:
+      - name: id
+        in: path
+        required: true
+        type: string
+        description: ''
+      responses:
+        200:
+          description: ''
+        404:
+          description: Returned when the resource is not found
+          schema: {}
+      x-unitTests: []
+      x-operation-settings:
+        CollectParameters: false
+        AllowDynamicQueryParameters: false
+        AllowDynamicFormParameters: false
+        IsMultiContentStreaming: false
+  /company.{_format}:
+    put:
+      description: edit company details
+      tags:
+        - Company
+      summary: edit company details
+      operationId: put_api-company
+      produces:
+      - application/json
+      consumes:
+      - application/x-www-form-urlencoded
+      parameters:
+      - name: _format
+        in: path
+        required: true
+        enum:
+        - json
+        type: string
+        description: ''
+      - name: name
+        in: formData
+        required: false
+        type: string
+        description: support name
+      - name: supportEmail
+        in: formData
+        required: false
+        type: string
+        description: support email id
+      - name: nextTicketId
+        in: formData
+        required: false
+        type: string
+        description: it should be kept greater than last ticket id
+      - name: timezone
+        in: formData
+        required: false
+        type: string
+        description: timezone like Asia/Kolkata
+      - name: pendingSince
+        in: formData
+        required: false
+        type: string
+        description: no. of hours since customer last replied, to disable set to 0
+      - name: defaultMailbox
+        in: formData
+        required: false
+        type: string
+        description: mailbox id
+      - name: defaultStatus
+        in: formData
+        required: false
+        type: string
+        description: default status
+      - name: defaultPriority
+        in: formData
+        required: false
+        type: string
+        description: default priority
+      - name: timeFormat
+        in: formData
+        required: false
+        type: string
+        description: time format like m-d-y G:i
+      - name: pendingNotificationEmailTemplate
+        in: formData
+        required: false
+        type: string
+        description: EmailTemplate of pending Notification
+      responses:
+        200:
+          description: ''
+        400:
+          description: Returned when Bad Request
+          schema: {}
+        409:
+          description: Returned when Conflict with existing resource
+          schema: {}
+      x-unitTests: []
+      x-operation-settings:
+        CollectParameters: false
+        AllowDynamicQueryParameters: false
+        AllowDynamicFormParameters: false
+        IsMultiContentStreaming: false
+  /company/spam.{_format}:
+    get:
+      description: View company spam setting
+      tags:
+        - Company
+      summary: View company spam setting
+      operationId: get_api-company-spam
+      produces:
+      - application/json
+      parameters:
+      - name: _format
+        in: path
+        required: true
+        enum:
+        - json
+        type: string
+        description: ''
+      responses:
+        200:
+          description: ''
+          schema:
+            type: object
+          examples: {}
+      x-unitTests: []
+      x-operation-settings:
+        CollectParameters: false
+        AllowDynamicQueryParameters: false
+        AllowDynamicFormParameters: false
+        IsMultiContentStreaming: false
+    put:
+      description: edit Spam setting of company
+      tags:
+        - Company
+      summary: edit Spam setting of company
+      operationId: put_api-company-spam
+      produces:
+      - application/json
+      consumes:
+      - application/x-www-form-urlencoded
+      parameters:
+      - name: _format
+        in: path
+        required: true
+        enum:
+        - json
+        type: string
+        description: ''
+      - name: blackList
+        in: formData
+        required: false
+        type: string
+        description: blacklist
+      - name: whiteList
+        in: formData
+        required: false
+        type: string
+        description: whiteList
+      responses:
+        200:
+          description: ''
+        400:
+          description: Returned when Bad Request
+          schema: {}
+      x-unitTests: []
+      x-operation-settings:
+        CollectParameters: false
+        AllowDynamicQueryParameters: false
+        AllowDynamicFormParameters: false
+        IsMultiContentStreaming: false
+  /company/theme.{_format}:
+    put:
+      description: edit theme of company
+      tags:
+        - Company
+      summary: edit theme of company
+      operationId: put_api-company-theme
+      produces:
+      - application/json
+      consumes:
+      - application/x-www-form-urlencoded
+      parameters:
+      - name: _format
+        in: path
+        required: true
+        enum:
+        - json
+        type: string
+        description: ''
+      - name: name
+        in: formData
+        required: false
+        type: string
+        description: company Name
+      - name: domain
+        in: formData
+        required: false
+        type: string
+        description: domain name of website like webkul
+      - name: cName
+        in: formData
+        required: false
+        type: string
+        description: website name
+      - name: status
+        in: formData
+        required: false
+        type: string
+        description: 0|1 for deactivated|activated
+      - name: logo
+        in: formData
+        required: false
+        type: string
+        description: Jpg, Jpeg, Png images are allowed. (50x50 px)
+      - name: favicon
+        in: formData
+        required: false
+        type: string
+        description: Jpg, Jpeg, Png images are allowed. (50x50 px)
+      - name: banner
+        in: formData
+        required: false
+        type: string
+        description: Jpg, Jpeg, Png images are allowed. (50x50 px)
+      - name: customCSS
+        in: formData
+        required: false
+        type: string
+        description: css file
+      - name: pageBackgroundColor
+        in: formData
+        required: false
+        type: string
+        description: page background color of theme
+      - name: headerBackgroundColor
+        in: formData
+        required: false
+        type: string
+        description: header background color of theme
+      - name: navTextColor
+        in: formData
+        required: false
+        type: string
+        description: navigation background color
+      - name: linkColor
+        in: formData
+        required: false
+        type: string
+        description: link color of theme
+      - name: linkHoverColor
+        in: formData
+        required: false
+        type: string
+        description: link hover color for theme
+      - name: articleTextColor
+        in: formData
+        required: false
+        type: string
+        description: article text color for theme
+      - name: script
+        in: formData
+        required: false
+        type: string
+        description: any required script fot theme
+      - name: siteDescritption
+        in: formData
+        required: false
+        type: string
+        description: site description
+      - name: metaDescription
+        in: formData
+        required: false
+        type: string
+        description: meta description
+      - name: metaKeywords
+        in: formData
+        required: false
+        type: string
+        description: meta keywords to describe content on website
+      - name: homepageContent
+        in: formData
+        required: false
+        type: string
+        description: home page content category|article
+      - name: ticketCreateOption
+        in: formData
+        required: false
+        type: string
+        description: if login required to create tickets
+      responses:
+        200:
+          description: ''
+      x-unitTests: []
+      x-operation-settings:
+        CollectParameters: false
+        AllowDynamicQueryParameters: false
+        AllowDynamicFormParameters: false
+        IsMultiContentStreaming: false
+  /ticket-type/{id}.{_format}:
+    put:
+      description: Edit existing TicketType
+      tags:
+        - Ticket type
+      summary: Edit existing TicketType
+      operationId: put_api-ticket-type
+      produces:
+      - application/json
+      consumes:
+      - application/x-www-form-urlencoded
+      parameters:
+      - name: id
+        in: path
+        required: true
+        type: string
+        description: ''
+      - name: _format
+        in: path
+        required: true
+        enum:
+        - json
+        type: string
+        description: ''
+      - name: name
+        in: formData
+        required: false
+        type: string
+        description: name
+      - name: description
+        in: formData
+        required: false
+        type: string
+        description: description
+      - name: isActive
+        in: formData
+        required: false
+        type: string
+        description: 'isActive values: 0|1  Note:will be 0 ,if not given'
+      responses:
+        200:
+          description: ''
+        400:
+          description: Returned when Bad Request
+          schema: {}
+        404:
+          description: Returned when the page is not found
+          schema: {}
+      x-unitTests: []
+      x-operation-settings:
+        CollectParameters: false
+        AllowDynamicQueryParameters: false
+        AllowDynamicFormParameters: false
+        IsMultiContentStreaming: false
+    delete:
+      description: Delete existing TicketType
+      tags:
+        - Ticket type
+      summary: Delete existing TicketType
+      operationId: delete_api-ticket-type
+      produces:
+      - application/json
+      parameters:
+      - name: id
+        in: path
+        required: true
+        type: string
+        description: ''
+      - name: _format
+        in: path
+        required: true
+        enum:
+        - json
+        type: string
+        description: ''
+      responses:
+        200:
+          description: ''
+        404:
+          description: Returned when the resource is not found
+          schema: {}
+      x-unitTests: []
+      x-operation-settings:
+        CollectParameters: false
+        AllowDynamicQueryParameters: false
+        AllowDynamicFormParameters: false
+        IsMultiContentStreaming: false
+  /ticket-types.{_format}:
+    get:
+      description: Return a collection of TicketTypes
+      tags:
+        - Ticket type
+      summary: Return a collection of TicketTypes
+      operationId: get_api-ticket-types
+      produces:
+      - application/json
+      parameters:
+      - name: _format
+        in: path
+        required: true
+        enum:
+        - json
+        type: string
+        description: ''
+      - name: isActive
+        in: query
+        required: false
+        type: string
+        description: 0|1
+      - name: sort
+        in: query
+        required: false
+        type: string
+        description: ''
+      - name: page
+        in: query
+        required: false
+        type: string
+        description: ''
+      - name: search
+        in: query
+        required: false
+        type: string
+        description: search
+      responses:
+        200:
+          description: ''
+          schema:
+            type: object
+          examples: {}
+      x-unitTests: []
+      x-operation-settings:
+        CollectParameters: false
+        AllowDynamicQueryParameters: false
+        AllowDynamicFormParameters: false
+        IsMultiContentStreaming: false
+    post:
+      description: Add new TicketType
+      tags:
+        - Ticket type
+      summary: Add new TicketType
+      operationId: post_api-ticket-types
+      produces:
+      - application/json
+      consumes:
+      - application/x-www-form-urlencoded
+      parameters:
+      - name: _format
+        in: path
+        required: true
+        enum:
+        - json
+        type: string
+        description: ''
+      - name: name
+        in: formData
+        required: false
+        type: string
+        description: name
+      - name: description
+        in: formData
+        required: false
+        type: string
+        description: description
+      - name: isActive
+        in: formData
+        required: false
+        type: string
+        description: 'isActive values: 0|1  Note:will be 0 ,if not given'
+      responses:
+        200:
+          description: ''
+        400:
+          description: Returned when Bad Request
+          schema: {}
+      x-unitTests: []
+      x-operation-settings:
+        CollectParameters: false
+        AllowDynamicQueryParameters: false
+        AllowDynamicFormParameters: false
+        IsMultiContentStreaming: false
+  /groups.{_format}:
+    get:
+      description: View Groups
+      tags:
+        - Group
+      summary: View Groups
+      operationId: get_api-groups
+      produces:
+      - application/json
+      parameters:
+      - name: _locale
+        in: path
+        required: true
+        type: string
+        description: ''
+      - name: _format
+        in: path
+        required: true
+        enum:
+        - json
+        type: string
+        description: ''
+      - name: sort
+        in: query
+        required: false
+        type: string
+        description: ''
+      - name: isActive
+        in: query
+        required: false
+        type: string
+        description: 0|1
+      - name: search
+        in: query
+        required: false
+        type: string
+        description: search
+      responses:
+        200:
+          description: ''
+          schema:
+            type: object
+          examples: {}
+      x-unitTests: []
+      x-operation-settings:
+        CollectParameters: false
+        AllowDynamicQueryParameters: false
+        AllowDynamicFormParameters: false
+        IsMultiContentStreaming: false
+    post:
+      description: Add Group
+      tags:
+        - Group
+      summary: Add Group
+      operationId: post_api-groups
+      produces:
+      - application/json
+      consumes:
+      - application/x-www-form-urlencoded
+      parameters:
+      - name: _locale
+        in: path
+        required: true
+        type: string
+        description: ''
+      - name: _format
+        in: path
+        required: true
+        enum:
+        - json
+        type: string
+        description: ''
+      - name: name
+        in: formData
+        required: false
+        type: string
+        description: name
+      - name: description
+        in: formData
+        required: false
+        type: string
+        description: description
+  /group/{id}.{_format}:
+    put:
+      description: modify Group
+      tags:
+        - Group
+      summary: Modify Group
+      operationId: put_api-group
+      produces:
+      - application/json
+      consumes:
+      - application/x-www-form-urlencoded
+      parameters:
+      - name: _locale
+        in: path
+        required: true
+        type: string
+        description: ''
+      - name: id
+        in: path
+        required: true
+        type: string
+        description: ''
+      - name: _format
+        in: path
+        required: true
+        enum:
+        - json
+        type: string
+        description: ''
+      - name: name
+        in: formData
+        required: false
+        type: string
+        description: name
+      - name: description
+        in: formData
+        required: false
+        type: string
+        description: description
+      responses:
+        200:
+          description: ''
+        400:
+          description: Returned when Bad Request
+          schema: {}
+        404:
+          description: Returned when the resource is not found
+          schema: {}
+      x-unitTests: []
+      x-operation-settings:
+        CollectParameters: false
+        AllowDynamicQueryParameters: false
+        AllowDynamicFormParameters: false
+        IsMultiContentStreaming: false
+    delete:
+      description: Delete Group
+      tags:
+        - Group
+      summary: Delete Group
+      operationId: delete_api-group
+      produces:
+      - application/json
+      parameters:
+      - name: _locale
+        in: path
+        required: true
+        type: string
+        description: ''
+      - name: id
+        in: path
+        required: true
+        type: string
+        description: ''
+      - name: _format
+        in: path
+        required: true
+        enum:
+        - json
+        type: string
+        description: ''
+      responses:
+        200:
+          description: ''
+        404:
+          description: Returned when resource not found
+          schema: {}
+      x-unitTests: []
+      x-operation-settings:
+        CollectParameters: false
+        AllowDynamicQueryParameters: false
+        AllowDynamicFormParameters: false
+        IsMultiContentStreaming: false
+  /mailboxes.{_format}:
+    get:
+      description: Returns a collection of Mailboxes
+      tags:
+        - Mailbox
+      summary: Returns a collection of Mailboxes
+      operationId: get_api-mailboxes
+      produces:
+      - application/json
+      parameters:
+      - name: _locale
+        in: path
+        required: true
+        type: string
+        description: ''
+      - name: _format
+        in: path
+        required: true
+        enum:
+        - json
+        type: string
+        description: ''
+      responses:
+        200:
+          description: ''
+          schema:
+            type: object
+          examples: {}
+        403:
+          description: Returned when Access Forbidden
+          schema: {}
+      x-unitTests: []
+      x-operation-settings:
+        CollectParameters: false
+        AllowDynamicQueryParameters: false
+        AllowDynamicFormParameters: false
+        IsMultiContentStreaming: false
+    post:
+      description: Add Mailbox
+      tags:
+        - Mailbox
+      summary: Add Mailbox
+      operationId: post_api-mailboxes
+      produces:
+      - application/json
+      consumes:
+      - application/x-www-form-urlencoded
+      parameters:
+      - name: _locale
+        in: path
+        required: true
+        type: string
+        description: ''
+      - name: _format
+        in: path
+        required: true
+        enum:
+        - json
+        type: string
+        description: ''
+      - name: name
+        in: formData
+        required: false
+        type: string
+        description: mailbox name
+      - name: email
+        in: formData
+        required: false
+        type: string
+        description: mailbox address
+  /mailbox/{id}.{_format}:
+    put:
+      description: Edit Mailbox
+      tags:
+        - Mailbox
+      summary: Edit Mailbox
+      operationId: put_api-mailbox
+      produces:
+      - application/json
+      consumes:
+      - application/x-www-form-urlencoded
+      parameters:
+      - name: _locale
+        in: path
+        required: true
+        type: string
+        description: ''
+      - name: id
+        in: path
+        required: true
+        type: string
+        description: ''
+      - name: _format
+        in: path
+        required: true
+        enum:
+        - json
+        type: string
+        description: ''
+      - name: name
+        in: formData
+        required: false
+        type: string
+        description: mailbox name
+      - name: email
+        in: formData
+        required: false
+        type: string
+        description: mailbox address
+      responses:
+        200:
+          description: ''
+      x-unitTests: []
+      x-operation-settings:
+        CollectParameters: false
+        AllowDynamicQueryParameters: false
+        AllowDynamicFormParameters: false
+        IsMultiContentStreaming: false
+    delete:
+      description: Delete Mailbox
+      tags:
+        - Mailbox
+      summary: Delete Mailbox
+      operationId: delete_api-mailbox
+      produces:
+      - application/json
+      consumes:
+      - application/x-www-form-urlencoded
+      parameters:
+      - name: _locale
+        in: path
+        required: true
+        type: string
+        description: ''
+      - name: id
+        in: path
+        required: true
+        type: string
+        description: ''
+      - name: _format
+        in: path
+        required: true
+        enum:
+        - json
+        type: string
+        description: ''
+      - name: name
+        in: formData
+        required: false
+        type: string
+        description: mailbox name
+      - name: email
+        in: formData
+        required: false
+        type: string
+        description: mailbox address
+      responses:
+        200:
+          description: ''
+      x-unitTests: []
+      x-operation-settings:
+        CollectParameters: false
+        AllowDynamicQueryParameters: false
+        AllowDynamicFormParameters: false
+        IsMultiContentStreaming: false
+  /email-templates.{_format}:
+    get:
+      description: Returns a collection of Email-Templates
+      tags:
+        - Email Template
+      summary: Returns a collection of Email-Templates
+      operationId: get_api-email-templates
+      produces:
+      - application/json
+      parameters:
+      - name: _locale
+        in: path
+        required: true
+        type: string
+        description: ''
+      - name: _format
+        in: path
+        required: true
+        enum:
+        - json
+        - html
+        type: string
+        description: ''
+      - name: sort
+        in: query
+        required: false
+        type: string
+        description: ''
+      - name: page
+        in: query
+        required: false
+        type: string
+        description: ''
+      - name: search
+        in: query
+        required: false
+        type: string
+        description: search email-Templates by name
+      responses:
+        200:
+          description: ''
+          schema:
+            type: object
+          examples: {}
+        400:
+          description: Returned when Bad Request
+          schema: {}
+        404:
+          description: Returned when the resource is not found
+          schema: {}
+      x-unitTests: []
+      x-operation-settings:
+        CollectParameters: false
+        AllowDynamicQueryParameters: false
+        AllowDynamicFormParameters: false
+        IsMultiContentStreaming: false
+    post:
+      description: Add email-template
+      tags:
+        - Email Template
+      summary: Add email-template
+      operationId: post_api-email-templates
+      produces:
+      - application/json
+      consumes:
+      - application/x-www-form-urlencoded
+      parameters:
+      - name: _locale
+        in: path
+        required: true
+        type: string
+        description: ''
+      - name: _format
+        in: path
+        required: true
+        enum:
+        - json
+        - html
+        type: string
+        description: ''
+      - name: name
+        in: formData
+        required: false
+        type: string
+        description: name of reply
+      - name: subject
+        in: formData
+        required: false
+        type: string
+        description: subject of reply
+      - name: message
+        in: formData
+        required: false
+        type: string
+        description: message (may be in html format, can contain placeholders like {%ticket.id%})
+  /email-template/{template}.{_format}:
+    put:
+      description: Edit email-template
+      tags:
+        - Email Template
+      summary: Edit email-template
+      operationId: put_api-email-template
+      produces:
+      - application/json
+      consumes:
+      - application/x-www-form-urlencoded
+      parameters:
+      - name: _locale
+        in: path
+        required: true
+        type: string
+        description: ''
+      - name: template
+        in: path
+        required: true
+        type: string
+        description: ''
+      - name: _format
+        in: path
+        required: true
+        enum:
+        - json
+        - html
+        type: string
+        description: ''
+      - name: name
+        in: formData
+        required: false
+        type: string
+        description: name of reply
+      - name: subject
+        in: formData
+        required: false
+        type: string
+        description: subject of reply
+      - name: message
+        in: formData
+        required: false
+        type: string
+        description: message (may be in html format, can contain placeholders like {%ticket.id%})
+      responses:
+        200:
+          description: ''
+        400:
+          description: Returned when Bad Request
+          schema: {}
+        404:
+          description: Returned when the page is not found
+          schema: {}
+      x-unitTests: []
+      x-operation-settings:
+        CollectParameters: false
+        AllowDynamicQueryParameters: false
+        AllowDynamicFormParameters: false
+        IsMultiContentStreaming: false
+    delete:
+      description: Delete email-Template
+      tags:
+        - Email Template
+      summary: Delete email-Template
+      operationId: delete_api-email-template
+      produces:
+      - application/json
+      parameters:
+      - name: _locale
+        in: path
+        required: true
+        type: string
+        description: ''
+      - name: template
+        in: path
+        required: true
+        type: string
+        description: ''
+      - name: _format
+        in: path
+        required: true
+        enum:
+        - json
+        - html
+        type: string
+        description: ''
+      - name: sort
+        in: query
+        required: false
+        type: string
+        description: ''
+      - name: page
+        in: query
+        required: false
+        type: string
+        description: ''
+      - name: search
+        in: query
+        required: false
+        type: string
+        description: search email-Templates by name
+  /labels.{_format}:
+    post:
+      description: 'add new label '
+      tags:
+        - Label
+      summary: 'add new label '
+      operationId: post_api-labels
+      produces:
+      - application/json
+      consumes:
+      - application/x-www-form-urlencoded
+      parameters:
+      - name: _locale
+        in: path
+        required: true
+        type: string
+        description: ''
+      - name: _format
+        in: path
+        required: true
+        enum:
+        - json
+        type: string
+        description: ''
+      - name: name
+        in: formData
+        required: false
+        type: string
+        description: label name
+  /label/{id}.{_format}:
+    put:
+      description: edit existing label
+      tags:
+        - Label
+      summary: edit existing label
+      operationId: put_api-label
+      produces:
+      - application/json
+      consumes:
+      - application/x-www-form-urlencoded
+      parameters:
+      - name: _locale
+        in: path
+        required: true
+        type: string
+        description: ''
+      - name: id
+        in: path
+        required: true
+        type: string
+        description: ''
+      - name: _format
+        in: path
+        required: true
+        enum:
+        - json
+        type: string
+        description: ''
+      - name: name
+        in: formData
+        required: false
+        type: string
+        description: label name
+      - name: color
+        in: formData
+        required: false
+        type: string
+        description: label color
+      responses:
+        200:
+          description: ''
+      x-unitTests: []
+      x-operation-settings:
+        CollectParameters: false
+        AllowDynamicQueryParameters: false
+        AllowDynamicFormParameters: false
+        IsMultiContentStreaming: false
+    delete:
+      description: remove label
+      tags:
+        - Label
+      summary: remove label
+      operationId: delete_api-label
+      produces:
+      - application/json
+      parameters:
+      - name: _locale
+        in: path
+        required: true
+        type: string
+        description: ''
+      - name: id
+        in: path
+        required: true
+        type: string
+        description: ''
+      - name: _format
+        in: path
+        required: true
+        enum:
+        - json
+        type: string
+        description: ''
+      responses:
+        200:
+          description: ''
+        400:
+          description: Returned when Bad Request
+          schema: {}
+        404:
+          description: Returned when the page is not found
+          schema: {}
+      x-unitTests: []
+      x-operation-settings:
+        CollectParameters: false
+        AllowDynamicQueryParameters: false
+        AllowDynamicFormParameters: false
+        IsMultiContentStreaming: false
+  /customer/{id}.{_format}:
+    get:
+      description: View a customer
+      tags:
+        - Customer
+      summary: View a customer
+      operationId: get_api-customer
+      produces:
+      - application/json
+      parameters:
+      - name: _format
+        in: path
+        required: true
+        enum:
+        - json
+        type: string      
+      - name: id
+        in: path
+        required: true
+        type: string
+        description: ''
+      responses:
+        200:
+          description: ''
+          schema:
+            type: object
+          examples: {}
+        403:
+          description: Returned when Acces Denied
+          schema: {}
+        404:
+          description: Returned when the resource is not found
+          schema: {}
+      x-unitTests: []
+      x-operation-settings:
+        CollectParameters: false
+        AllowDynamicQueryParameters: false
+        AllowDynamicFormParameters: false
+        IsMultiContentStreaming: false
+    put:
+      description: edit existing customer
+      tags:
+        - Customer
+      summary: edit existing customer
+      operationId: put_api-customer
+      produces:
+      - application/json
+      consumes:
+      - application/x-www-form-urlencoded
+      parameters:
+      - name: _format
+        in: path
+        required: true
+        enum:
+        - json
+        type: string      
+      - name: id
+        in: path
+        required: true
+        type: string
+        description: ''
+      - name: email
+        in: formData
+        required: false
+        type: string
+        description: email id
+      - name: firstName
+        in: formData
+        required: false
+        type: string
+        description: first name
+      - name: lastName
+        in: formData
+        required: false
+        type: string
+        description: last name
+      responses:
+        200:
+          description: ''
+        400:
+          description: Returned when Bad Request
+          schema: {}
+        404:
+          description: Returned when the page is not found
+          schema: {}
+        409:
+          description: Returned when conflict occurs
+          schema: {}
+      x-unitTests: []
+      x-operation-settings:
+        CollectParameters: false
+        AllowDynamicQueryParameters: false
+        AllowDynamicFormParameters: false
+        IsMultiContentStreaming: false
+    delete:
+      description: delete a given customer
+      tags:
+        - Customer
+      summary: delete a given customer
+      operationId: delete_api-customer
+      produces:
+      - application/json
+      parameters:
+      - name: _format
+        in: path
+        required: true
+        enum:
+        - json
+        type: string      
+      - name: id
+        in: path
+        required: true
+        type: string
+        description: ''
+      responses:
+        200:
+          description: ''
+        404:
+          description: Returned when the resource is not found
+          schema: {}
+      x-unitTests: []
+      x-operation-settings:
+        CollectParameters: false
+        AllowDynamicQueryParameters: false
+        AllowDynamicFormParameters: false
+        IsMultiContentStreaming: false
+    patch:
+      description: add/remove star to customer
+      tags:
+        - Customer
+      summary: add/remove star to customer
+      operationId: patch_api-customer
+      produces:
+      - application/json
+      parameters:
+      - name: _format
+        in: path
+        required: true
+        enum:
+        - json
+        type: string      
+      - name: id
+        in: path
+        required: true
+        type: string
+        description: ''
+      responses:
+        200:
+          description: ''
+        404:
+          description: Returned when the resource is not found
+          schema: {}
+      x-unitTests: []
+      x-operation-settings:
+        CollectParameters: false
+        AllowDynamicQueryParameters: false
+        AllowDynamicFormParameters: false
+        IsMultiContentStreaming: false
+  /customers.{_format}:
+    get:
+      description: Returns a collection of customers
+      tags:
+        - Customer
+      summary: Returns a collection of customers
+      operationId: get_api-customers
+      produces:
+      - application/json
+      parameters:
+      - name: _format
+        in: path
+        required: true
+        enum:
+        - json
+        type: string      
+      - name: starred
+        in: query
+        required: false
+        type: string
+        description: ''
+      - name: isActive
+        in: query
+        required: false
+        type: string
+        description: ''
+      - name: sort
+        in: query
+        required: false
+        type: string
+        description: ''
+      - name: page
+        in: query
+        required: false
+        type: string
+        description: ''
+      - name: search
+        in: query
+        required: false
+        type: string
+        description: search in all customer's name and email
+      responses:
+        200:
+          description: ''
+          schema:
+            type: object
+          examples: {}
+      x-unitTests: []
+      x-operation-settings:
+        CollectParameters: false
+        AllowDynamicQueryParameters: false
+        AllowDynamicFormParameters: false
+        IsMultiContentStreaming: false
+    post:
+      description: Add new Customer
+      tags:
+        - Customer
+      summary: Add new Customer
+      operationId: post_api-customers
+      produces:
+      - application/json
+      consumes:
+      - application/x-www-form-urlencoded
+      parameters:
+      - name: _format
+        in: path
+        required: true
+        enum:
+        - json
+        type: string      
+      - name: email
+        in: formData
+        required: false
+        type: string
+        description: email id
+      - name: firstName
+        in: formData
+        required: false
+        type: string
+        description: first name
+      - name: lastName
+        in: formData
+        required: false
+        type: string
+        description: last name
+      responses:
+        200:
+          description: ''
+        400:
+          description: Returned when Bad Request
+          schema: {}
+        404:
+          description: Returned when the resource is not found
+          schema: {}
+        409:
+          description: Returned when the conflict occurs
+          schema: {}
+  /tasks.{_format}:
+    get:
+      description: Returns a collection of Tasks
+      tags:
+        - Task
+      summary: Returns a collection of Tasks
+      operationId: get_api-tasks
+      produces:
+      - application/json
+      parameters:
+      - name: _format
+        in: path
+        required: true
+        enum:
+        - json
+        type: string
+        description: ''
+      - name: sort
+        in: query
+        required: false
+        type: string
+        description: ''
+      - name: stage
+        in: query
+        required: false
+        type: integer
+        format: int32
+        description: stageId 1|2|3 for New|in Progress|Done
+      - name: priority
+        in: query
+        required: false
+        type: integer
+        format: int32
+        description: 'value: 1|2|3|4 for Low|medium|High|Urgent'
+      - name: page
+        in: query
+        required: false
+        type: string
+        description: ''
+      - name: search
+        in: query
+        required: false
+        type: string
+        description: search in all customer's name and email
+      responses:
+        200:
+          description: ''
+          schema:
+            type: object
+          examples: {}
+      x-unitTests: []
+      x-operation-settings:
+        CollectParameters: false
+        AllowDynamicQueryParameters: false
+        AllowDynamicFormParameters: false
+        IsMultiContentStreaming: false
+    post:
+      description: Add new Task
+      tags:
+        - Task
+      summary: Add new Task
+      operationId: post_api-tasks
+      produces:
+      - application/json
+      consumes:
+      - application/x-www-form-urlencoded
+      parameters:
+      - name: _format
+        in: path
+        required: true
+        enum:
+        - json
+        type: string
+        description: ''
+      - name: subject
+        in: formData
+        required: false
+        type: string
+        description: task subject
+      - name: description
+        in: formData
+        required: false
+        type: string
+        description: task description
+      - name: assignedAgent
+        in: formData
+        required: false
+        type: string
+        description: assignedAgent id
+      - name: deadline
+        in: formData
+        required: false
+        type: string
+        description: task deadline
+      - name: ticket
+        in: formData
+        required: false
+        type: string
+        description: ticket Id
+      - name: threadIds
+        in: formData
+        required: false
+        type: string
+        description: array of threadIds
+      responses:
+        200:
+          description: ''
+      x-unitTests: []
+      x-operation-settings:
+        CollectParameters: false
+        AllowDynamicQueryParameters: false
+        AllowDynamicFormParameters: false
+        IsMultiContentStreaming: false
+  /task/{id}.{_format}:
+    get:
+      description: View a Task
+      tags:
+        - Task
+      summary: View a Task
+      operationId: get_api-task
+      produces:
+      - application/json
+      parameters:
+      - name: id
+        in: path
+        required: true
+        type: string
+        description: ''
+      - name: _format
+        in: path
+        required: true
+        enum:
+        - json
+        type: string
+        description: ''
+      responses:
+        200:
+          description: ''
+          schema:
+            type: object
+          examples: {}
+        404:
+          description: Returned when the resource is not found
+          schema: {}
+      x-unitTests: []
+      x-operation-settings:
+        CollectParameters: false
+        AllowDynamicQueryParameters: false
+        AllowDynamicFormParameters: false
+        IsMultiContentStreaming: false
+    put:
+      description: update existing task
+      tags:
+        - Task
+      summary: update existing task
+      operationId: put_api-task
+      produces:
+      - application/json
+      consumes:
+      - application/x-www-form-urlencoded
+      parameters:
+      - name: id
+        in: path
+        required: true
+        type: string
+        description: ''
+      - name: _format
+        in: path
+        required: true
+        enum:
+        - json
+        type: string
+        description: ''
+      - name: priority
+        in: formData
+        required: false
+        type: string
+        description: priority id
+      - name: stage
+        in: formData
+        required: false
+        type: string
+        description: stage id
+      - name: subject
+        in: formData
+        required: false
+        type: string
+        description: subject
+      - name: assignedAgent
+        in: formData
+        required: false
+        type: string
+        description: assignedAgent id
+      - name: description
+        in: formData
+        required: false
+        type: string
+        description: description
+      responses:
+        200:
+          description: ''
+        400:
+          description: Returned when Bad Request
+          schema: {}
+        404:
+          description: Returned when the page is not found
+          schema: {}
+      x-unitTests: []
+      x-operation-settings:
+        CollectParameters: false
+        AllowDynamicQueryParameters: false
+        AllowDynamicFormParameters: false
+        IsMultiContentStreaming: false
+    delete:
+      description: Delete existing task
+      tags:
+        - Task
+      summary: Delete existing task
+      operationId: delete_api-task
+      produces:
+      - application/json
+      parameters:
+      - name: id
+        in: path
+        required: true
+        type: string
+        description: ''
+      - name: _format
+        in: path
+        required: true
+        enum:
+        - json
+        type: string
+        description: ''
+      responses:
+        200:
+          description: ''
+        404:
+          description: Returned when the page is not found
+          schema: {}
+      x-unitTests: []
+      x-operation-settings:
+        CollectParameters: false
+        AllowDynamicQueryParameters: false
+        AllowDynamicFormParameters: false
+        IsMultiContentStreaming: false
+  /task/{id}/follower.{_format}:
+    post:
+      description: add Follower
+      tags:
+        - Task
+      summary: add Follower
+      operationId: post_api-task-follower
+      produces:
+      - application/json
+      consumes:
+      - application/x-www-form-urlencoded
+      parameters:
+      - name: id
+        in: path
+        required: true
+        type: string
+        description: ''
+      - name: _format
+        in: path
+        required: true
+        enum:
+        - json
+        type: string
+        description: ''
+      - name: followerId
+        in: formData
+        required: false
+        type: string
+        description: followerId
+      responses:
+        200:
+          description: ''
+        400:
+          description: Returned when Bad Request
+          schema: {}
+        404:
+          description: Returned when the page is not found
+          schema: {}
+      x-unitTests: []
+      x-operation-settings:
+        CollectParameters: false
+        AllowDynamicQueryParameters: false
+        AllowDynamicFormParameters: false
+        IsMultiContentStreaming: false
+    delete:
+      description: Remove Follower
+      tags:
+        - Task
+      summary: Remove Follower
+      operationId: delete_api-task-follower
+      produces:
+      - application/json
+      consumes:
+      - application/x-www-form-urlencoded
+      parameters:
+      - name: id
+        in: path
+        required: true
+        type: string
+        description: ''
+      - name: _format
+        in: path
+        required: true
+        enum:
+        - json
+        type: string
+        description: ''
+      - name: followerId
+        in: formData
+        required: false
+        type: string
+        description: followerId
+      responses:
+        200:
+          description: ''
+        400:
+          description: Returned when Bad Request
+          schema: {}
+        404:
+          description: Returned when the page is not found
+          schema: {}
+      x-unitTests: []
+      x-operation-settings:
+        CollectParameters: false
+        AllowDynamicQueryParameters: false
+        AllowDynamicFormParameters: false
+        IsMultiContentStreaming: false
+  /task/{id}/thread.{_format}:
+    post:
+      description: add thread
+      tags:
+        - Task
+      summary: add thread
+      operationId: post_api-task-thread
+      produces:
+      - application/json
+      consumes:
+      - application/x-www-form-urlencoded
+      parameters:
+      - name: id
+        in: path
+        required: true
+        type: string
+        description: ''
+      - name: _format
+        in: path
+        required: true
+        enum:
+        - json
+        type: string
+        description: ''
+      - name: description
+        in: formData
+        required: false
+        type: string
+        description: description
+      - name: stage
+        in: formData
+        required: false
+        type: string
+        description: stage Id
+      responses:
+        200:
+          description: ''
+      x-unitTests: []
+      x-operation-settings:
+        CollectParameters: false
+        AllowDynamicQueryParameters: false
+        AllowDynamicFormParameters: false
+        IsMultiContentStreaming: false
+    delete:
+      description: remove thread
+      tags:
+        - Task
+      summary: remove thread
+      operationId: delete_api-task-thread
+      produces:
+      - application/json
+      consumes:
+      - application/x-www-form-urlencoded
+      parameters:
+      - name: id
+        in: path
+        required: true
+        type: string
+        description: ''
+      - name: _format
+        in: path
+        required: true
+        enum:
+        - json
+        type: string
+        description: ''
+      - name: description
+        in: formData
+        required: false
+        type: string
+        description: description
+      - name: stage
+        in: formData
+        required: false
+        type: string
+        description: stage Id
+      responses:
+        200:
+          description: ''
+      x-unitTests: []
+      x-operation-settings:
+        CollectParameters: false
+        AllowDynamicQueryParameters: false
+        AllowDynamicFormParameters: false
+        IsMultiContentStreaming: false
+  /todo.{_format}:
+    post:
+      description: Add Todo
+      tags:
+        - Todo
+      summary: Add Todo
+      operationId: post_api-todo
+      produces:
+      - application/json
+      consumes:
+      - application/x-www-form-urlencoded
+      parameters:
+      - name: _format
+        in: path
+        required: true
+        enum:
+        - json
+        type: string
+        description: ''
+      - name: taskId
+        in: formData
+        required: false
+        type: string
+        description: for working on Task taskId is required
+      - name: threadId
+        in: formData
+        required: false
+        type: string
+        description: for working on Ticket ticketId is required
+      - name: description
+        in: formData
+        required: false
+        type: string
+        description: Desciption of Todo. required for POST Method
+      - name: status
+        in: formData
+        required: false
+        type: string
+        description: '0|1 for icncomplete|complete. default: 0 . required for PUT method'
+      responses:
+        200:
+          description: ''
+      x-unitTests: []
+      x-operation-settings:
+        CollectParameters: false
+        AllowDynamicQueryParameters: false
+        AllowDynamicFormParameters: false
+        IsMultiContentStreaming: false
+  /todo/{id}.{_format}:
+    put:
+      description: Edit Todo
+      tags:
+        - Todo
+      summary: Edit Todo
+      operationId: put_api-todo
+      produces:
+      - application/json
+      consumes:
+      - application/x-www-form-urlencoded
+      parameters:
+      - name: id
+        in: path
+        required: true
+        type: string
+        description: ''
+      - name: _format
+        in: path
+        required: true
+        enum:
+        - json
+        type: string
+        description: ''
+      - name: taskId
+        in: formData
+        required: false
+        type: string
+        description: for working on Task taskId is required
+      - name: threadId
+        in: formData
+        required: false
+        type: string
+        description: for working on Ticket ticketId is required
+      - name: description
+        in: formData
+        required: false
+        type: string
+        description: Desciption of Todo. required for POST Method
+      - name: status
+        in: formData
+        required: false
+        type: string
+        description: '0|1 for icncomplete|complete. default: 0 . required for PUT method'
+      responses:
+        200:
+          description: ''
+      x-unitTests: []
+      x-operation-settings:
+        CollectParameters: false
+        AllowDynamicQueryParameters: false
+        AllowDynamicFormParameters: false
+        IsMultiContentStreaming: false
+    delete:
+      description: Delete Todo
+      tags:
+        - Todo
+      summary: Delete Todo
+      operationId: delete_api-todo
+      produces:
+      - application/json
+      consumes:
+      - application/x-www-form-urlencoded
+      parameters:
+      - name: id
+        in: path
+        required: true
+        type: string
+        description: ''
+      - name: _format
+        in: path
+        required: true
+        enum:
+        - json
+        type: string
+        description: ''
+      - name: taskId
+        in: formData
+        required: false
+        type: string
+        description: for working on Task taskId is required
+      - name: threadId
+        in: formData
+        required: false
+        type: string
+        description: for working on Ticket ticketId is required
+      - name: description
+        in: formData
+        required: false
+        type: string
+        description: Desciption of Todo. required for POST Method
+      - name: status
+        in: formData
+        required: false
+        type: string
+        description: '0|1 for icncomplete|complete. default: 0 . required for PUT method'
+      responses:
+        200:
+          description: ''
+      x-unitTests: []
+      x-operation-settings:
+        CollectParameters: false
+        AllowDynamicQueryParameters: false
+        AllowDynamicFormParameters: false
+        IsMultiContentStreaming: false
+  /custom-field/{field}.{_format}:
+    put:
+      description: edit custom-field
+      tags:
+        - Custom Field
+      summary: Edit custom-field
+      operationId: put_api-custom-field
+      produces:
+      - application/json
+      consumes:
+      - application/x-www-form-urlencoded
+      parameters:
+      - name: field
+        in: path
+        required: true
+        type: string
+        description: ''
+      - name: _format
+        in: path
+        required: true
+        enum:
+        - json
+        type: string
+        description: ''
+      - name: name
+        in: formData
+        required: false
+        type: string
+        description: custom field name
+      - name: agentType
+        in: formData
+        required: false
+        type: string
+        description: 'options: customer,agent, both . To add customfield for customer or agent'
+      - name: fieldType
+        in: formData
+        required: false
+        type: string
+        description: fieldType value like textarea, radio
+      - name: sortOrder
+        in: formData
+        required: false
+        type: string
+        description: sort order of custom-field
+      - name: dependency
+        in: formData
+        required: false
+        type: string
+        description: array of groups
+      - name: value
+        in: formData
+        required: false
+        type: string
+        description: custom-field placeholder value to added in custom field
+      - name: status
+        in: formData
+        required: false
+        type: string
+        description: custom-field active status
+      - name: required
+        in: formData
+        required: false
+        type: string
+        description: is custom-field required?
+      responses:
+        200:
+          description: ''
+        400:
+          description: Returned when Bad Request
+          schema: {}
+        404:
+          description: Returned when the page is not found
+          schema: {}
+      x-unitTests: []
+      x-operation-settings:
+        CollectParameters: false
+        AllowDynamicQueryParameters: false
+        AllowDynamicFormParameters: false
+        IsMultiContentStreaming: false
+    delete:
+      description: delete existing custom-field
+      tags:
+        - Custom Field
+      summary: delete existing custom-field
+      operationId: delete_api-custom-field
+      produces:
+      - application/json
+      parameters:
+      - name: field
+        in: path
+        required: true
+        type: string
+        description: ''
+      - name: _format
+        in: path
+        required: true
+        enum:
+        - json
+        type: string
+        description: ''
+      responses:
+        200:
+          description: ''
+        400:
+          description: Returned when Bad Request
+          schema: {}
+      x-unitTests: []
+      x-operation-settings:
+        CollectParameters: false
+        AllowDynamicQueryParameters: false
+        AllowDynamicFormParameters: false
+        IsMultiContentStreaming: false
+  /custom-fields.{_format}:
+    get:
+      description: Returns a collection of custom-fields
+      tags:
+        - Custom Field
+      summary: Returns a collection of custom-fields
+      operationId: get_api-custom-fields
+      produces:
+      - application/json
+      parameters:
+      - name: _format
+        in: path
+        required: true
+        enum:
+        - json
+        type: string
+        description: ''
+      - name: sort
+        in: query
+        required: false
+        type: string
+        description: ''
+      - name: page
+        in: query
+        required: false
+        type: string
+        description: ''
+      - name: search
+        in: query
+        required: false
+        type: string
+        description: search in custom-field names
+      responses:
+        200:
+          description: ''
+          schema:
+            type: object
+          examples: {}
+        403:
+          description: Returned when the Access Denied
+          schema: {}
+        404:
+          description: Returned when the page is not found
+          schema: {}
+      x-unitTests: []
+      x-operation-settings:
+        CollectParameters: false
+        AllowDynamicQueryParameters: false
+        AllowDynamicFormParameters: false
+        IsMultiContentStreaming: false
+    post:
+      description: Add custom-field
+      tags:
+        - Custom Field
+      summary: Add custom-field
+      operationId: post_api-custom-fields
+      produces:
+      - application/json
+      consumes:
+      - application/x-www-form-urlencoded
+      parameters:
+      - name: _format
+        in: path
+        required: true
+        enum:
+        - json
+        type: string
+        description: ''
+      - name: name
+        in: formData
+        required: false
+        type: string
+        description: custom field name
+      - name: agentType
+        in: formData
+        required: false
+        type: string
+        description: 'options: customer,agent, both . To add customfield for customer or agent'
+      - name: fieldType
+        in: formData
+        required: false
+        type: string
+        description: fieldType value like textarea, radio
+      - name: sortOrder
+        in: formData
+        required: false
+        type: string
+        description: sort order of custom-field
+      - name: dependency
+        in: formData
+        required: false
+        type: string
+        description: array of groups
+      - name: value
+        in: formData
+        required: false
+        type: string
+        description: custom-field placeholder value to added in custom field
+      - name: status
+        in: formData
+        required: false
+        type: string
+        description: custom-field active status
+      - name: required
+        in: formData
+        required: false
+        type: string
+        description: is custom-field required?
+      responses:
+        200:
+          description: ''
+        400:
+          description: Returned when Bad Request
+          schema: {}
+        404:
+          description: Returned when the page is not found
+          schema: {}
+      x-unitTests: []
+      x-operation-settings:
+        CollectParameters: false
+        AllowDynamicQueryParameters: false
+        AllowDynamicFormParameters: false
+        IsMultiContentStreaming: false
+  /custom-field/order.{_format}:
+    put:
+      description: Reorder CustomFields
+      tags:
+        - Custom Field
+      summary: Reorder CustomFields
+      operationId: put_api-custom-field-order
+      produces:
+      - application/json
+      consumes:
+      - application/x-www-form-urlencoded
+      parameters:
+      - name: _format
+        in: path
+        required: true
+        enum:
+        - json
+        type: string
+        description: ''
+      - name: sortorder
+        in: formData
+        required: false
+        type: string
+        description: assosiative array , in format customField-id:position
+      responses:
+        200:
+          description: ''
+        400:
+          description: Returned when Bad Request
+          schema: {}
+        403:
+          description: Returned when the Access Denied
+          schema: {}
+      x-unitTests: []
+      x-operation-settings:
+        CollectParameters: false
+        AllowDynamicQueryParameters: false
+        AllowDynamicFormParameters: false
+        IsMultiContentStreaming: false
+  /workflows.{_format}:
+    get:
+      description: View workflow details
+      tags:
+        - Workflow
+      summary: View workflow details
+      operationId: get_api-workflows
+      produces:
+      - application/json
+      parameters:
+      - name: _format
+        in: path
+        required: true
+        enum:
+        - json
+        type: string
+        description: ''
+      responses:
+        200:
+          description: ''
+          schema:
+            type: object
+          examples: {}
+      x-unitTests: []
+      x-operation-settings:
+        CollectParameters: false
+        AllowDynamicQueryParameters: false
+        AllowDynamicFormParameters: false
+        IsMultiContentStreaming: false
+    post:
+      description: Add Workflow
+      tags:
+        - Workflow
+      summary: Add Workflow
+      operationId: post_api-workflows
+      produces:
+      - application/json
+      consumes:
+      - application/x-www-form-urlencoded
+      parameters:
+      - name: _format
+        in: path
+        required: true
+        enum:
+        - json
+        type: string
+        description: ''
+      - name: name
+        in: formData
+        required: false
+        type: string
+        description: workflow name
+      - name: type
+        in: formData
+        required: false
+        type: string
+        description: workflow type 0|1 for manual|automatic
+      - name: actions
+        in: formData
+        required: false
+        type: string
+        description: 'action(s) to be performed . Contains subfields: type , value. Actions must be given in assosiative array format'
+      - name: events
+        in: formData
+        required: false
+        type: string
+        description: 'required for type:1 i.e. automatic. Events on which workflow to be triggered. Contains subfields: event , trigger .'
+      - name: conditions
+        in: formData
+        required: false
+        type: string
+        description: 'conditions for workflow. Contains subfields: type, match, value .'
+      responses:
+        200:
+          description: ''
+      x-unitTests: []
+      x-operation-settings:
+        CollectParameters: false
+        AllowDynamicQueryParameters: false
+        AllowDynamicFormParameters: false
+        IsMultiContentStreaming: false
+  /workflow/{type}/{id}.{_format}:
+    delete:
+      description: delete a given Workflow
+      tags:
+        - Workflow
+      summary: delete a given Workflow
+      operationId: delete_api-workflow
+      produces:
+      - application/json
+      parameters:
+      - name: type
+        in: path
+        required: true
+        type: string
+        description: ''
+      - name: id
+        in: path
+        required: true
+        type: string
+        description: ''
+      - name: _format
+        in: path
+        required: true
+        enum:
+        - json
+        type: string
+        description: ''
+      responses:
+        200:
+          description: ''
+        400:
+          description: Returned when Bad Request
+          schema: {}
+        403:
+          description: Returned when the Access is forbidden
+          schema: {}
+      x-unitTests: []
+      x-operation-settings:
+        CollectParameters: false
+        AllowDynamicQueryParameters: false
+        AllowDynamicFormParameters: false
+        IsMultiContentStreaming: false
+    put:
+      description: Edit Workflow
+      tags:
+        - Workflow
+      summary: Edit Workflow
+      operationId: put_api-workflow
+      produces:
+      - application/json
+      consumes:
+      - application/x-www-form-urlencoded
+      parameters:
+      - name: type
+        in: path
+        required: true
+        type: string
+        description: ''
+      - name: id
+        in: path
+        required: true
+        type: number
+        description: ''
+      - name: _format
+        in: path
+        required: true
+        enum:
+        - json
+        type: string
+        description: ''
+      - name: name
+        in: formData
+        required: false
+        type: string
+        description: workflow name
+      - name: actions
+        in: formData
+        required: false
+        type: string
+        description: 'action(s) to be performed . Contains subfields: type , value. Actions must be given in assosiative array format'
+      - name: events
+        in: formData
+        required: false
+        type: string
+        description: 'required for type:1 i.e. automatic. Events on which workflow to be triggered. Contains subfields: event , trigger .'
+      - name: conditions
+        in: formData
+        required: false
+        type: string
+        description: 'conditions for workflow. Contains subfields: type, match, value .'
+      responses:
+        200:
+          description: ''
+      x-unitTests: []
+      x-operation-settings:
+        CollectParameters: false
+        AllowDynamicQueryParameters: false
+        AllowDynamicFormParameters: false
+        IsMultiContentStreaming: false
+  /workflows/order.{_format}:
+    put:
+      description: Reorder workflows
+      tags:
+        - Workflow
+      summary: Reorder workflows
+      operationId: put_api-workflows-order
+      produces:
+      - application/json
+      consumes:
+      - application/x-www-form-urlencoded
+      parameters:
+      - name: _format
+        in: path
+        required: true
+        enum:
+        - json
+        type: string
+        description: ''
+      - name: auto
+        in: formData
+        required: false
+        type: string
+        description: assosiative array , in format workflow-id:position
+      responses:
+        200:
+          description: ''
+        400:
+          description: Returned when Bad Request
+          schema: {}
+        403:
+          description: Returned when the Access Denied
+          schema: {}
+      x-unitTests: []
+      x-operation-settings:
+        CollectParameters: false
+        AllowDynamicQueryParameters: false
+        AllowDynamicFormParameters: false
+        IsMultiContentStreaming: false
+  /saved-replys.{_format}:
+    get:
+      description: Returns a collection of SavedReply
+      tags:
+        - Saved reply
+      summary: Returns a collection of SavedReply
+      operationId: get_api-saved-replys
+      produces:
+      - application/json
+      parameters:
+      - name: _format
+        in: path
+        required: true
+        enum:
+        - json
+        - html
+        type: string
+        description: ''
+      - name: sort
+        in: query
+        required: false
+        type: string
+        description: ''
+      - name: page
+        in: query
+        required: false
+        type: string
+        description: ''
+      - name: search
+        in: query
+        required: false
+        type: string
+        description: search savedReply by name
+      responses:
+        200:
+          description: ''
+          schema:
+            type: object
+          examples: {}
+      x-unitTests: []
+      x-operation-settings:
+        CollectParameters: false
+        AllowDynamicQueryParameters: false
+        AllowDynamicFormParameters: false
+        IsMultiContentStreaming: false
+    post:
+      description: Add reply
+      tags:
+        - Saved reply
+      summary: Add reply
+      operationId: post_api-saved-replys
+      produces:
+      - application/json
+      consumes:
+      - application/x-www-form-urlencoded
+      parameters:
+      - name: _format
+        in: path
+        required: true
+        enum:
+        - json
+        - html
+        type: string
+        description: ''
+      - name: name
+        in: formData
+        required: false
+        type: string
+        description: name of reply
+      - name: message
+        in: formData
+        required: false
+        type: string
+        description: message (may be in html format)
+      responses:
+        200:
+          description: ''
+        400:
+          description: Returned when Bad Request
+          schema: {}
+        404:
+          description: Returned when the resource is not found
+          schema: {}
+      x-unitTests: []
+      x-operation-settings:
+        CollectParameters: false
+        AllowDynamicQueryParameters: false
+        AllowDynamicFormParameters: false
+        IsMultiContentStreaming: false
+  /saved-reply/{template}.{_format}:
+    put:
+      description: edit reply
+      tags:
+        - Saved reply
+      summary: edit reply
+      operationId: put_api-saved-reply
+      produces:
+      - application/json
+      consumes:
+      - application/x-www-form-urlencoded
+      parameters:
+      - name: template
+        in: path
+        required: true
+        type: string
+        description: ''
+      - name: _format
+        in: path
+        required: true
+        enum:
+        - json
+        - html
+        type: string
+        description: ''
+      - name: name
+        in: formData
+        required: false
+        type: string
+        description: name of reply
+      - name: message
+        in: formData
+        required: false
+        type: string
+        description: message (may be in html format)
+      responses:
+        200:
+          description: ''
+        400:
+          description: Returned when Bad Request
+          schema: {}
+        404:
+          description: Returned when the resource is not found
+          schema: {}
+      x-unitTests: []
+      x-operation-settings:
+        CollectParameters: false
+        AllowDynamicQueryParameters: false
+        AllowDynamicFormParameters: false
+        IsMultiContentStreaming: false
+    delete:
+      description: Delete existing savedReply
+      tags:
+        - Saved reply
+      summary: Delete existing savedReply
+      operationId: delete_api-saved-reply
+      produces:
+      - application/json
+      parameters:
+      - name: template
+        in: path
+        required: true
+        type: string
+        description: ''
+      - name: _format
+        in: path
+        required: true
+        enum:
+        - json
+        - html
+        type: string
+        description: ''
+      - name: sort
+        in: query
+        required: false
+        type: string
+        description: ''
+      - name: page
+        in: query
+        required: false
+        type: string
+        description: ''
+      - name: search
+        in: query
+        required: false
+        type: string
+        description: search savedReply by name
+      responses:
+        200:
+          description: ''
+      x-unitTests: []
+      x-operation-settings:
+        CollectParameters: false
+        AllowDynamicQueryParameters: false
+        AllowDynamicFormParameters: false
+        IsMultiContentStreaming: false
+  /ticket/{id}/threads.{_format}:
+    get:
+      description: Returns a collection of threads
+      tags:
+        - Thread
+      summary: Returns a collection of threads
+      operationId: get_api-ticket-threads
+      produces:
+      - application/json
+      parameters:
+      - name: id
+        in: path
+        required: true
+        type: string
+        description: ''
+      - name: _format
+        in: path
+        required: true
+        enum:
+        - json
+        type: string
+        description: ''
+      responses:
+        200:
+          description: ''
+          schema:
+            type: object
+          examples: {}
+        404:
+          description: Returned when the page is not found
+          schema: {}
+      x-unitTests: []
+      x-operation-settings:
+        CollectParameters: false
+        AllowDynamicQueryParameters: false
+        AllowDynamicFormParameters: false
+        IsMultiContentStreaming: false
+    post:
+      description: Add new Thread
+      tags:
+        - Thread
+      summary: Add new Thread
+      operationId: post_api-ticket-threads
+      produces:
+      - application/json
+      consumes:
+      - application/x-www-form-urlencoded
+      parameters:
+      - name: id
+        in: path
+        required: true
+        type: string
+        description: ''
+      - name: _format
+        in: path
+        required: true
+        enum:
+        - json
+        type: string
+        description: ''
+      - name: threadType
+        in: formData
+        required: false
+        type: string
+        description: 'threadtype: reply|forward|note'
+      - name: reply
+        in: formData
+        required: false
+        type: string
+        description: main content of thread
+      - name: status
+        in: formData
+        required: false
+        type: string
+        description: 'status id value: 1|2|3|4|5|6 for open|pending|resolved|closed|Spam|Answered repectively'
+      - name: to
+        in: formData
+        required: false
+        type: string
+        description: to in case of threadType:forward
+      - name: files
+        in: formData
+        required: false
+        type: string
+        description: attachements
+      - name: actAsType
+        in: formData
+        required: false
+        type: string
+        description: admin can actAsType customer, agent
+      - name: actAsEmail
+        in: formData
+        required: false
+        type: string
+        description: provide with actAsType
+      responses:
+        200:
+          description: ''
+        400:
+          description: Returned when Bad Request
+          schema: {}
+        401:
+          description: Returned when helpdesk expired
+          schema: {}
+        404:
+          description: Returned when the page is not found
+          schema: {}
+      x-unitTests: []
+      x-operation-settings:
+        CollectParameters: false
+        AllowDynamicQueryParameters: false
+        AllowDynamicFormParameters: false
+        IsMultiContentStreaming: false
+  /ticket/{ticketId}/thread/{id}.{_format}:
+    put:
+      description: Edit existing thread
+      tags:
+        - Thread
+      summary: Edit existing thread
+      operationId: put_api-ticket-thread
+      produces:
+      - application/json
+      consumes:
+      - application/x-www-form-urlencoded
+      parameters:
+      - name: ticketId
+        in: path
+        required: true
+        type: string
+        description: ''
+      - name: id
+        in: path
+        required: true
+        type: string
+        description: ''
+      - name: _format
+        in: path
+        required: true
+        enum:
+        - json
+        type: string
+        description: ''
+      - name: reply
+        in: formData
+        required: false
+        type: string
+        description: main content of thread
+      responses:
+        200:
+          description: ''
+        400:
+          description: Returned when Bad Request
+          schema: {}
+        404:
+          description: Returned when the page is not found
+          schema: {}
+      x-unitTests: []
+      x-operation-settings:
+        CollectParameters: false
+        AllowDynamicQueryParameters: false
+        AllowDynamicFormParameters: false
+        IsMultiContentStreaming: false
+    patch:
+      description: lock/unlock thread
+      tags:
+        - Thread
+      summary: lock/unlock thread
+      operationId: patch_api-ticket-thread
+      produces:
+      - application/json
+      parameters:
+      - name: ticketId
+        in: path
+        required: true
+        type: string
+        description: ''
+      - name: id
+        in: path
+        required: true
+        type: string
+        description: ''
+      - name: _format
+        in: path
+        required: true
+        enum:
+        - json
+        type: string
+        description: ''
+      responses:
+        200:
+          description: ''
+        400:
+          description: Returned when Bad Request
+          schema: {}
+        404:
+          description: Returned when the page is not found
+          schema: {}
+      x-unitTests: []
+      x-operation-settings:
+        CollectParameters: false
+        AllowDynamicQueryParameters: false
+        AllowDynamicFormParameters: false
+        IsMultiContentStreaming: false
+    delete:
+      description: DELETE thread
+      tags:
+        - Thread
+      summary: DELETE thread
+      operationId: delete_api-ticket-thread
+      produces:
+      - application/json
+      parameters:
+      - name: ticketId
+        in: path
+        required: true
+        type: string
+        description: ''
+      - name: id
+        in: path
+        required: true
+        type: string
+        description: ''
+      - name: _format
+        in: path
+        required: true
+        enum:
+        - json
+        type: string
+        description: ''
+      responses:
+        200:
+          description: ''
+        400:
+          description: Returned when Bad Request
+          schema: {}
+        404:
+          description: Returned when the page is not found
+          schema: {}
+      x-unitTests: []
+      x-operation-settings:
+        CollectParameters: false
+        AllowDynamicQueryParameters: false
+        AllowDynamicFormParameters: false
+        IsMultiContentStreaming: false             
+securityDefinitions:
+  password:
+    type: oauth2
+    # This should be updated to the Token URL of your OAuth provider.
+    tokenUrl: https://subdomain.uvdesk.com/oauth/v2/token
+    flow: password
+    scopes:
+      api: api access based on user role
+security:
+  - password:
+    - api   
+host: subdomain.uvdesk.com
+basePath: /en/api
