@@ -22,14 +22,14 @@ import (
 	"github.com/xeipuuv/gojsonschema"
 )
 
-// The operation code in @meqa[...].op for parameters. The op code at the path level
+// The operation code in <meqa ....op> for parameters. The op code at the path level
 // is the above Rest methods.
 const (
 	OpRead  = "read"
 	OpWrite = "write"
 )
 
-// The class code in @meqa[class] for responses.
+// The class code in <meqa class> for responses.
 const (
 	ClassSuccess = "success"
 	ClassFail    = "fail"

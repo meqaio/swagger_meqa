@@ -52,13 +52,13 @@ type MeqaTag struct {
 	Operation string
 }
 
-// GetMeqaTag extracts the @meqa tags.
-// Example. for  @meqa[Pet:Name].update, return Pet, Name, update
+// GetMeqaTag extracts the <meqa > tags.
+// Example. for  <meqa Pet.Name.update>, return Pet, Name, update
 func GetMeqaTag(desc string) *MeqaTag {
 	if len(desc) == 0 {
 		return nil
 	}
-	re := regexp.MustCompile("\\@meqa\\[[a-zA-Z]*\\:?[a-zA-Z]*\\]\\.?[a-zA-Z]*")
+	re := regexp.MustCompile("<meqa *[a-zA-Z0-9]+\\.?[a-zA-Z0-9]*\\.?[a-zA-Z]* *>")
 	ar := re.FindAllString(desc, -1)
 
 	// TODO it's possible that we have multiple choices because the server can't be
@@ -66,21 +66,26 @@ func GetMeqaTag(desc string) *MeqaTag {
 	if len(ar) == 0 {
 		return nil
 	}
-	var class, property string
 	meqa := ar[0][6:]
-	colon := strings.IndexRune(meqa, ':')
-	right := strings.IndexRune(meqa, ']')
-	if colon > 0 {
-		class = meqa[:colon]
-		property = meqa[colon+1 : right]
-	} else {
-		class = meqa[0:right]
-		property = ""
+	right := strings.IndexRune(meqa, '>')
+
+	if right < 0 {
+		mqutil.Logger.Printf("invalid meqa tag in description: %s", desc)
+		return nil
 	}
-	if right+1 == len(meqa) {
-		return &MeqaTag{class, property, ""}
+	meqa = strings.Trim(meqa[:right], " ")
+	contents := strings.Split(meqa, ".")
+	switch len(contents) {
+	case 1:
+		return &MeqaTag{contents[0], "", ""}
+	case 2:
+		return &MeqaTag{contents[0], contents[1], ""}
+	case 3:
+		return &MeqaTag{contents[0], contents[1], contents[2]}
+	default:
+		mqutil.Logger.Printf("invalid meqa tag in description: %s", desc)
+		return nil
 	}
-	return &MeqaTag{class, property, meqa[right+2:]}
 }
 
 type Swagger spec.Swagger

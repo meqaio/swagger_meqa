@@ -54,3 +54,18 @@ The server has the following pieces
 * swagger.json tagging - generating @meqa tags. This is the lowest priority and we can manually generate the tags for now.
 * Generating test plan.
 * REST server - account management, communicate with the golang client, support UI.
+
+## Test Plan Generation
+
+### Learning from Trello
+
+* Foreign keys - the data model the server implements can have pretty complex data relationships. 
+    * Pet belongs to stores
+    * Updating a pet with a different store id moves the pet to another store.
+    * Now searching/listing for pets in the old store shouldn't show the pet, but in the new store should.
+    * The above update is done on the Pet object, but it affects the result of the Store object.
+    * What we currently have doesn't factor in foreign keys like above.
+    * However, it's easy to add it in. When you have an object that has @meqa[Anotherclass:property] tag for one of its fields, you know it's a foreign key. And we can construct standard tests for foreign keys.
+    * We need to be more systematic when constructing test cases. In this case, for PUTs, we need to change one parameter at a time, then validate the change. When changing a foreign key, we need to verify against the foreign table. Similarly during random tests we need to validate against foreign tables too.
+* Parameters that mean meta-data within the swagger object structure
+    * For instance, /cards/{id}/{field} - the field is the property name for the card. This will return just one property of the card rather than the whole object. We need to have a special tag @meqa[Cards:any] where any means any field. What if the field can be some but not the others? Will "any" be a regex? 
