@@ -68,4 +68,22 @@ The server has the following pieces
     * However, it's easy to add it in. When you have an object that has @meqa[Anotherclass:property] tag for one of its fields, you know it's a foreign key. And we can construct standard tests for foreign keys.
     * We need to be more systematic when constructing test cases. In this case, for PUTs, we need to change one parameter at a time, then validate the change. When changing a foreign key, we need to verify against the foreign table. Similarly during random tests we need to validate against foreign tables too.
 * Parameters that mean meta-data within the swagger object structure
-    * For instance, /cards/{id}/{field} - the field is the property name for the card. This will return just one property of the card rather than the whole object. We need to have a special tag @meqa[Cards:any] where any means any field. What if the field can be some but not the others? Will "any" be a regex? 
+    * For instance, /cards/{id}/{field} - the field is the property name for the card. This will return just one property of the card rather than the whole object. We need to have a special tag `<meqa Card.any>`. where any means any field. What if the field can be some but not the others? Later we can enhance it so "any" can be a regexp.
+* Object hierarchy
+    * Objects can be created and queried based on the hierarchical relationship.
+    * POST - boards/{id}/card - create a card that belongs to the specified board.
+    * POST - cards, with boardId as argument.
+    * GET - boards/{id}/card - get all the cards that belong to the specified board.
+    * Likely what we do for foreign keys can sufficiently cover this.
+* Incomplete swagger.json
+    * for instance, sometimes the example contains more fields than the json object. This we can actually figure out with an ExampleToSchema method. Punt for now unless it becomes a real pain.
+* Type confusion
+    * Sometimes, an enum is specified as a regular string, with the description saying: valid values are: true, false.
+    * We can change the swagger.json to specify the enum properly.
+    * Alternatively, we can specify `<meqa enum:true,false>`. This is properly better because it doesn't change the original document, and we know that it won't break anything. Changing the swagger.json to specify enum may break the codegen clients that use the spec.
+    * We should design how to use `<meqa>` tags to constrain values. This is very useful when we want to restrict date or number ranges as well.
+* Meqa value tags - punt for now, because it's supported by standard swagger tags.
+    * `<meqa type:value1,value2,value3>`
+    * `<meqa enum:v1,v2,v3>` - note that the swagger.json already has a type for the field.
+    * `<meqa range:10,20>` - integer range between 10 and 20.
+    * `<meqa range:1.1,102.0>` - float range, again the field has a type in swagger.json
