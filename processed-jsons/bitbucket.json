@@ -11935,6 +11935,13 @@
                     {
                         "required": true,
                         "type": "string",
+                        "description": "The uuid of the schedule.",
+                        "in": "path",
+                        "name": "schedule_uuid"
+                    },
+                    {
+                        "required": true,
+                        "type": "string",
                         "description": "The repository.",
                         "in": "path",
                         "name": "repo_slug"
@@ -12051,13 +12058,6 @@
                         "required": false,
                         "type": "string",
                         "description": "\nOptional field that declares the files that the request is\nmanipulating. When adding a new file to a repo, or when\noverwriting an existing file, the client can just upload\nthe full contents of the file in a normal form field and\nthe use of this `files` meta data field is redundant.\nHowever, when the `files` field contains a file path that\ndoes not have a corresponding, identically-named form\nfield, then Bitbucket interprets that as the client wanting\nto replace the named file with the null set and the file is\ndeleted instead.\n\nPaths in the repo that are referenced in neither files nor\nan individual file field, remain unchanged and carry over\nfrom the parent to the new commit.\n\nThis API does not support renaming as an explicit feature.\nTo rename a file, simply delete it and recreate it under\nthe new name in the same commit.\n",
-                        "in": "query",
-                        "name": "files"
-                    },
-                    {
-                        "required": false,
-                        "type": "string",
-                        "description": "\nThe name of the branch that the new commit should be\ncreated on. When omitted, the commit will be created on top\nof the main branch and will become the main branch's new\nHEAD/tip.\n\nWhen a branch name is provided that already exists in the\nrepo, then the commit will be created on top of that\nbranch. In this case, if a parent SHA1 was also provided,\nthen it is asserted that the parent is the branch's\ntip/HEAD at the time the request is made. When this is not\nthe case, a 409 is returned.\n\nThis API cannot be used to create new anonymous heads in\nMercurial repos.\n\nWhen a new branch name is specified (that does not already\nexist in the repo), and no parent SHA1s are provided, then\nthe new commit will inherit from the current main branch's\ntip/HEAD commit, but not advance the main branch. The new\ncommit will be the new branch. When the request also\nspecifies a parent SHA1, then the new commit and branch\nare created directly on top of the parent commit,\nregardless of the state of the main branch.\n\nWhen a branch name is not specified, but a parent SHA1 is\nprovided, then Bitbucket asserts that it represents the\nmain branch's current HEAD/tip, or a 409 is returned.\n\nWhen a branch name is not specified and the repo is empty,\nthe new commit will become the repo's root commit and will\nbe on the main branch.\n\nWhen a branch name is specified and the repo is empty, the\nnew commit will become the repo's root commit and also\ndefine the repo's main branch going forward.\n\nThis API cannot be used to create additional root commits\nin non-empty repos.\n\nThe branch field cannot be repeated.\n\nAs a side effect, this API can be used to create a new\nbranch without modifying any files, by specifying a new\nbranch name in this field, together with parents, but\nomitting the files fields, while not sending any files.\nThis will create a new commit and branch with the same\ncontents as the first parent. The diff of this commit\nagainst its first parent will be empty.\n",
                         "in": "query",
                         "name": "files"
                     },
@@ -12272,13 +12272,6 @@
                         "description": "This can either be the repository slug or the UUID of the repository,\nsurrounded by curly-braces, for example: `{repository UUID}`.\n",
                         "in": "path",
                         "name": "repo_slug"
-                    },
-                    {
-                        "required": true,
-                        "type": "integer",
-                        "description": "The id of the pull request.\n",
-                        "in": "path",
-                        "name": "pull_request_id"
                     }
                 ],
                 "description": "Returns a paginated list of the pull request's activity log.\n\nThis includes comments that were made by the reviewers, updates and\napprovals."
