@@ -449,6 +449,9 @@ func (t *Test) Run(plan *TestPlan) error {
 	}
 
 	req := resty.R()
+	if len(plan.Username) > 0 {
+		req.SetBasicAuth(plan.Username, plan.Password)
+	}
 	path := GetBaseURL(t.db.Swagger) + t.SetRequestParameters(req)
 	var resp *resty.Response
 

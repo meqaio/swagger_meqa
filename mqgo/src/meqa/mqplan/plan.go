@@ -38,6 +38,10 @@ type TestPlan struct {
 	FormParams   map[string]interface{} `yaml:"formParams,omitempty"`
 	PathParams   map[string]interface{} `yaml:"pathParams,omitempty"`
 	HeaderParams map[string]interface{} `yaml:"headerParams,omitempty"`
+
+	// Authentication
+	Username string
+	Password string
 }
 
 // Add a new TestCase, returns whether the Case is successfully added.

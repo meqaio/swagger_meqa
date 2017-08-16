@@ -24,6 +24,8 @@ func main() {
 	swaggerFile := flag.String("swagger", swaggerJSONFile, "the swagger.json file name or URL")
 	testPlanFile := flag.String("testplan", testPlanFile, "the test plan file name")
 	testToRun := flag.String("test", "all", "the test to run")
+	username := flag.String("username", "", "the username for basic HTTP authentication")
+	password := flag.String("password", "", "the password for basic HTTP authentication")
 
 	flag.Parse()
 	swaggerJsonPath := filepath.Join(*meqaPath, *swaggerFile)
@@ -54,6 +56,8 @@ func main() {
 	if err != nil {
 		mqutil.Logger.Printf("Error loading test plan: %s", err.Error())
 	}
+	mqplan.Current.Username = *username
+	mqplan.Current.Password = *password
 
 	if *testToRun == "all" {
 		for _, testCase := range mqplan.Current.CaseList {
