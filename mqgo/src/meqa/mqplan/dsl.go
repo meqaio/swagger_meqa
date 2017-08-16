@@ -577,6 +577,26 @@ func (t *Test) ResolveHistoryParameters(h *TestHistory) {
 	}
 }
 
+func ParamsCombine(dst []spec.Parameter, src []spec.Parameter) []spec.Parameter {
+	if len(dst) == 0 {
+		return src
+	}
+	if len(src) == 0 {
+		return dst
+	}
+	nameMap := make(map[string]int)
+	for _, entry := range dst {
+		nameMap[entry.Name] = 1
+	}
+	for _, entry := range src {
+		if nameMap[entry.Name] != 1 {
+			dst = append(dst, entry)
+			nameMap[entry.Name] = 1
+		}
+	}
+	return dst
+}
+
 // ResolveParameters fullfills the parameters for the specified request using the in-mem DB.
 // The resolved parameters will be added to test.Parameters map.
 func (t *Test) ResolveParameters(plan *TestPlan) error {
@@ -585,6 +605,9 @@ func (t *Test) ResolveParameters(plan *TestPlan) error {
 	if t.op == nil {
 		return mqutil.NewError(mqutil.ErrNotFound, fmt.Sprintf("Path %s not found in swagger file", t.Path))
 	}
+	// There can be parameters at the path level. We merge these with the operation parameters.
+	t.op.Parameters = ParamsCombine(t.op.Parameters, pathItem.Parameters)
+
 	t.tag = mqswag.GetMeqaTag(t.op.Description)
 
 	var paramsMap map[string]interface{}
