@@ -1,6 +1,11 @@
 
 # Example test plan
 ---
+meqa_global:
+  - name: init
+    pathParams:
+      param1: value1
+---
 crud:
   - name: create
     ref: create user auto

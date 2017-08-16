@@ -16,6 +16,10 @@ import (
 	"meqa/mqutil"
 )
 
+const (
+	MeqaGlobal = "meqa_global"
+)
+
 type TestCase struct {
 	Tests []*Test
 	Name  string
@@ -27,6 +31,13 @@ type TestPlan struct {
 	CaseList [](*TestCase)
 	db       *mqswag.DB
 	swagger  *mqswag.Swagger
+
+	// global parameters
+	QueryParams  map[string]interface{} `yaml:"queryParams,omitempty"`
+	BodyParams   interface{}            `yaml:"bodyParams,omitempty"`
+	FormParams   map[string]interface{} `yaml:"formParams,omitempty"`
+	PathParams   map[string]interface{} `yaml:"pathParams,omitempty"`
+	HeaderParams map[string]interface{} `yaml:"headerParams,omitempty"`
 }
 
 // Add a new TestCase, returns whether the Case is successfully added.
@@ -49,6 +60,24 @@ func (plan *TestPlan) AddFromString(data string) error {
 		return err
 	}
 	for caseName, testList := range caseMap {
+		if caseName == MeqaGlobal {
+			// global parameters
+			for _, t := range testList {
+				plan.PathParams = mqutil.MapCombine(plan.PathParams, t.PathParams)
+				plan.QueryParams = mqutil.MapCombine(plan.QueryParams, t.QueryParams)
+				plan.FormParams = mqutil.MapCombine(plan.FormParams, t.FormParams)
+				plan.HeaderParams = mqutil.MapCombine(plan.HeaderParams, t.HeaderParams)
+				if bodyMap, ok := t.BodyParams.(map[string]interface{}); ok {
+					if plan.BodyParams == nil {
+						plan.BodyParams = bodyMap
+					} else {
+						plan.BodyParams = mqutil.MapCombine(plan.BodyParams.(map[string]interface{}), bodyMap)
+					}
+				}
+			}
+
+			continue
+		}
 		for _, t := range testList {
 			t.Init(plan.db)
 		}
