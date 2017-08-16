@@ -585,6 +585,7 @@ func (t *Test) ResolveParameters(plan *TestPlan) error {
 	t.tag = mqswag.GetMeqaTag(t.op.Description)
 
 	var paramsMap map[string]interface{}
+	var globalParamsMap map[string]interface{}
 	var err error
 	var genParam interface{}
 	for _, params := range t.op.Parameters {
@@ -614,24 +615,31 @@ func (t *Test) ResolveParameters(plan *TestPlan) error {
 					t.PathParams = make(map[string]interface{})
 				}
 				paramsMap = t.PathParams
+				globalParamsMap = plan.PathParams
 			case "query":
 				if t.QueryParams == nil {
 					t.QueryParams = make(map[string]interface{})
 				}
 				paramsMap = t.QueryParams
+				globalParamsMap = plan.QueryParams
 			case "header":
 				if t.HeaderParams == nil {
 					t.HeaderParams = make(map[string]interface{})
 				}
 				paramsMap = t.HeaderParams
+				globalParamsMap = plan.HeaderParams
 			case "formData":
 				if t.FormParams == nil {
 					t.FormParams = make(map[string]interface{})
 				}
 				paramsMap = t.FormParams
+				globalParamsMap = plan.FormParams
 			}
 
 			// If there is a parameter passed in, just use it. Otherwise generate one.
+			if paramsMap[params.Name] == nil && globalParamsMap[params.Name] != nil {
+				paramsMap[params.Name] = globalParamsMap[params.Name]
+			}
 			if _, ok := paramsMap[params.Name]; ok {
 				t.AddBasicComparison(mqswag.GetMeqaTag(params.Description), &params, paramsMap[params.Name])
 				continue
