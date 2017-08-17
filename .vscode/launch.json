@@ -11,7 +11,7 @@
             "host": "127.0.0.1",
             "program": "${workspaceRoot}/mqgo/bin/mqgen.exe",
             "env": {},
-            "args": ["-meqa", "d:\\src\\autoapi\\mqgo\\tmp"],
+            "args": ["-meqa", "d:\\src\\autoapi\\mqgo\\meqa_data"],
             "showLog": true
         },
     {
@@ -40,7 +40,7 @@
             "host": "127.0.0.1",
             "program": "${workspaceRoot}/mqgo/bin/mqgo.exe",
             "env": {},
-            "args": ["-meqa", "d:\\src\\autoapi\\mqgo\\tmp"],
+            "args": ["-meqa", "d:\\src\\autoapi\\mqgo\\meqa_data"],
             "showLog": true
         }
     ]

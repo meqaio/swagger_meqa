@@ -4192,6 +4192,7 @@
                     "required": true,
                     "type": "string",
                     "name": "sha",
+                    "description": "<meqa commit.hash>",
                     "in": "path"
                 },
                 {
@@ -4265,7 +4266,7 @@
                     {
                         "required": true,
                         "type": "string",
-                        "description": "The UUID of the variable.",
+                        "description": "The UUID of the variable. <meqa pipeline_variable:uuid>",
                         "in": "path",
                         "name": "variable_uuid"
                     },
@@ -4308,7 +4309,7 @@
                     {
                         "required": true,
                         "type": "string",
-                        "description": "The UUID of the variable to delete.",
+                        "description": "The UUID of the variable to delete. <meqa pipeline_variable:uuid>",
                         "in": "path",
                         "name": "variable_uuid"
                     }
@@ -4345,7 +4346,7 @@
                     {
                         "required": true,
                         "type": "string",
-                        "description": "The UUID of the variable to retrieve.",
+                        "description": "The UUID of the variable to retrieve. <meqa pipeline_variable:uuid>",
                         "in": "path",
                         "name": "variable_uuid"
                     }
@@ -4353,179 +4354,6 @@
                 "tags": [
                     "pipelines"
                 ]
-            }
-        },
-        "/repositories/{username}/{repo_slug}/hooks": {
-            "post": {
-                "security": [
-                    {
-                        "oauth2": [
-                            "webhook"
-                        ]
-                    },
-                    {
-                        "basic": []
-                    },
-                    {
-                        "api_key": []
-                    }
-                ],
-                "tags": [
-                    "repositories",
-                    "webhooks"
-                ],
-                "responses": {
-                    "201": {
-                        "headers": {
-                            "Location": {
-                                "type": "string",
-                                "description": "The URL of new newly created webhook."
-                            }
-                        },
-                        "description": "If the webhook was registered successfully.",
-                        "schema": {
-                            "$ref": "#/definitions/webhook_subscription"
-                        }
-                    },
-                    "403": {
-                        "description": "If the authenticated user does not have permission to install webhooks on the specified repository.",
-                        "schema": {
-                            "$ref": "#/definitions/error"
-                        }
-                    },
-                    "404": {
-                        "description": "If the repository does not exist.",
-                        "schema": {
-                            "$ref": "#/definitions/error"
-                        }
-                    }
-                },
-                "parameters": [],
-                "description": "Creates a new webhook on the specified repository.\n\nExample:\n\n```\n$ curl -X POST -u credentials -H 'Content-Type: application/json'           https://api.bitbucket.org/2.0/repositories/username/slug/hooks           -d '\n    {\n      \"description\": \"Webhook Description\",\n      \"url\": \"https://example.com/\",\n      \"active\": true,\n      \"events\": [\n        \"repo:push\",\n        \"issue:created\",\n        \"issue:updated\"\n      ]\n    }'\n```\n\nNote that this call requires the webhook scope, as well as any scope\nthat applies to the events that the webhook subscribes to. In the\nexample above that means: `webhook`, `repository` and `issue`.\n\nAlso note that the `url` must properly resolve and cannot be an\ninternal, non-routed address."
-            },
-            "parameters": [
-                {
-                    "required": true,
-                    "type": "string",
-                    "name": "username",
-                    "in": "path"
-                },
-                {
-                    "required": true,
-                    "type": "string",
-                    "name": "repo_slug",
-                    "in": "path"
-                }
-            ],
-            "get": {
-                "security": [
-                    {
-                        "oauth2": [
-                            "webhook"
-                        ]
-                    },
-                    {
-                        "basic": []
-                    },
-                    {
-                        "api_key": []
-                    }
-                ],
-                "tags": [
-                    "repositories",
-                    "webhooks"
-                ],
-                "responses": {
-                    "200": {
-                        "description": "The paginated list of installed webhooks.",
-                        "schema": {
-                            "$ref": "#/definitions/paginated_webhook_subscriptions"
-                        }
-                    },
-                    "403": {
-                        "description": "If the authenticated user does not have permission to access the webhooks.",
-                        "schema": {
-                            "$ref": "#/definitions/error"
-                        }
-                    },
-                    "404": {
-                        "description": "If the repository does not exist.",
-                        "schema": {
-                            "$ref": "#/definitions/error"
-                        }
-                    }
-                },
-                "parameters": [],
-                "description": "Returns a paginated list of webhooks installed on this repository."
-            }
-        },
-        "/repositories/{username}/{repo_slug}/pullrequests/{pull_request_id}/statuses": {
-            "parameters": [
-                {
-                    "required": true,
-                    "type": "string",
-                    "name": "username",
-                    "in": "path"
-                },
-                {
-                    "required": true,
-                    "type": "string",
-                    "name": "pull_request_id",
-                    "in": "path"
-                },
-                {
-                    "required": true,
-                    "type": "string",
-                    "name": "repo_slug",
-                    "in": "path"
-                }
-            ],
-            "get": {
-                "security": [
-                    {
-                        "oauth2": [
-                            "pullrequest"
-                        ]
-                    },
-                    {
-                        "basic": []
-                    },
-                    {
-                        "api_key": []
-                    }
-                ],
-                "tags": [
-                    "repositories",
-                    "pullrequests",
-                    "commitstatuses"
-                ],
-                "responses": {
-                    "200": {
-                        "description": "A paginated list of all commit statuses for this pull request.",
-                        "schema": {
-                            "$ref": "#/definitions/paginated_commitstatuses"
-                        }
-                    },
-                    "401": {
-                        "description": "If the repository is private and the request was not authenticated."
-                    },
-                    "404": {
-                        "description": "If the specified repository or pull request does not exist.",
-                        "schema": {
-                            "$ref": "#/definitions/error"
-                        }
-                    }
-                },
-                "parameters": [
-                    {
-                        "required": true,
-                        "type": "integer",
-                        "description": "The pull request's id",
-                        "in": "path",
-                        "name": "pull_request_id"
-                    }
-                ],
-                "description": "Returns all statuses (e.g. build results) for the given pull\nrequest."
             }
         },
         "/repositories/{username}/{repo_slug}/issues/{issue_id}/attachments/{path}": {
@@ -4585,6 +4413,7 @@
                     "required": true,
                     "type": "string",
                     "name": "issue_id",
+                    "description": "<meqa issue.id>",
                     "in": "path"
                 },
                 {
@@ -4641,6 +4470,7 @@
                     "required": true,
                     "type": "string",
                     "name": "version_id",
+                    "description": "<meqa version.id>",
                     "in": "path"
                 },
                 {
@@ -4736,7 +4566,7 @@
                     {
                         "required": true,
                         "type": "integer",
-                        "description": "The issue's id",
+                        "description": "The issue's id <meqa issue.id>",
                         "in": "path",
                         "name": "issue_id"
                     }
@@ -4785,7 +4615,7 @@
                     {
                         "required": true,
                         "type": "integer",
-                        "description": "The issue's id",
+                        "description": "The issue's id <meqa issue.id>",
                         "in": "path",
                         "name": "issue_id"
                     }
@@ -4803,6 +4633,7 @@
                     "required": true,
                     "type": "string",
                     "name": "issue_id",
+                    "description": "The issue's id <meqa issue.id>",
                     "in": "path"
                 },
                 {
@@ -4842,7 +4673,7 @@
                     {
                         "required": true,
                         "type": "integer",
-                        "description": "The issue's id",
+                        "description": "The issue's id <meqa issue.id>",
                         "in": "path",
                         "name": "issue_id"
                     }
@@ -4862,6 +4693,7 @@
                     "required": true,
                     "type": "string",
                     "name": "milestone_id",
+                    "description": "<meqa milestone.id>",
                     "in": "path"
                 },
                 {
@@ -4906,7 +4738,7 @@
                     {
                         "required": true,
                         "type": "integer",
-                        "description": "The milestone's id",
+                        "description": "The milestone's id <meqa milestone.id>",
                         "in": "path",
                         "name": "milestone_id"
                     }
@@ -5055,120 +4887,6 @@
                 ]
             }
         },
-        "/addon/linkers/{linker_key}/values": {
-            "put": {
-                "security": [
-                    {
-                        "oauth2": []
-                    },
-                    {
-                        "basic": []
-                    },
-                    {
-                        "api_key": []
-                    }
-                ],
-                "tags": [
-                    "addon"
-                ],
-                "responses": {
-                    "default": {
-                        "description": "Unexpected error.",
-                        "schema": {
-                            "$ref": "#/definitions/error"
-                        }
-                    }
-                },
-                "parameters": [],
-                "description": ""
-            },
-            "post": {
-                "security": [
-                    {
-                        "oauth2": []
-                    },
-                    {
-                        "basic": []
-                    },
-                    {
-                        "api_key": []
-                    }
-                ],
-                "tags": [
-                    "addon"
-                ],
-                "responses": {
-                    "default": {
-                        "description": "Unexpected error.",
-                        "schema": {
-                            "$ref": "#/definitions/error"
-                        }
-                    }
-                },
-                "parameters": [],
-                "description": ""
-            },
-            "get": {
-                "security": [
-                    {
-                        "oauth2": []
-                    },
-                    {
-                        "basic": []
-                    },
-                    {
-                        "api_key": []
-                    }
-                ],
-                "tags": [
-                    "addon"
-                ],
-                "responses": {
-                    "default": {
-                        "description": "Unexpected error.",
-                        "schema": {
-                            "$ref": "#/definitions/error"
-                        }
-                    }
-                },
-                "parameters": [],
-                "description": ""
-            },
-            "parameters": [
-                {
-                    "required": true,
-                    "type": "string",
-                    "name": "linker_key",
-                    "in": "path"
-                }
-            ],
-            "delete": {
-                "security": [
-                    {
-                        "oauth2": []
-                    },
-                    {
-                        "basic": []
-                    },
-                    {
-                        "api_key": []
-                    }
-                ],
-                "tags": [
-                    "addon"
-                ],
-                "responses": {
-                    "default": {
-                        "description": "Unexpected error.",
-                        "schema": {
-                            "$ref": "#/definitions/error"
-                        }
-                    }
-                },
-                "parameters": [],
-                "description": ""
-            }
-        },
         "/repositories/{username}/{repo_slug}/refs/branches": {
             "parameters": [
                 {
@@ -5211,120 +4929,6 @@
                 },
                 "parameters": [],
                 "description": ""
-            }
-        },
-        "/hook_events/{subject_type}": {
-            "parameters": [
-                {
-                    "required": true,
-                    "type": "string",
-                    "name": "subject_type",
-                    "in": "path"
-                }
-            ],
-            "get": {
-                "security": [
-                    {
-                        "oauth2": []
-                    },
-                    {
-                        "basic": []
-                    },
-                    {
-                        "api_key": []
-                    }
-                ],
-                "tags": [
-                    "webhooks"
-                ],
-                "responses": {
-                    "200": {
-                        "description": "A paginated list of webhook types available to subscribe on.",
-                        "schema": {
-                            "$ref": "#/definitions/paginated_hook_events"
-                        }
-                    },
-                    "404": {
-                        "description": "If an invalid `{subject_type}` value was specified.",
-                        "schema": {
-                            "$ref": "#/definitions/error"
-                        }
-                    }
-                },
-                "parameters": [
-                    {
-                        "required": true,
-                        "description": "A resource or subject type.",
-                        "enum": [
-                            "user",
-                            "repository",
-                            "team"
-                        ],
-                        "in": "path",
-                        "type": "string",
-                        "name": "subject_type"
-                    }
-                ],
-                "description": "Returns a paginated list of all valid webhook events for the\nspecified entity.\n\nThis is public data that does not require any scopes or authentication.\n\nExample:\n\nNOTE: The following example is a truncated response object for the `team` `subject_type`.\nWe return the same structure for the other `subject_type` objects.\n\n```\n$ curl https://api.bitbucket.org/2.0/hook_events/team\n{\n    \"page\": 1,\n    \"pagelen\": 30,\n    \"size\": 21,\n    \"values\": [\n        {\n            \"category\": \"Repository\",\n            \"description\": \"Whenever a repository push occurs\",\n            \"event\": \"repo:push\",\n            \"label\": \"Push\"\n        },\n        {\n            \"category\": \"Repository\",\n            \"description\": \"Whenever a repository fork occurs\",\n            \"event\": \"repo:fork\",\n            \"label\": \"Fork\"\n        },\n        ...\n        {\n            \"category\": \"Repository\",\n            \"description\": \"Whenever a repository import occurs\",\n            \"event\": \"repo:imported\",\n            \"label\": \"Import\"\n        }\n    ]\n}\n```"
-            }
-        },
-        "/snippets/{username}/{encoded_id}/watchers": {
-            "parameters": [
-                {
-                    "required": true,
-                    "type": "string",
-                    "name": "username",
-                    "in": "path"
-                },
-                {
-                    "required": true,
-                    "type": "string",
-                    "name": "encoded_id",
-                    "in": "path"
-                }
-            ],
-            "get": {
-                "description": "Returns a paginated list of all users watching a specific snippet.",
-                "parameters": [
-                    {
-                        "required": true,
-                        "type": "string",
-                        "description": "The snippet id.",
-                        "in": "path",
-                        "name": "encoded_id"
-                    }
-                ],
-                "tags": [
-                    "snippets"
-                ],
-                "deprecated": true,
-                "security": [
-                    {
-                        "oauth2": [
-                            "snippet"
-                        ]
-                    },
-                    {
-                        "basic": []
-                    },
-                    {
-                        "api_key": []
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "The paginated list of users watching this snippet",
-                        "schema": {
-                            "$ref": "#/definitions/paginated_users"
-                        }
-                    },
-                    "404": {
-                        "description": "If the snippet does not exist.",
-                        "schema": {
-                            "$ref": "#/definitions/error"
-                        }
-                    }
-                }
             }
         },
         "/users/{username}/followers": {
@@ -5613,14 +5217,14 @@
                     {
                         "required": true,
                         "type": "string",
-                        "description": "The commit's SHA1",
+                        "description": "The commit's SHA1 <meqa commit:hash>",
                         "in": "path",
                         "name": "node"
                     },
                     {
                         "required": true,
                         "type": "string",
-                        "description": "The commit status' unique key",
+                        "description": "The commit status' unique key <meqa commitstatus.key>",
                         "in": "path",
                         "name": "key"
                     },
@@ -5647,12 +5251,14 @@
                     "required": true,
                     "type": "string",
                     "name": "node",
+                    "description": "The commit's SHA1 <meqa commit:hash>",
                     "in": "path"
                 },
                 {
                     "required": true,
                     "type": "string",
                     "name": "key",
+                    "description": "The commit status' unique key <meqa commitstatus.key>",
                     "in": "path"
                 },
                 {
@@ -5701,14 +5307,14 @@
                     {
                         "required": true,
                         "type": "string",
-                        "description": "The commit's SHA1",
+                        "description": "The commit's SHA1 <meqa commit:hash>",
                         "in": "path",
                         "name": "node"
                     },
                     {
                         "required": true,
                         "type": "string",
-                        "description": "The build status' unique key",
+                        "description": "The build status' unique key <meqa commitstatus.key>",
                         "in": "path",
                         "name": "key"
                     }
@@ -5772,6 +5378,7 @@
                     "required": true,
                     "type": "string",
                     "name": "encoded_id",
+                    "description": "<meqa snippet.id>",
                     "in": "path"
                 }
             ],
@@ -5950,6 +5557,7 @@
                     "required": true,
                     "type": "string",
                     "name": "encoded_id",
+                    "description": "<meqa snippet.id>",
                     "in": "path"
                 }
             ],
@@ -6095,7 +5703,7 @@
                     {
                         "required": true,
                         "type": "string",
-                        "description": "The uuid of the schedule.",
+                        "description": "The uuid of the schedule. <meqa pipeline_schedule.uuid>",
                         "in": "path",
                         "name": "schedule_uuid"
                     },
@@ -6145,7 +5753,7 @@
                     {
                         "required": true,
                         "type": "string",
-                        "description": "The uuid of the schedule.",
+                        "description": "The uuid of the schedule. <meqa pipeline_schedule.uuid>",
                         "in": "path",
                         "name": "schedule_uuid"
                     }
@@ -6189,7 +5797,7 @@
                     {
                         "required": true,
                         "type": "string",
-                        "description": "The uuid of the schedule.",
+                        "description": "The uuid of the schedule. <meqa pipeline_schedule.uuid>",
                         "in": "path",
                         "name": "schedule_uuid"
                     }
@@ -6335,6 +5943,7 @@
                     "required": true,
                     "type": "string",
                     "name": "issue_id",
+                    "description": "<meqa issue.id>",
                     "in": "path"
                 },
                 {
@@ -6371,166 +5980,6 @@
                 },
                 "parameters": [],
                 "description": "Returns the specified issue comment object."
-            }
-        },
-        "/repositories/{username}/{repo_slug}/hooks/{uid}": {
-            "put": {
-                "security": [
-                    {
-                        "oauth2": [
-                            "webhook"
-                        ]
-                    },
-                    {
-                        "basic": []
-                    },
-                    {
-                        "api_key": []
-                    }
-                ],
-                "tags": [
-                    "repositories",
-                    "webhooks"
-                ],
-                "responses": {
-                    "200": {
-                        "description": "The webhook subscription object.",
-                        "schema": {
-                            "$ref": "#/definitions/webhook_subscription"
-                        }
-                    },
-                    "403": {
-                        "description": "If the authenticated user does not have permission to update the webhook.",
-                        "schema": {
-                            "$ref": "#/definitions/error"
-                        }
-                    },
-                    "404": {
-                        "description": "If the webhook or repository does not exist.",
-                        "schema": {
-                            "$ref": "#/definitions/error"
-                        }
-                    }
-                },
-                "parameters": [
-                    {
-                        "required": true,
-                        "type": "string",
-                        "description": "The installed webhook's id",
-                        "in": "path",
-                        "name": "uid"
-                    }
-                ],
-                "description": "Updates the specified webhook subscription.\n\nThe following properties can be mutated:\n\n* `description`\n* `url`\n* `active`\n* `events`"
-            },
-            "get": {
-                "security": [
-                    {
-                        "oauth2": [
-                            "webhook"
-                        ]
-                    },
-                    {
-                        "basic": []
-                    },
-                    {
-                        "api_key": []
-                    }
-                ],
-                "tags": [
-                    "repositories",
-                    "webhooks"
-                ],
-                "responses": {
-                    "200": {
-                        "description": "The webhook subscription object.",
-                        "schema": {
-                            "$ref": "#/definitions/webhook_subscription"
-                        }
-                    },
-                    "404": {
-                        "description": "If the webhook or repository does not exist.",
-                        "schema": {
-                            "$ref": "#/definitions/error"
-                        }
-                    }
-                },
-                "parameters": [
-                    {
-                        "required": true,
-                        "type": "string",
-                        "description": "The installed webhook's id.",
-                        "in": "path",
-                        "name": "uid"
-                    }
-                ],
-                "description": "Returns the webhook with the specified id installed on the specified\nrepository."
-            },
-            "parameters": [
-                {
-                    "required": true,
-                    "type": "string",
-                    "name": "username",
-                    "in": "path"
-                },
-                {
-                    "required": true,
-                    "type": "string",
-                    "name": "uid",
-                    "in": "path"
-                },
-                {
-                    "required": true,
-                    "type": "string",
-                    "name": "repo_slug",
-                    "in": "path"
-                }
-            ],
-            "delete": {
-                "security": [
-                    {
-                        "oauth2": [
-                            "webhook"
-                        ]
-                    },
-                    {
-                        "basic": []
-                    },
-                    {
-                        "api_key": []
-                    }
-                ],
-                "tags": [
-                    "repositories",
-                    "webhooks"
-                ],
-                "responses": {
-                    "204": {
-                        "description": "When the webhook was deleted successfully"
-                    },
-                    "403": {
-                        "description": "If the authenticated user does not have permission to delete the webhook.",
-                        "schema": {
-                            "$ref": "#/definitions/error"
-                        }
-                    },
-                    "404": {
-                        "description": "If the webhook or repository does not exist.",
-                        "schema": {
-                            "$ref": "#/definitions/error"
-                        }
-                    }
-                },
-                "parameters": [
-                    {
-                        "required": true,
-                        "type": "string",
-                        "description": "The installed webhook's id",
-                        "in": "path",
-                        "name": "uid"
-                    }
-                ],
-                "description": "Deletes the specified webhook subscription from the given\nrepository."
             }
         },
         "/repositories/{username}/{repo_slug}/pipelines_config/variables/": {
@@ -6783,7 +6232,7 @@
                     {
                         "required": true,
                         "type": "string",
-                        "description": "The snippet's id.",
+                        "description": "The snippet's id. <meqa snippet.id>",
                         "in": "path",
                         "name": "encoded_id"
                     }
@@ -6822,7 +6271,7 @@
                     {
                         "required": true,
                         "type": "string",
-                        "description": "The snippet's id.",
+                        "description": "The snippet's id. <meqa snippet.id>",
                         "in": "path",
                         "name": "encoded_id"
                     }
@@ -6933,41 +6382,12 @@
                     {
                         "required": true,
                         "type": "string",
-                        "description": "The snippet's id.",
+                        "description": "The snippet's id. <meqa snippet.id>",
                         "in": "path",
                         "name": "encoded_id"
                     }
                 ],
                 "description": "Deletes a snippet and returns an empty response."
-            }
-        },
-        "/addon/linkers": {
-            "parameters": [],
-            "get": {
-                "security": [
-                    {
-                        "oauth2": []
-                    },
-                    {
-                        "basic": []
-                    },
-                    {
-                        "api_key": []
-                    }
-                ],
-                "tags": [
-                    "addon"
-                ],
-                "responses": {
-                    "default": {
-                        "description": "Unexpected error.",
-                        "schema": {
-                            "$ref": "#/definitions/error"
-                        }
-                    }
-                },
-                "parameters": [],
-                "description": ""
             }
         },
         "/repositories/{username}/{repo_slug}/pipelines_config/build_number": {
@@ -7024,84 +6444,6 @@
                 ]
             }
         },
-        "/repositories/{username}/{repo_slug}/pullrequests/{pull_request_id}/activity": {
-            "parameters": [
-                {
-                    "required": true,
-                    "type": "string",
-                    "name": "username",
-                    "in": "path"
-                },
-                {
-                    "required": true,
-                    "type": "string",
-                    "name": "pull_request_id",
-                    "in": "path"
-                },
-                {
-                    "required": true,
-                    "type": "string",
-                    "name": "repo_slug",
-                    "in": "path"
-                }
-            ],
-            "get": {
-                "security": [
-                    {
-                        "oauth2": [
-                            "pullrequest"
-                        ]
-                    },
-                    {
-                        "basic": []
-                    },
-                    {
-                        "api_key": []
-                    }
-                ],
-                "tags": [
-                    "pullrequests"
-                ],
-                "responses": {
-                    "200": {
-                        "description": "The pull request activity log"
-                    },
-                    "401": {
-                        "description": "If the repository is private and the request was not authenticated."
-                    },
-                    "404": {
-                        "description": "If the specified repository does not exist.",
-                        "schema": {
-                            "$ref": "#/definitions/error"
-                        }
-                    }
-                },
-                "parameters": [
-                    {
-                        "required": true,
-                        "type": "string",
-                        "description": "This can either be the username or the UUID of the user,\nsurrounded by curly-braces, for example: `{user UUID}`.\n",
-                        "in": "path",
-                        "name": "username"
-                    },
-                    {
-                        "required": true,
-                        "type": "string",
-                        "description": "This can either be the repository slug or the UUID of the repository,\nsurrounded by curly-braces, for example: `{repository UUID}`.\n",
-                        "in": "path",
-                        "name": "repo_slug"
-                    },
-                    {
-                        "required": true,
-                        "type": "integer",
-                        "description": "The id of the pull request.\n",
-                        "in": "path",
-                        "name": "pull_request_id"
-                    }
-                ],
-                "description": "Returns a paginated list of the pull request's activity log.\n\nThis includes comments that were made by the reviewers, updates and\napprovals."
-            }
-        },
         "/repositories/{username}/{repo_slug}/pipelines/{pipeline_uuid}/stopPipeline": {
             "post": {
                 "responses": {
@@ -7141,7 +6483,7 @@
                     {
                         "required": true,
                         "type": "string",
-                        "description": "The UUID of the pipeline.",
+                        "description": "The UUID of the pipeline. <meqa pipeline.uuid>",
                         "in": "path",
                         "name": "pipeline_uuid"
                     }
@@ -7213,61 +6555,6 @@
                     }
                 ],
                 "description": "Returns the specified issue tracker component object."
-            }
-        },
-        "/addon": {
-            "put": {
-                "security": [
-                    {
-                        "oauth2": []
-                    },
-                    {
-                        "basic": []
-                    },
-                    {
-                        "api_key": []
-                    }
-                ],
-                "tags": [
-                    "addon"
-                ],
-                "responses": {
-                    "default": {
-                        "description": "Unexpected error.",
-                        "schema": {
-                            "$ref": "#/definitions/error"
-                        }
-                    }
-                },
-                "parameters": [],
-                "description": ""
-            },
-            "parameters": [],
-            "delete": {
-                "security": [
-                    {
-                        "oauth2": []
-                    },
-                    {
-                        "basic": []
-                    },
-                    {
-                        "api_key": []
-                    }
-                ],
-                "tags": [
-                    "addon"
-                ],
-                "responses": {
-                    "default": {
-                        "description": "Unexpected error.",
-                        "schema": {
-                            "$ref": "#/definitions/error"
-                        }
-                    }
-                },
-                "parameters": [],
-                "description": ""
             }
         },
         "/repositories/{username}": {
@@ -7385,104 +6672,6 @@
                     }
                 ],
                 "description": "Returns the list of accounts this user is following."
-            }
-        },
-        "/users/{username}/hooks": {
-            "post": {
-                "security": [
-                    {
-                        "oauth2": [
-                            "webhook"
-                        ]
-                    },
-                    {
-                        "basic": []
-                    },
-                    {
-                        "api_key": []
-                    }
-                ],
-                "tags": [
-                    "users",
-                    "webhooks"
-                ],
-                "responses": {
-                    "201": {
-                        "headers": {
-                            "Location": {
-                                "type": "string",
-                                "description": "The URL of new newly created webhook."
-                            }
-                        },
-                        "description": "The newly installed webhook.",
-                        "schema": {
-                            "$ref": "#/definitions/webhook_subscription"
-                        }
-                    },
-                    "403": {
-                        "description": "If the authenticated user is accessing an account other than their own.",
-                        "schema": {
-                            "$ref": "#/definitions/error"
-                        }
-                    },
-                    "404": {
-                        "description": "If the specified account does not exist.",
-                        "schema": {
-                            "$ref": "#/definitions/error"
-                        }
-                    }
-                },
-                "parameters": [],
-                "description": "Creates a new webhook on the specified user account.\n\nAccount-level webhooks are fired for events from all repositories\nbelonging to that account.\n\nNote that one can only register webhooks on one's own account, not that\nof others."
-            },
-            "parameters": [
-                {
-                    "required": true,
-                    "type": "string",
-                    "name": "username",
-                    "in": "path"
-                }
-            ],
-            "get": {
-                "security": [
-                    {
-                        "oauth2": [
-                            "webhook"
-                        ]
-                    },
-                    {
-                        "basic": []
-                    },
-                    {
-                        "api_key": []
-                    }
-                ],
-                "tags": [
-                    "users",
-                    "webhooks"
-                ],
-                "responses": {
-                    "200": {
-                        "description": "The paginated list of installed webhooks.",
-                        "schema": {
-                            "$ref": "#/definitions/paginated_webhook_subscriptions"
-                        }
-                    },
-                    "403": {
-                        "description": "If the authenticated user is accessing an account other than their own.",
-                        "schema": {
-                            "$ref": "#/definitions/error"
-                        }
-                    },
-                    "404": {
-                        "description": "If the specified account does not exist.",
-                        "schema": {
-                            "$ref": "#/definitions/error"
-                        }
-                    }
-                },
-                "parameters": [],
-                "description": "Returns a paginated list of webhooks installed on this user account."
             }
         },
         "/teams/{username}/repositories": {
@@ -7676,7 +6865,7 @@
                     {
                         "required": true,
                         "type": "string",
-                        "description": "The UUID of the variable to update.",
+                        "description": "The UUID of the variable to update.  <meqa pipeline_variable:uuid>",
                         "in": "path",
                         "name": "variable_uuid"
                     },
@@ -7726,7 +6915,7 @@
                     {
                         "required": true,
                         "type": "string",
-                        "description": "The UUID of the variable to delete.",
+                        "description": "The UUID of the variable to delete. <meqa pipeline_variable:uuid>",
                         "in": "path",
                         "name": "variable_uuid"
                     }
@@ -7770,7 +6959,7 @@
                     {
                         "required": true,
                         "type": "string",
-                        "description": "The UUID of the variable to retrieve.",
+                        "description": "The UUID of the variable to retrieve. <meqa pipeline_variable:uuid>",
                         "in": "path",
                         "name": "variable_uuid"
                     }
@@ -7778,35 +6967,6 @@
                 "tags": [
                     "pipelines"
                 ]
-            }
-        },
-        "/hook_events": {
-            "parameters": [],
-            "get": {
-                "security": [
-                    {
-                        "oauth2": []
-                    },
-                    {
-                        "basic": []
-                    },
-                    {
-                        "api_key": []
-                    }
-                ],
-                "tags": [
-                    "webhooks"
-                ],
-                "responses": {
-                    "200": {
-                        "description": "A mapping of resource/subject types pointing to their individual event types.",
-                        "schema": {
-                            "$ref": "#/definitions/subject_types"
-                        }
-                    }
-                },
-                "parameters": [],
-                "description": "Returns the webhook resource or subject types on which webhooks can\nbe registered.\n\nEach resource/subject type contains an `events` link that returns the\npaginated list of specific events each individual subject type can\nemit.\n\nThis endpoint is publicly accessible and does not require\nauthentication or scopes.\n\nExample:\n\n```\n$ curl https://api.bitbucket.org/2.0/hook_events\n\n{\n    \"repository\": {\n        \"links\": {\n            \"events\": {\n                \"href\": \"https://api.bitbucket.org/2.0/hook_events/repository\"\n            }\n        }\n    },\n    \"team\": {\n        \"links\": {\n            \"events\": {\n                \"href\": \"https://api.bitbucket.org/2.0/hook_events/team\"\n            }\n        }\n    },\n    \"user\": {\n        \"links\": {\n            \"events\": {\n                \"href\": \"https://api.bitbucket.org/2.0/hook_events/user\"\n            }\n        }\n    }\n}\n```"
             }
         },
         "/teams/{username}": {
@@ -7895,84 +7055,6 @@
                 },
                 "parameters": [],
                 "description": "Returns details about a specific one of the authenticated user's\nemail addresses.\n\nDetails describe whether the address has been confirmed by the user and\nwhether it is the user's primary address or not."
-            }
-        },
-        "/repositories/{username}/{repo_slug}/pullrequests/{pull_request_id}/approve": {
-            "post": {
-                "security": [
-                    {
-                        "oauth2": [
-                            "pullrequest:write"
-                        ]
-                    },
-                    {
-                        "basic": []
-                    },
-                    {
-                        "api_key": []
-                    }
-                ],
-                "tags": [
-                    "pullrequests"
-                ],
-                "responses": {
-                    "default": {
-                        "description": "Unexpected error.",
-                        "schema": {
-                            "$ref": "#/definitions/error"
-                        }
-                    }
-                },
-                "parameters": [],
-                "description": "Approve the specified pull request as the authenticated user."
-            },
-            "parameters": [
-                {
-                    "required": true,
-                    "type": "string",
-                    "name": "username",
-                    "in": "path"
-                },
-                {
-                    "required": true,
-                    "type": "string",
-                    "name": "pull_request_id",
-                    "in": "path"
-                },
-                {
-                    "required": true,
-                    "type": "string",
-                    "name": "repo_slug",
-                    "in": "path"
-                }
-            ],
-            "delete": {
-                "security": [
-                    {
-                        "oauth2": [
-                            "pullrequest:write"
-                        ]
-                    },
-                    {
-                        "basic": []
-                    },
-                    {
-                        "api_key": []
-                    }
-                ],
-                "tags": [
-                    "pullrequests"
-                ],
-                "responses": {
-                    "default": {
-                        "description": "Unexpected error.",
-                        "schema": {
-                            "$ref": "#/definitions/error"
-                        }
-                    }
-                },
-                "parameters": [],
-                "description": "Redact the authenticated user's approval of the specified pull\nrequest."
             }
         },
         "/repositories/{username}/{repo_slug}/patch/{spec}": {
@@ -8394,6 +7476,7 @@
                     "required": true,
                     "type": "string",
                     "name": "revision",
+                    "description": "<meqa commit.hash>",
                     "in": "path"
                 },
                 {
@@ -8462,7 +7545,7 @@
                     {
                         "required": true,
                         "type": "string",
-                        "description": "The UUID of the pipeline.",
+                        "description": "The UUID of the pipeline. <meqa pipeline.uuid>",
                         "in": "path",
                         "name": "pipeline_uuid"
                     }
@@ -8761,251 +7844,6 @@
                 "description": ""
             }
         },
-        "/teams/{username}/hooks/{uid}": {
-            "put": {
-                "security": [
-                    {
-                        "oauth2": [
-                            "webhook"
-                        ]
-                    },
-                    {
-                        "basic": []
-                    },
-                    {
-                        "api_key": []
-                    }
-                ],
-                "tags": [
-                    "teams",
-                    "webhooks"
-                ],
-                "responses": {
-                    "200": {
-                        "description": "The webhook subscription object.",
-                        "schema": {
-                            "$ref": "#/definitions/webhook_subscription"
-                        }
-                    },
-                    "403": {
-                        "description": "If the authenticated user does not have permission to update the webhook.",
-                        "schema": {
-                            "$ref": "#/definitions/error"
-                        }
-                    },
-                    "404": {
-                        "description": "If the webhook or team does not exist.",
-                        "schema": {
-                            "$ref": "#/definitions/error"
-                        }
-                    }
-                },
-                "parameters": [
-                    {
-                        "required": true,
-                        "type": "string",
-                        "description": "The installed webhook's id",
-                        "in": "path",
-                        "name": "uid"
-                    }
-                ],
-                "description": "Updates the specified webhook subscription.\n\nThe following properties can be mutated:\n\n* `description`\n* `url`\n* `active`\n* `events`"
-            },
-            "get": {
-                "security": [
-                    {
-                        "oauth2": [
-                            "webhook"
-                        ]
-                    },
-                    {
-                        "basic": []
-                    },
-                    {
-                        "api_key": []
-                    }
-                ],
-                "tags": [
-                    "teams",
-                    "webhooks"
-                ],
-                "responses": {
-                    "200": {
-                        "description": "The webhook subscription object.",
-                        "schema": {
-                            "$ref": "#/definitions/webhook_subscription"
-                        }
-                    },
-                    "404": {
-                        "description": "If the webhook or team does not exist.",
-                        "schema": {
-                            "$ref": "#/definitions/error"
-                        }
-                    }
-                },
-                "parameters": [
-                    {
-                        "required": true,
-                        "type": "string",
-                        "description": "The installed webhook's id.",
-                        "in": "path",
-                        "name": "uid"
-                    }
-                ],
-                "description": "Returns the webhook with the specified id installed on the given\nteam account."
-            },
-            "parameters": [
-                {
-                    "required": true,
-                    "type": "string",
-                    "name": "username",
-                    "in": "path"
-                },
-                {
-                    "required": true,
-                    "type": "string",
-                    "name": "uid",
-                    "in": "path"
-                }
-            ],
-            "delete": {
-                "security": [
-                    {
-                        "oauth2": [
-                            "webhook"
-                        ]
-                    },
-                    {
-                        "basic": []
-                    },
-                    {
-                        "api_key": []
-                    }
-                ],
-                "tags": [
-                    "teams",
-                    "webhooks"
-                ],
-                "responses": {
-                    "204": {
-                        "description": "When the webhook was deleted successfully"
-                    },
-                    "403": {
-                        "description": "If the authenticated user does not have permission to delete the webhook.",
-                        "schema": {
-                            "$ref": "#/definitions/error"
-                        }
-                    },
-                    "404": {
-                        "description": "If the webhook or team does not exist.",
-                        "schema": {
-                            "$ref": "#/definitions/error"
-                        }
-                    }
-                },
-                "parameters": [
-                    {
-                        "required": true,
-                        "type": "string",
-                        "description": "The installed webhook's id",
-                        "in": "path",
-                        "name": "uid"
-                    }
-                ],
-                "description": "Deletes the specified webhook subscription from the given team\naccount."
-            }
-        },
-        "/repositories/{username}/{repo_slug}/pipelines_config/ssh/known_hosts/": {
-            "post": {
-                "responses": {
-                    "201": {
-                        "headers": {
-                            "Location": {
-                                "type": "string",
-                                "description": "The URL of the newly created pipeline known host."
-                            }
-                        },
-                        "description": "The known host was created.",
-                        "schema": {
-                            "$ref": "#/definitions/pipeline_known_host"
-                        }
-                    },
-                    "404": {
-                        "description": "The account or repository does not exist.",
-                        "schema": {
-                            "$ref": "#/definitions/error"
-                        }
-                    },
-                    "409": {
-                        "description": "A known host with the provided hostname already exists.",
-                        "schema": {
-                            "$ref": "#/definitions/error"
-                        }
-                    }
-                },
-                "operationId": "createRepositoryPipelineKnownHost",
-                "description": "Create a repository level known host.",
-                "parameters": [
-                    {
-                        "required": true,
-                        "type": "string",
-                        "description": "The account.",
-                        "in": "path",
-                        "name": "username"
-                    },
-                    {
-                        "required": true,
-                        "type": "string",
-                        "description": "The repository.",
-                        "in": "path",
-                        "name": "repo_slug"
-                    },
-                    {
-                        "schema": {
-                            "$ref": "#/definitions/pipeline_known_host"
-                        },
-                        "required": true,
-                        "description": "The known host to create.",
-                        "name": "_body",
-                        "in": "body"
-                    }
-                ],
-                "tags": [
-                    "pipelines"
-                ]
-            },
-            "get": {
-                "responses": {
-                    "200": {
-                        "description": "The retrieved known hosts.",
-                        "schema": {
-                            "$ref": "#/definitions/paginated_pipeline_known_hosts"
-                        }
-                    }
-                },
-                "operationId": "getRepositoryPipelineKnownHosts",
-                "description": "Find repository level known hosts.",
-                "parameters": [
-                    {
-                        "required": true,
-                        "type": "string",
-                        "description": "The account.",
-                        "in": "path",
-                        "name": "username"
-                    },
-                    {
-                        "required": true,
-                        "type": "string",
-                        "description": "The repository.",
-                        "in": "path",
-                        "name": "repo_slug"
-                    }
-                ],
-                "tags": [
-                    "pipelines"
-                ]
-            }
-        },
         "/repositories/{username}/{repo_slug}/refs/tags/{name}": {
             "parameters": [
                 {
@@ -9208,56 +8046,6 @@
                     }
                 ],
                 "description": "Used to stop watching a specific snippet. Returns 204 (No Content)\nto indicate success."
-            }
-        },
-        "/repositories/{username}/{repo_slug}/pullrequests/{pull_request_id}/diff": {
-            "parameters": [
-                {
-                    "required": true,
-                    "type": "string",
-                    "name": "username",
-                    "in": "path"
-                },
-                {
-                    "required": true,
-                    "type": "string",
-                    "name": "pull_request_id",
-                    "in": "path"
-                },
-                {
-                    "required": true,
-                    "type": "string",
-                    "name": "repo_slug",
-                    "in": "path"
-                }
-            ],
-            "get": {
-                "security": [
-                    {
-                        "oauth2": [
-                            "pullrequest"
-                        ]
-                    },
-                    {
-                        "basic": []
-                    },
-                    {
-                        "api_key": []
-                    }
-                ],
-                "tags": [
-                    "pullrequests"
-                ],
-                "responses": {
-                    "default": {
-                        "description": "Unexpected error.",
-                        "schema": {
-                            "$ref": "#/definitions/error"
-                        }
-                    }
-                },
-                "parameters": [],
-                "description": ""
             }
         },
         "/repositories/{username}/{repo_slug}/src/{node}/{path}": {
@@ -9588,264 +8376,6 @@
                 ]
             }
         },
-        "/repositories/{username}/{repo_slug}/pullrequests/{pull_request_id}": {
-            "put": {
-                "security": [
-                    {
-                        "oauth2": [
-                            "pullrequest:write"
-                        ]
-                    },
-                    {
-                        "basic": []
-                    },
-                    {
-                        "api_key": []
-                    }
-                ],
-                "tags": [
-                    "pullrequests"
-                ],
-                "responses": {
-                    "200": {
-                        "description": "The updated pull request",
-                        "schema": {
-                            "$ref": "#/definitions/pullrequest"
-                        }
-                    },
-                    "400": {
-                        "description": "If the input document was invalid.",
-                        "schema": {
-                            "$ref": "#/definitions/error"
-                        }
-                    },
-                    "401": {
-                        "description": "If the request was not authenticated.",
-                        "schema": {
-                            "$ref": "#/definitions/error"
-                        }
-                    },
-                    "404": {
-                        "description": "If the repository or pull request id does not exist",
-                        "schema": {
-                            "$ref": "#/definitions/error"
-                        }
-                    }
-                },
-                "parameters": [
-                    {
-                        "required": true,
-                        "type": "string",
-                        "description": "This can either be the username or the UUID of the user,\nsurrounded by curly-braces, for example: `{user UUID}`.\n",
-                        "in": "path",
-                        "name": "username"
-                    },
-                    {
-                        "required": true,
-                        "type": "string",
-                        "description": "This can either be the repository slug or the UUID of the repository,\nsurrounded by curly-braces, for example: `{repository UUID}`.\n",
-                        "in": "path",
-                        "name": "repo_slug"
-                    },
-                    {
-                        "required": true,
-                        "type": "integer",
-                        "description": "The id of the open pull request.\n",
-                        "in": "path",
-                        "name": "pull_request_id"
-                    },
-                    {
-                        "required": false,
-                        "in": "body",
-                        "description": "The pull request that is to be updated.",
-                        "name": "_body",
-                        "schema": {
-                            "$ref": "#/definitions/pullrequest"
-                        }
-                    }
-                ],
-                "description": "Mutates the specified pull request.\n\nThis can be used to change the pull request's branches or description.\n\nOnly open pull requests can be mutated."
-            },
-            "parameters": [
-                {
-                    "required": true,
-                    "type": "string",
-                    "name": "username",
-                    "in": "path"
-                },
-                {
-                    "required": true,
-                    "type": "string",
-                    "name": "pull_request_id",
-                    "in": "path"
-                },
-                {
-                    "required": true,
-                    "type": "string",
-                    "name": "repo_slug",
-                    "in": "path"
-                }
-            ],
-            "get": {
-                "security": [
-                    {
-                        "oauth2": [
-                            "pullrequest"
-                        ]
-                    },
-                    {
-                        "basic": []
-                    },
-                    {
-                        "api_key": []
-                    }
-                ],
-                "tags": [
-                    "pullrequests"
-                ],
-                "responses": {
-                    "200": {
-                        "description": "The pull request object",
-                        "schema": {
-                            "$ref": "#/definitions/pullrequest"
-                        }
-                    },
-                    "401": {
-                        "description": "If the repository is private and the request was not authenticated."
-                    },
-                    "404": {
-                        "description": "If the repository or pull request does not exist",
-                        "schema": {
-                            "$ref": "#/definitions/error"
-                        }
-                    }
-                },
-                "parameters": [
-                    {
-                        "required": true,
-                        "type": "string",
-                        "description": "This can either be the username or the UUID of the account,\nsurrounded by curly-braces, for example: `{user UUID}`.\n",
-                        "in": "path",
-                        "name": "username"
-                    },
-                    {
-                        "required": true,
-                        "type": "string",
-                        "description": "This can either be the repository slug or the UUID of the repository,\nsurrounded by curly-braces, for example: `{repository UUID}`.\n",
-                        "in": "path",
-                        "name": "repo_slug"
-                    },
-                    {
-                        "required": true,
-                        "type": "integer",
-                        "description": "The id of the pull request.\n",
-                        "in": "path",
-                        "name": "pull_request_id"
-                    }
-                ],
-                "description": "Returns the specified pull request."
-            }
-        },
-        "/repositories/{username}/{repo_slug}/pullrequests/{pull_request_id}/comments": {
-            "parameters": [
-                {
-                    "required": true,
-                    "type": "string",
-                    "name": "username",
-                    "in": "path"
-                },
-                {
-                    "required": true,
-                    "type": "string",
-                    "name": "pull_request_id",
-                    "in": "path"
-                },
-                {
-                    "required": true,
-                    "type": "string",
-                    "name": "repo_slug",
-                    "in": "path"
-                }
-            ],
-            "get": {
-                "security": [
-                    {
-                        "oauth2": [
-                            "pullrequest"
-                        ]
-                    },
-                    {
-                        "basic": []
-                    },
-                    {
-                        "api_key": []
-                    }
-                ],
-                "tags": [
-                    "pullrequests"
-                ],
-                "responses": {
-                    "default": {
-                        "description": "Unexpected error.",
-                        "schema": {
-                            "$ref": "#/definitions/error"
-                        }
-                    }
-                },
-                "parameters": [],
-                "description": "Returns a paginated list of the pull request's comments.\n\nThis includes both global, inline comments and replies.\n\nThe default sorting is oldest to newest and can be overridden with\nthe `sort` query parameter.\n\nThis endpoint also supports filtering and sorting of the results. See\n[filtering and sorting](../../../../../../meta/filtering) for more\ndetails."
-            }
-        },
-        "/repositories/{username}/{repo_slug}/pullrequests/{pull_request_id}/decline": {
-            "post": {
-                "security": [
-                    {
-                        "oauth2": [
-                            "pullrequest:write"
-                        ]
-                    },
-                    {
-                        "basic": []
-                    },
-                    {
-                        "api_key": []
-                    }
-                ],
-                "tags": [
-                    "pullrequests"
-                ],
-                "responses": {
-                    "200": {
-                        "description": "The pull request object.",
-                        "schema": {
-                            "$ref": "#/definitions/pullrequest"
-                        }
-                    }
-                },
-                "parameters": [],
-                "description": "Declines the pull request."
-            },
-            "parameters": [
-                {
-                    "required": true,
-                    "type": "string",
-                    "name": "username",
-                    "in": "path"
-                },
-                {
-                    "required": true,
-                    "type": "string",
-                    "name": "pull_request_id",
-                    "in": "path"
-                },
-                {
-                    "required": true,
-                    "type": "string",
-                    "name": "repo_slug",
-                    "in": "path"
-                }
-            ]
-        },
         "/user/emails": {
             "parameters": [],
             "get": {
@@ -9875,156 +8405,6 @@
                 },
                 "parameters": [],
                 "description": "Returns all the authenticated user's email addresses. Both\nconfirmed and unconfirmed."
-            }
-        },
-        "/repositories/{username}/{repo_slug}/pullrequests": {
-            "post": {
-                "security": [
-                    {
-                        "oauth2": [
-                            "pullrequest:write"
-                        ]
-                    },
-                    {
-                        "basic": []
-                    },
-                    {
-                        "api_key": []
-                    }
-                ],
-                "tags": [
-                    "pullrequests"
-                ],
-                "responses": {
-                    "201": {
-                        "headers": {
-                            "Location": {
-                                "type": "string",
-                                "description": "The URL of new newly created pull request."
-                            }
-                        },
-                        "description": "The newly created pull request.",
-                        "schema": {
-                            "$ref": "#/definitions/pullrequest"
-                        }
-                    },
-                    "400": {
-                        "description": "If the input document was invalid, or if the caller lacks the privilege to create repositories under the targeted account.",
-                        "schema": {
-                            "$ref": "#/definitions/error"
-                        }
-                    },
-                    "401": {
-                        "description": "If the request was not authenticated.",
-                        "schema": {
-                            "$ref": "#/definitions/error"
-                        }
-                    }
-                },
-                "parameters": [
-                    {
-                        "required": true,
-                        "type": "string",
-                        "description": "This can either be the username or the UUID of the user,\nsurrounded by curly-braces, for example: `{user UUID}`.\n",
-                        "in": "path",
-                        "name": "username"
-                    },
-                    {
-                        "required": true,
-                        "type": "string",
-                        "description": "This can either be the repository slug or the UUID of the repository,\nsurrounded by curly-braces, for example: `{repository UUID}`.\n",
-                        "in": "path",
-                        "name": "repo_slug"
-                    },
-                    {
-                        "required": false,
-                        "in": "body",
-                        "description": "The new pull request.\n\nThe request URL you POST to becomes the destination repository URL. For this reason, you must specify an explicit source repository in the request object if you want to pull from a different repository (fork).\n\nSince not all elements are required or even mutable, you only need to include the elements you want to initialize, such as the source branch and the title.",
-                        "name": "_body",
-                        "schema": {
-                            "$ref": "#/definitions/pullrequest"
-                        }
-                    }
-                ],
-                "description": "Creates a new pull request."
-            },
-            "parameters": [
-                {
-                    "required": true,
-                    "type": "string",
-                    "name": "username",
-                    "in": "path"
-                },
-                {
-                    "required": true,
-                    "type": "string",
-                    "name": "repo_slug",
-                    "in": "path"
-                }
-            ],
-            "get": {
-                "security": [
-                    {
-                        "oauth2": [
-                            "pullrequest"
-                        ]
-                    },
-                    {
-                        "basic": []
-                    },
-                    {
-                        "api_key": []
-                    }
-                ],
-                "tags": [
-                    "pullrequests"
-                ],
-                "responses": {
-                    "200": {
-                        "description": "All pull requests on the specified repository.",
-                        "schema": {
-                            "$ref": "#/definitions/paginated_pullrequests"
-                        }
-                    },
-                    "401": {
-                        "description": "If the repository is private and the request was not authenticated."
-                    },
-                    "404": {
-                        "description": "If the specified repository does not exist.",
-                        "schema": {
-                            "$ref": "#/definitions/error"
-                        }
-                    }
-                },
-                "parameters": [
-                    {
-                        "required": true,
-                        "type": "string",
-                        "description": "This can either be the username or the UUID of the user,\nsurrounded by curly-braces, for example: `{user UUID}`.\n",
-                        "in": "path",
-                        "name": "username"
-                    },
-                    {
-                        "required": true,
-                        "type": "string",
-                        "description": "This can either be the repository slug or the UUID of the repository,\nsurrounded by curly-braces, for example: `{repository UUID}`.\n",
-                        "in": "path",
-                        "name": "repo_slug"
-                    },
-                    {
-                        "enum": [
-                            "MERGED",
-                            "SUPERSEDED",
-                            "OPEN",
-                            "DECLINED"
-                        ],
-                        "type": "string",
-                        "description": "Only return pull requests that are in this state. This parameter can be repeated.",
-                        "in": "query",
-                        "name": "state"
-                    }
-                ],
-                "description": "Returns a paginated list of all pull requests on the specified\nrepository. By default only open pull requests are returned. This can\nbe controlled using the `state` query parameter. To retrieve pull\nrequests that are in one of multiple states, repeat the `state`\nparameter for each individual state.\n\nThis endpoint also supports filtering and sorting of the results. See\n[filtering and sorting](../../../../meta/filtering) for more details."
             }
         },
         "/repositories/{username}/{repo_slug}/commits": {
@@ -11102,62 +9482,6 @@
                 "description": "Used to retrieve a paginated list of all comments for a specific\nsnippet.\n\nThis resource works identical to commit and pull request comments.\n\nThe default sorting is oldest to newest and can be overridden with\nthe `sort` query parameter."
             }
         },
-        "/repositories/{username}/{repo_slug}/pullrequests/{pull_request_id}/comments/{comment_id}": {
-            "parameters": [
-                {
-                    "required": true,
-                    "type": "string",
-                    "name": "username",
-                    "in": "path"
-                },
-                {
-                    "required": true,
-                    "type": "string",
-                    "name": "pull_request_id",
-                    "in": "path"
-                },
-                {
-                    "required": true,
-                    "type": "string",
-                    "name": "comment_id",
-                    "in": "path"
-                },
-                {
-                    "required": true,
-                    "type": "string",
-                    "name": "repo_slug",
-                    "in": "path"
-                }
-            ],
-            "get": {
-                "security": [
-                    {
-                        "oauth2": [
-                            "pullrequest"
-                        ]
-                    },
-                    {
-                        "basic": []
-                    },
-                    {
-                        "api_key": []
-                    }
-                ],
-                "tags": [
-                    "pullrequests"
-                ],
-                "responses": {
-                    "default": {
-                        "description": "Unexpected error.",
-                        "schema": {
-                            "$ref": "#/definitions/error"
-                        }
-                    }
-                },
-                "parameters": [],
-                "description": "Returns a specific pull request comment."
-            }
-        },
         "/repositories/{username}/{repo_slug}/pipelines/{pipeline_uuid}": {
             "get": {
                 "responses": {
@@ -11194,7 +9518,7 @@
                     {
                         "required": true,
                         "type": "string",
-                        "description": "The pipeline UUID.",
+                        "description": "The pipeline UUID. <meqa pipeline.uuid>",
                         "in": "path",
                         "name": "pipeline_uuid"
                     }
@@ -11203,65 +9527,6 @@
                     "pipelines"
                 ]
             }
-        },
-        "/repositories/{username}/{repo_slug}/pullrequests/{pull_request_id}/merge": {
-            "post": {
-                "security": [
-                    {
-                        "oauth2": [
-                            "pullrequest:write"
-                        ]
-                    },
-                    {
-                        "basic": []
-                    },
-                    {
-                        "api_key": []
-                    }
-                ],
-                "tags": [
-                    "pullrequests"
-                ],
-                "responses": {
-                    "200": {
-                        "description": "The pull request object.",
-                        "schema": {
-                            "$ref": "#/definitions/pullrequest"
-                        }
-                    }
-                },
-                "parameters": [
-                    {
-                        "required": false,
-                        "in": "body",
-                        "name": "_body",
-                        "schema": {
-                            "$ref": "#/definitions/pullrequest_merge_parameters"
-                        }
-                    }
-                ],
-                "description": "Merges the pull request."
-            },
-            "parameters": [
-                {
-                    "required": true,
-                    "type": "string",
-                    "name": "username",
-                    "in": "path"
-                },
-                {
-                    "required": true,
-                    "type": "string",
-                    "name": "pull_request_id",
-                    "in": "path"
-                },
-                {
-                    "required": true,
-                    "type": "string",
-                    "name": "repo_slug",
-                    "in": "path"
-                }
-            ]
         },
         "/teams/{owner}/projects/": {
             "post": {
@@ -11656,7 +9921,7 @@
                     {
                         "required": true,
                         "type": "string",
-                        "description": "The UUID of the pipeline.",
+                        "description": "The UUID of the pipeline. <meqa pipeline.uuid>",
                         "in": "path",
                         "name": "pipeline_uuid"
                     },
@@ -11676,42 +9941,6 @@
                     "pipelines"
                 ],
                 "operationId": "getPipelineStepLogForRepository"
-            }
-        },
-        "/addon/linkers/{linker_key}": {
-            "parameters": [
-                {
-                    "required": true,
-                    "type": "string",
-                    "name": "linker_key",
-                    "in": "path"
-                }
-            ],
-            "get": {
-                "security": [
-                    {
-                        "oauth2": []
-                    },
-                    {
-                        "basic": []
-                    },
-                    {
-                        "api_key": []
-                    }
-                ],
-                "tags": [
-                    "addon"
-                ],
-                "responses": {
-                    "default": {
-                        "description": "Unexpected error.",
-                        "schema": {
-                            "$ref": "#/definitions/error"
-                        }
-                    }
-                },
-                "parameters": [],
-                "description": ""
             }
         },
         "/repositories/{username}/{repo_slug}/refs/tags": {
@@ -11952,56 +10181,6 @@
                 ]
             }
         },
-        "/repositories/{username}/{repo_slug}/pullrequests/{pull_request_id}/commits": {
-            "parameters": [
-                {
-                    "required": true,
-                    "type": "string",
-                    "name": "username",
-                    "in": "path"
-                },
-                {
-                    "required": true,
-                    "type": "string",
-                    "name": "pull_request_id",
-                    "in": "path"
-                },
-                {
-                    "required": true,
-                    "type": "string",
-                    "name": "repo_slug",
-                    "in": "path"
-                }
-            ],
-            "get": {
-                "security": [
-                    {
-                        "oauth2": [
-                            "pullrequest"
-                        ]
-                    },
-                    {
-                        "basic": []
-                    },
-                    {
-                        "api_key": []
-                    }
-                ],
-                "tags": [
-                    "pullrequests"
-                ],
-                "responses": {
-                    "default": {
-                        "description": "Unexpected error.",
-                        "schema": {
-                            "$ref": "#/definitions/error"
-                        }
-                    }
-                },
-                "parameters": [],
-                "description": "Returns a paginated list of the pull request's commits.\n\nThese are the commits that are being merged into the destination\nbranch when the pull requests gets accepted."
-            }
-        },
         "/repositories/{username}/{repo_slug}/src": {
             "post": {
                 "security": [
@@ -12210,71 +10389,6 @@
                     }
                 ],
                 "description": "Returns the diff of the specified commit against its first parent.\n\nNote that this resource is different in functionality from the `patch`\nresource.\n\nThe differences between a diff and a patch are:\n\n* patches have a commit header with the username, message, etc\n* diffs support the optional `path=foo/bar.py` query param to filter the\n  diff to just that one file diff (not supported for patches)\n* for a merge, the diff will show the diff between the merge commit and\n  its first parent (identical to how PRs work), while patch returns a\n  response containing separate patches for each commit on the second\n  parent's ancestry, up to the oldest common ancestor (identical to\n  its reachability).\n\nNote that the character encoding of the contents of the diff is\nunspecified as Git and Mercurial do not track this, making it hard for\nBitbucket to reliably determine this."
-            }
-        },
-        "/repositories/{username}/{repo_slug}/pullrequests/activity": {
-            "parameters": [
-                {
-                    "required": true,
-                    "type": "string",
-                    "name": "username",
-                    "in": "path"
-                },
-                {
-                    "required": true,
-                    "type": "string",
-                    "name": "repo_slug",
-                    "in": "path"
-                }
-            ],
-            "get": {
-                "security": [
-                    {
-                        "oauth2": [
-                            "pullrequest"
-                        ]
-                    },
-                    {
-                        "basic": []
-                    },
-                    {
-                        "api_key": []
-                    }
-                ],
-                "tags": [
-                    "pullrequests"
-                ],
-                "responses": {
-                    "200": {
-                        "description": "The pull request activity log"
-                    },
-                    "401": {
-                        "description": "If the repository is private and the request was not authenticated."
-                    },
-                    "404": {
-                        "description": "If the specified repository does not exist.",
-                        "schema": {
-                            "$ref": "#/definitions/error"
-                        }
-                    }
-                },
-                "parameters": [
-                    {
-                        "required": true,
-                        "type": "string",
-                        "description": "This can either be the username or the UUID of the user,\nsurrounded by curly-braces, for example: `{user UUID}`.\n",
-                        "in": "path",
-                        "name": "username"
-                    },
-                    {
-                        "required": true,
-                        "type": "string",
-                        "description": "This can either be the repository slug or the UUID of the repository,\nsurrounded by curly-braces, for example: `{repository UUID}`.\n",
-                        "in": "path",
-                        "name": "repo_slug"
-                    }
-                ],
-                "description": "Returns a paginated list of the pull request's activity log.\n\nThis includes comments that were made by the reviewers, updates and\napprovals."
             }
         },
         "/repositories/{username}/{repo_slug}/branch-restrictions/{id}": {
@@ -12503,7 +10617,7 @@
                     {
                         "required": true,
                         "type": "string",
-                        "description": "The UUID of the pipeline.",
+                        "description": "The UUID of the pipeline. <meqa pipeline.uuid>",
                         "in": "path",
                         "name": "pipeline_uuid"
                     },
@@ -13283,370 +11397,6 @@
                     }
                 ],
                 "description": "Deletes the snippet.\n\nNote that this only works for versioned URLs that point to the latest\ncommit of the snippet. Pointing to an older commit results in a 405\nstatus code.\n\nTo delete a snippet, regardless of whether or not concurrent changes\nare being made to it, use `DELETE /snippets/{encoded_id}` instead."
-            }
-        },
-        "/repositories/{username}/{repo_slug}/pullrequests/{pull_request_id}/patch": {
-            "parameters": [
-                {
-                    "required": true,
-                    "type": "string",
-                    "name": "username",
-                    "in": "path"
-                },
-                {
-                    "required": true,
-                    "type": "string",
-                    "name": "pull_request_id",
-                    "in": "path"
-                },
-                {
-                    "required": true,
-                    "type": "string",
-                    "name": "repo_slug",
-                    "in": "path"
-                }
-            ],
-            "get": {
-                "security": [
-                    {
-                        "oauth2": [
-                            "pullrequest"
-                        ]
-                    },
-                    {
-                        "basic": []
-                    },
-                    {
-                        "api_key": []
-                    }
-                ],
-                "tags": [
-                    "pullrequests"
-                ],
-                "responses": {
-                    "default": {
-                        "description": "Unexpected error.",
-                        "schema": {
-                            "$ref": "#/definitions/error"
-                        }
-                    }
-                },
-                "parameters": [],
-                "description": ""
-            }
-        },
-        "/addon/linkers/{linker_key}/values/": {
-            "get": {
-                "security": [
-                    {
-                        "oauth2": []
-                    },
-                    {
-                        "basic": []
-                    },
-                    {
-                        "api_key": []
-                    }
-                ],
-                "tags": [
-                    "addon"
-                ],
-                "responses": {
-                    "default": {
-                        "description": "Unexpected error.",
-                        "schema": {
-                            "$ref": "#/definitions/error"
-                        }
-                    }
-                },
-                "parameters": [],
-                "description": ""
-            },
-            "parameters": [
-                {
-                    "required": true,
-                    "type": "string",
-                    "name": "linker_key",
-                    "in": "path"
-                }
-            ],
-            "delete": {
-                "security": [
-                    {
-                        "oauth2": []
-                    },
-                    {
-                        "basic": []
-                    },
-                    {
-                        "api_key": []
-                    }
-                ],
-                "tags": [
-                    "addon"
-                ],
-                "responses": {
-                    "default": {
-                        "description": "Unexpected error.",
-                        "schema": {
-                            "$ref": "#/definitions/error"
-                        }
-                    }
-                },
-                "parameters": [],
-                "description": ""
-            }
-        },
-        "/users/{username}/hooks/{uid}": {
-            "put": {
-                "security": [
-                    {
-                        "oauth2": [
-                            "webhook"
-                        ]
-                    },
-                    {
-                        "basic": []
-                    },
-                    {
-                        "api_key": []
-                    }
-                ],
-                "tags": [
-                    "users",
-                    "webhooks"
-                ],
-                "responses": {
-                    "200": {
-                        "description": "The webhook subscription object.",
-                        "schema": {
-                            "$ref": "#/definitions/webhook_subscription"
-                        }
-                    },
-                    "403": {
-                        "description": "If the authenticated user does not have permission to update the webhook.",
-                        "schema": {
-                            "$ref": "#/definitions/error"
-                        }
-                    },
-                    "404": {
-                        "description": "If the webhook or user does not exist.",
-                        "schema": {
-                            "$ref": "#/definitions/error"
-                        }
-                    }
-                },
-                "parameters": [
-                    {
-                        "required": true,
-                        "type": "string",
-                        "description": "The installed webhook's id",
-                        "in": "path",
-                        "name": "uid"
-                    }
-                ],
-                "description": "Updates the specified webhook subscription.\n\nThe following properties can be mutated:\n\n* `description`\n* `url`\n* `active`\n* `events`"
-            },
-            "get": {
-                "security": [
-                    {
-                        "oauth2": [
-                            "webhook"
-                        ]
-                    },
-                    {
-                        "basic": []
-                    },
-                    {
-                        "api_key": []
-                    }
-                ],
-                "tags": [
-                    "users",
-                    "webhooks"
-                ],
-                "responses": {
-                    "200": {
-                        "description": "The webhook subscription object.",
-                        "schema": {
-                            "$ref": "#/definitions/webhook_subscription"
-                        }
-                    },
-                    "404": {
-                        "description": "If the webhook or user does not exist.",
-                        "schema": {
-                            "$ref": "#/definitions/error"
-                        }
-                    }
-                },
-                "parameters": [
-                    {
-                        "required": true,
-                        "type": "string",
-                        "description": "The installed webhook's id.",
-                        "in": "path",
-                        "name": "uid"
-                    }
-                ],
-                "description": "Returns the webhook with the specified id installed on the given\nuser account."
-            },
-            "parameters": [
-                {
-                    "required": true,
-                    "type": "string",
-                    "name": "username",
-                    "in": "path"
-                },
-                {
-                    "required": true,
-                    "type": "string",
-                    "name": "uid",
-                    "in": "path"
-                }
-            ],
-            "delete": {
-                "security": [
-                    {
-                        "oauth2": [
-                            "webhook"
-                        ]
-                    },
-                    {
-                        "basic": []
-                    },
-                    {
-                        "api_key": []
-                    }
-                ],
-                "tags": [
-                    "users",
-                    "webhooks"
-                ],
-                "responses": {
-                    "204": {
-                        "description": "When the webhook was deleted successfully"
-                    },
-                    "403": {
-                        "description": "If the authenticated user does not have permission to delete the webhook.",
-                        "schema": {
-                            "$ref": "#/definitions/error"
-                        }
-                    },
-                    "404": {
-                        "description": "If the webhook or user does not exist.",
-                        "schema": {
-                            "$ref": "#/definitions/error"
-                        }
-                    }
-                },
-                "parameters": [
-                    {
-                        "required": true,
-                        "type": "string",
-                        "description": "The installed webhook's id",
-                        "in": "path",
-                        "name": "uid"
-                    }
-                ],
-                "description": "Deletes the specified webhook subscription from the given user\naccount."
-            }
-        },
-        "/teams/{username}/hooks": {
-            "post": {
-                "security": [
-                    {
-                        "oauth2": [
-                            "webhook"
-                        ]
-                    },
-                    {
-                        "basic": []
-                    },
-                    {
-                        "api_key": []
-                    }
-                ],
-                "tags": [
-                    "teams",
-                    "webhooks"
-                ],
-                "responses": {
-                    "201": {
-                        "headers": {
-                            "Location": {
-                                "type": "string",
-                                "description": "The URL of new newly created webhook."
-                            }
-                        },
-                        "description": "The newly installed webhook.",
-                        "schema": {
-                            "$ref": "#/definitions/webhook_subscription"
-                        }
-                    },
-                    "403": {
-                        "description": "If the authenticated user is not an admin on the specified team.",
-                        "schema": {
-                            "$ref": "#/definitions/error"
-                        }
-                    },
-                    "404": {
-                        "description": "If the specified team does not exist.",
-                        "schema": {
-                            "$ref": "#/definitions/error"
-                        }
-                    }
-                },
-                "parameters": [],
-                "description": "Creates a new webhook on the specified team.\n\nTeam webhooks are fired for events from all repositories belonging to\nthat team account.\n\nNote that only admins can install webhooks on teams."
-            },
-            "parameters": [
-                {
-                    "required": true,
-                    "type": "string",
-                    "name": "username",
-                    "in": "path"
-                }
-            ],
-            "get": {
-                "security": [
-                    {
-                        "oauth2": [
-                            "webhook"
-                        ]
-                    },
-                    {
-                        "basic": []
-                    },
-                    {
-                        "api_key": []
-                    }
-                ],
-                "tags": [
-                    "teams",
-                    "webhooks"
-                ],
-                "responses": {
-                    "200": {
-                        "description": "The paginated list of installed webhooks.",
-                        "schema": {
-                            "$ref": "#/definitions/paginated_webhook_subscriptions"
-                        }
-                    },
-                    "403": {
-                        "description": "If the authenticated user is not an admin on the specified team.",
-                        "schema": {
-                            "$ref": "#/definitions/error"
-                        }
-                    },
-                    "404": {
-                        "description": "If the specified team does not exist.",
-                        "schema": {
-                            "$ref": "#/definitions/error"
-                        }
-                    }
-                },
-                "parameters": [],
-                "description": "Returns a paginated list of webhooks installed on this team."
             }
         },
         "/repositories": {

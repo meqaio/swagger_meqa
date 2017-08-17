@@ -87,3 +87,31 @@ The server has the following pieces
     * `<meqa enum:v1,v2,v3>` - note that the swagger.json already has a type for the field.
     * `<meqa range:10,20>` - integer range between 10 and 20.
     * `<meqa range:1.1,102.0>` - float range, again the field has a type in swagger.json
+
+### Test Scenarios
+
+* Opitonal parameters - for APIs that has optional parameters, or objects in parameters that have optional fields, we should vary having and not having the optional stuff.
+* We need to support having global parameters. This is useful for
+    * api_key
+    * things created outside of the scope of the test (e.g. account-name)
+* It's not just about covering all the test scenarios. The user should be able to make sense of the test scenarios, be able to search for them, and modify them if needed.
+* Process results - it's a common pattern that the real result (object or array) is embedded inside a result object, e.g. {status: success, page: 1, data: [...]}. We need to handle this.
+* Sometimes the REST API only exposes part of the functionalities. For instance, the bitbucket REST API doesn't allow user to create commits. Commits can only be done through a git client. To fully test this:
+    * The tester needs to use external tools to create some data.
+    * The REST api can be used to look at the data created by the external tools (e.g. list all the commits).
+    * The result from the above can be used to further popualte the parameters for other tests (e.g. get a specific commit)
+    * This means that we can't assert that the data coming from the server exactly matches the client state. We should allow the server to return more. 
+    * When there is pagination, we should also expect the server to return less.
+* Incomplete swagger.json - this causes a lot of trouble. Static parsing is not possible. Dynamic testing is possible, but it basically requires us to say that the behavior of the server makes sense. This is difficult. Punt for now. We can raise an error instead to let the user know.
+
+### NLP
+
+* Look around
+    * Sometimes the comment in one path is not sufficient to determine the meaning of an argument.
+    * The same argument name can show up in many places.
+    * Other places may have comment that pinpoints the meaning of the argument.
+    * We should apply what we figured out to all the places.
+* Association
+    * The parameters required has strong relationship to the data returned. For instance, when there is an argument called id, and the call returns an User object, most likely the id is for the user.
+    * The first step is to create a tool, which will scan a document and apply the same meqa tag to all the variables that's named the same.
+    * This can also be done in mqgo. We just need to create a hash table of variable_name->meqa_tag mapping.
