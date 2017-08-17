@@ -530,7 +530,7 @@
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "The restriction rule's id",
+                        "description": "The restriction rule's id <meqa branchrestriction.id>",
                         "name": "id",
                         "in": "path",
                         "required": true
@@ -718,7 +718,7 @@
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "The commit's SHA1.",
+                        "description": "The commit's SHA1. <meqa commit.hash>",
                         "name": "node",
                         "in": "path",
                         "required": true
@@ -760,7 +760,7 @@
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "The commit's SHA1.",
+                        "description": "The commit's SHA1. <meqa commit.hash>",
                         "name": "node",
                         "in": "path",
                         "required": true
@@ -787,6 +787,7 @@
                 },
                 {
                     "type": "string",
+                    "description": " <meqa commit.hash>",
                     "name": "node",
                     "in": "path",
                     "required": true
@@ -822,7 +823,7 @@
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "The commit's SHA1",
+                        "description": "The commit's SHA1 <meqa commit.hash>",
                         "name": "node",
                         "in": "path",
                         "required": true
@@ -855,6 +856,7 @@
                 },
                 {
                     "type": "string",
+                    "description": " <meqa commit.hash>",
                     "name": "node",
                     "in": "path",
                     "required": true
@@ -890,7 +892,7 @@
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "The commit's SHA1",
+                        "description": "The commit's SHA1 <meqa commit.hash>",
                         "name": "node",
                         "in": "path",
                         "required": true
@@ -931,6 +933,7 @@
                 },
                 {
                     "type": "string",
+                    "description": " <meqa commit.hash>",
                     "name": "node",
                     "in": "path",
                     "required": true
@@ -966,7 +969,7 @@
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "The commit's SHA1 <meqa commit:hash>",
+                        "description": "The commit's SHA1 <meqa commit.hash>",
                         "name": "node",
                         "in": "path",
                         "required": true
@@ -1019,7 +1022,7 @@
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "The commit's SHA1 <meqa commit:hash>",
+                        "description": "The commit's SHA1 <meqa commit:hash> <meqa commit.hash>",
                         "name": "node",
                         "in": "path",
                         "required": true
@@ -1067,7 +1070,7 @@
                 },
                 {
                     "type": "string",
-                    "description": "The commit's SHA1 <meqa commit:hash>",
+                    "description": "The commit's SHA1 <meqa commit:hash> <meqa commit.hash>",
                     "name": "node",
                     "in": "path",
                     "required": true
@@ -1109,7 +1112,7 @@
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "The commit's SHA1.",
+                        "description": "The commit's SHA1. <meqa commit.hash>",
                         "name": "revision",
                         "in": "path",
                         "required": true
@@ -1139,6 +1142,7 @@
                 },
                 {
                     "type": "string",
+                    "description": " <meqa commit.hash>",
                     "name": "revision",
                     "in": "path",
                     "required": true
@@ -1188,6 +1192,7 @@
                 },
                 {
                     "type": "string",
+                    "description": " <meqa commit.hash>",
                     "name": "sha",
                     "in": "path",
                     "required": true
@@ -2113,6 +2118,7 @@
                 },
                 {
                     "type": "string",
+                    "description": " <meqa issue.id>",
                     "name": "issue_id",
                     "in": "path",
                     "required": true
@@ -2147,7 +2153,7 @@
                 "parameters": [
                     {
                         "type": "integer",
-                        "description": "The issue's id",
+                        "description": "The issue's id <meqa issue.id>",
                         "name": "issue_id",
                         "in": "path",
                         "required": true
@@ -2192,7 +2198,7 @@
                 "parameters": [
                     {
                         "type": "integer",
-                        "description": "The issue's id",
+                        "description": "The issue's id <meqa issue.id>",
                         "name": "issue_id",
                         "in": "path",
                         "required": true
@@ -2231,6 +2237,7 @@
                 },
                 {
                     "type": "string",
+                    "description": " <meqa issue.id>",
                     "name": "issue_id",
                     "in": "path",
                     "required": true
@@ -2380,6 +2387,7 @@
                 },
                 {
                     "type": "string",
+                    "description": " <meqa issue.id>",
                     "name": "issue_id",
                     "in": "path",
                     "required": true
@@ -2629,7 +2637,7 @@
                 "parameters": [
                     {
                         "type": "integer",
-                        "description": "The issue's id",
+                        "description": "The issue's id <meqa issue.id>",
                         "name": "issue_id",
                         "in": "path",
                         "required": true
@@ -2678,7 +2686,7 @@
                 "parameters": [
                     {
                         "type": "integer",
-                        "description": "The issue's id",
+                        "description": "The issue's id <meqa issue.id>",
                         "name": "issue_id",
                         "in": "path",
                         "required": true
@@ -2727,7 +2735,7 @@
                 "parameters": [
                     {
                         "type": "integer",
-                        "description": "The issue's id",
+                        "description": "The issue's id <meqa issue.id>",
                         "name": "issue_id",
                         "in": "path",
                         "required": true
@@ -2763,6 +2771,7 @@
                 },
                 {
                     "type": "string",
+                    "description": " <meqa issue.id>",
                     "name": "issue_id",
                     "in": "path",
                     "required": true
@@ -3102,7 +3111,7 @@
                     },
                     {
                         "type": "string",
-                        "description": "The UUID of the pipeline.",
+                        "description": "The UUID of the pipeline. <meqa pipeline.uuid>",
                         "name": "pipeline_uuid",
                         "in": "path",
                         "required": true
@@ -3198,7 +3207,7 @@
                     },
                     {
                         "type": "string",
-                        "description": "The UUID of the pipeline.",
+                        "description": "The UUID of the pipeline. <meqa pipeline.uuid>",
                         "name": "pipeline_uuid",
                         "in": "path",
                         "required": true
@@ -3260,7 +3269,7 @@
                     },
                     {
                         "type": "string",
-                        "description": "The UUID of the pipeline.",
+                        "description": "The UUID of the pipeline. <meqa pipeline.uuid>",
                         "name": "pipeline_uuid",
                         "in": "path",
                         "required": true
@@ -4643,6 +4652,7 @@
                 },
                 {
                     "type": "string",
+                    "description": " <meqa commit.hash>",
                     "name": "node",
                     "in": "path",
                     "required": true
@@ -4732,7 +4742,7 @@
                 "parameters": [
                     {
                         "type": "integer",
-                        "description": "The version's id",
+                        "description": "The version's id <meqa version.id>",
                         "name": "version_id",
                         "in": "path",
                         "required": true
@@ -5219,6 +5229,7 @@
                 },
                 {
                     "type": "string",
+                    "description": " <meqa snippet.id>",
                     "name": "encoded_id",
                     "in": "path",
                     "required": true
@@ -5330,6 +5341,7 @@
                 },
                 {
                     "type": "string",
+                    "description": " <meqa snippet.id>",
                     "name": "encoded_id",
                     "in": "path",
                     "required": true
@@ -5574,12 +5586,14 @@
                 },
                 {
                     "type": "string",
+                    "description": " <meqa snippet.id>",
                     "name": "encoded_id",
                     "in": "path",
                     "required": true
                 },
                 {
                     "type": "string",
+                    "description": " <meqa commit.hash>",
                     "name": "revision",
                     "in": "path",
                     "required": true
@@ -5608,7 +5622,7 @@
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "The snippet id.",
+                        "description": "The snippet id. <meqa snippet.id>",
                         "name": "encoded_id",
                         "in": "path",
                         "required": true
@@ -5650,7 +5664,7 @@
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "The snippet id.",
+                        "description": "The snippet id. <meqa snippet.id>",
                         "name": "encoded_id",
                         "in": "path",
                         "required": true
@@ -5698,7 +5712,7 @@
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "The snippet id.",
+                        "description": "The snippet id. <meqa snippet.id>",
                         "name": "encoded_id",
                         "in": "path",
                         "required": true
@@ -5734,6 +5748,7 @@
                 },
                 {
                     "type": "string",
+                    "description": " <meqa snippet.id>",
                     "name": "encoded_id",
                     "in": "path",
                     "required": true
@@ -5767,7 +5782,7 @@
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "The snippet's id.",
+                        "description": "The snippet's id. <meqa snippet.id>",
                         "name": "encoded_id",
                         "in": "path",
                         "required": true
@@ -5838,7 +5853,7 @@
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "The snippet's id.",
+                        "description": "The snippet's id. <meqa snippet.id>",
                         "name": "encoded_id",
                         "in": "path",
                         "required": true
@@ -5905,7 +5920,7 @@
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "The snippet's id.",
+                        "description": "The snippet's id. <meqa snippet.id>",
                         "name": "encoded_id",
                         "in": "path",
                         "required": true
@@ -5956,6 +5971,7 @@
                 },
                 {
                     "type": "string",
+                    "description": " <meqa snippet.id>",
                     "name": "encoded_id",
                     "in": "path",
                     "required": true
@@ -6030,6 +6046,7 @@
                 },
                 {
                     "type": "string",
+                    "description": " <meqa snippet.id>",
                     "name": "encoded_id",
                     "in": "path",
                     "required": true
@@ -6064,14 +6081,14 @@
                     },
                     {
                         "type": "string",
-                        "description": "The snippet id.",
+                        "description": "The snippet id. <meqa snippet.id>",
                         "name": "encoded_id",
                         "in": "path",
                         "required": true
                     },
                     {
                         "type": "string",
-                        "description": "A revspec expression. This can simply be a commit SHA1, a ref name, or a compare expression like `staging..production`.",
+                        "description": "A revspec expression. This can simply be a commit SHA1, a ref name, or a compare expression like `staging..production`. <meqa commit.hash>",
                         "name": "revision",
                         "in": "path",
                         "required": true
@@ -6104,12 +6121,14 @@
                 },
                 {
                     "type": "string",
+                    "description": " <meqa snippet.id>",
                     "name": "encoded_id",
                     "in": "path",
                     "required": true
                 },
                 {
                     "type": "string",
+                    "description": " <meqa commit.hash>",
                     "name": "revision",
                     "in": "path",
                     "required": true
@@ -6138,14 +6157,14 @@
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "The snippet id.",
+                        "description": "The snippet id. <meqa snippet.id>",
                         "name": "encoded_id",
                         "in": "path",
                         "required": true
                     },
                     {
                         "type": "string",
-                        "description": "A revspec expression. This can simply be a commit SHA1, a ref name, or a compare expression like `staging..production`.",
+                        "description": "A revspec expression. This can simply be a commit SHA1, a ref name, or a compare expression like `staging..production`. <meqa commit.hash>",
                         "name": "revision",
                         "in": "path",
                         "required": true
@@ -6178,12 +6197,14 @@
                 },
                 {
                     "type": "string",
+                    "description": " <meqa snippet.id>",
                     "name": "encoded_id",
                     "in": "path",
                     "required": true
                 },
                 {
                     "type": "string",
+                    "description": " <meqa commit.hash>",
                     "name": "revision",
                     "in": "path",
                     "required": true
