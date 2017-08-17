@@ -584,7 +584,7 @@
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "The restriction rule's id",
+                        "description": "The restriction rule's id <meqa branchrestriction.id>",
                         "name": "id",
                         "in": "path",
                         "required": true
@@ -647,7 +647,7 @@
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "The restriction rule's id",
+                        "description": "The restriction rule's id <meqa branchrestriction.id>",
                         "name": "id",
                         "in": "path",
                         "required": true
@@ -685,6 +685,7 @@
                 {
                     "type": "string",
                     "name": "id",
+                    "description": "The restriction rule's id <meqa branchrestriction.id>",
                     "in": "path",
                     "required": true
                 },
@@ -1022,7 +1023,7 @@
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "The commit's SHA1 <meqa commit:hash> <meqa commit.hash>",
+                        "description": "The commit's SHA1 <meqa commit.hash>",
                         "name": "node",
                         "in": "path",
                         "required": true
@@ -1070,7 +1071,7 @@
                 },
                 {
                     "type": "string",
-                    "description": "The commit's SHA1 <meqa commit:hash> <meqa commit.hash>",
+                    "description": "The commit's SHA1 <meqa commit.hash>",
                     "name": "node",
                     "in": "path",
                     "required": true
@@ -5789,7 +5790,7 @@
                     },
                     {
                         "type": "string",
-                        "description": "A commit revision (SHA1).",
+                        "description": "A commit revision (SHA1). <meqa commit.hash>",
                         "name": "node_id",
                         "in": "path",
                         "required": true
