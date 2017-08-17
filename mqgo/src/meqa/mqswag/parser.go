@@ -2,7 +2,6 @@
 package mqswag
 
 import (
-	"bytes"
 	"fmt"
 	"log"
 	"meqa/mqutil"
@@ -12,7 +11,6 @@ import (
 	"github.com/go-openapi/loads"
 	"github.com/go-openapi/loads/fmts"
 	"github.com/go-openapi/spec"
-	"github.com/go-openapi/swag"
 )
 
 // string fields in OpenAPI doc
@@ -150,23 +148,6 @@ func (swagger *Swagger) GetReferredSchema(schema *Schema) (string, *Schema, erro
 		return "", nil, mqutil.NewError(mqutil.ErrInvalid, fmt.Sprintf("Reference object not found: %s", schema.Ref.GetURL()))
 	}
 	return tokens[1], referredSchema, nil
-}
-
-// MarshalJSON marshals this swagger structure to json
-func (s *Swagger) MarshalJSON() ([]byte, error) {
-	b1, err := mqutil.MarshalJsonIndentNoEscape(s.SwaggerProps)
-	if err != nil {
-		return nil, err
-	}
-
-	b2, err := mqutil.MarshalJsonIndentNoEscape(s.VendorExtensible)
-	if err != nil {
-		return nil, err
-	}
-	result := swag.ConcatJSON(b1, b2)
-	result = bytes.Replace(result, []byte("\u003c"), []byte("<"), -1)
-	result = bytes.Replace(result, []byte("\u003e"), []byte(">"), -1)
-	return result, nil
 }
 
 func GetType(dagName string) string {

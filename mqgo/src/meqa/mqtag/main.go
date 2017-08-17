@@ -95,12 +95,12 @@ func main() {
 	}
 
 	placeTags := func(params []spec.Parameter) {
-		for _, param := range params {
+		for i, param := range params {
 			t := varMap[param.Name]
 			if t != nil {
 				existingTag := mqswag.GetMeqaTag(param.Description)
 				if existingTag == nil {
-					param.Description = fmt.Sprintf("%s %s", param.Description, t.ToString())
+					params[i].Description = fmt.Sprintf("%s %s", param.Description, t.ToString())
 				}
 			}
 		}
@@ -117,8 +117,8 @@ func main() {
 		}
 	}
 
-	//specSwagger := ((*spec.Swagger)(swagger))
-	newSwaggerBytes, err := swagger.MarshalJSON()
+	specSwagger := ((*spec.Swagger)(swagger))
+	newSwaggerBytes, err := mqutil.MarshalJsonIndentNoEscape(specSwagger)
 	if err != nil {
 		mqutil.Logger.Fatal(err)
 	}
