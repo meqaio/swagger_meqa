@@ -2,6 +2,7 @@
 package mqswag
 
 import (
+	"bytes"
 	"fmt"
 	"log"
 	"meqa/mqutil"
@@ -11,6 +12,7 @@ import (
 	"github.com/go-openapi/loads"
 	"github.com/go-openapi/loads/fmts"
 	"github.com/go-openapi/spec"
+	"github.com/go-openapi/swag"
 )
 
 // string fields in OpenAPI doc
@@ -46,10 +48,28 @@ const (
 	MethodOptions = "options"
 )
 
+var MethodAll []string = []string{MethodGet, MethodPut, MethodPost, MethodDelete, MethodHead, MethodPatch, MethodOptions}
+
 type MeqaTag struct {
 	Class     string
 	Property  string
 	Operation string
+}
+
+func (t *MeqaTag) Equals(o *MeqaTag) bool {
+	return t.Class == o.Class && t.Property == o.Property && t.Operation == o.Operation
+}
+
+func (t *MeqaTag) ToString() string {
+	str := "<meqa " + t.Class
+	if len(t.Property) > 0 {
+		str = str + "." + t.Property
+	}
+	if len(t.Operation) > 0 {
+		str = str + "." + t.Operation
+	}
+	str = str + ">"
+	return str
 }
 
 // GetMeqaTag extracts the <meqa > tags.
@@ -130,6 +150,23 @@ func (swagger *Swagger) GetReferredSchema(schema *Schema) (string, *Schema, erro
 		return "", nil, mqutil.NewError(mqutil.ErrInvalid, fmt.Sprintf("Reference object not found: %s", schema.Ref.GetURL()))
 	}
 	return tokens[1], referredSchema, nil
+}
+
+// MarshalJSON marshals this swagger structure to json
+func (s *Swagger) MarshalJSON() ([]byte, error) {
+	b1, err := mqutil.MarshalJsonIndentNoEscape(s.SwaggerProps)
+	if err != nil {
+		return nil, err
+	}
+
+	b2, err := mqutil.MarshalJsonIndentNoEscape(s.VendorExtensible)
+	if err != nil {
+		return nil, err
+	}
+	result := swag.ConcatJSON(b1, b2)
+	result = bytes.Replace(result, []byte("\u003c"), []byte("<"), -1)
+	result = bytes.Replace(result, []byte("\u003e"), []byte(">"), -1)
+	return result, nil
 }
 
 func GetType(dagName string) string {

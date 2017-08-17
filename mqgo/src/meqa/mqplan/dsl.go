@@ -601,7 +601,7 @@ func ParamsCombine(dst []spec.Parameter, src []spec.Parameter) []spec.Parameter 
 // The resolved parameters will be added to test.Parameters map.
 func (t *Test) ResolveParameters(plan *TestPlan) error {
 	pathItem := t.db.Swagger.Paths.Paths[t.Path]
-	t.op = getOperationByMethod(&pathItem, t.Method)
+	t.op = GetOperationByMethod(&pathItem, t.Method)
 	if t.op == nil {
 		return mqutil.NewError(mqutil.ErrNotFound, fmt.Sprintf("Path %s not found in swagger file", t.Path))
 	}
@@ -680,7 +680,7 @@ func (t *Test) ResolveParameters(plan *TestPlan) error {
 	return nil
 }
 
-func getOperationByMethod(item *spec.PathItem, method string) *spec.Operation {
+func GetOperationByMethod(item *spec.PathItem, method string) *spec.Operation {
 	switch method {
 	case mqswag.MethodGet:
 		return item.Get

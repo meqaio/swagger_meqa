@@ -1,6 +1,7 @@
 package mqutil
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -149,4 +150,20 @@ func InterfaceToArray(obj interface{}) []map[string]interface{} {
 		objarray = []map[string]interface{}{o}
 	}
 	return objarray
+}
+
+func MarshalJsonIndentNoEscape(i interface{}) ([]byte, error) {
+	buf := new(bytes.Buffer)
+	enc := json.NewEncoder(buf)
+	enc.SetEscapeHTML(false)
+	enc.SetIndent("", "    ")
+	err := enc.Encode(i)
+	if err != nil {
+		return nil, err
+	}
+	result := buf.String()
+	result = strings.Replace(result, "\\u003c", "<", -1)
+	result = strings.Replace(result, "\\u003e", ">", -1)
+
+	return []byte(result), nil
 }
