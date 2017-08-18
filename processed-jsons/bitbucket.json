@@ -3159,7 +3159,7 @@
                     },
                     {
                         "type": "string",
-                        "description": "The UUID of the step.",
+                        "description": "The UUID of the step. <meqa pipeline_step.uuid>",
                         "name": "step_uuid",
                         "in": "path",
                         "required": true
@@ -3215,7 +3215,7 @@
                     },
                     {
                         "type": "string",
-                        "description": "The UUID of the step.",
+                        "description": "The UUID of the step. <meqa pipeline_step.uuid>",
                         "name": "step_uuid",
                         "in": "path",
                         "required": true
@@ -3676,7 +3676,7 @@
                     },
                     {
                         "type": "string",
-                        "description": "The uuid of the schedule.",
+                        "description": "The uuid of the schedule. <meqa pipeline_schedule.uuid>",
                         "name": "schedule_uuid",
                         "in": "path",
                         "required": true
@@ -3848,7 +3848,7 @@
                     },
                     {
                         "type": "string",
-                        "description": "The UUID of the known host to retrieve.",
+                        "description": "The UUID of the known host to retrieve. <meqa pipeline_known_host.uuid>",
                         "name": "known_host_uuid",
                         "in": "path",
                         "required": true
@@ -3892,7 +3892,7 @@
                     },
                     {
                         "type": "string",
-                        "description": "The UUID of the known host to update.",
+                        "description": "The UUID of the known host to update. <meqa pipeline_known_host.uuid>",
                         "name": "known_host_uuid",
                         "in": "path",
                         "required": true
@@ -3945,7 +3945,7 @@
                     },
                     {
                         "type": "string",
-                        "description": "The UUID of the known host to delete.",
+                        "description": "The UUID of the known host to delete. <meqa pipeline_known_host.uuid>",
                         "name": "known_host_uuid",
                         "in": "path",
                         "required": true
@@ -7298,7 +7298,7 @@
                     },
                     {
                         "type": "string",
-                        "description": "The UUID of the variable to retrieve.",
+                        "description": "The UUID of the variable to retrieve. <meqa pipeline_variable:uuid>",
                         "name": "variable_uuid",
                         "in": "path",
                         "required": true
@@ -7335,7 +7335,7 @@
                     },
                     {
                         "type": "string",
-                        "description": "The UUID of the variable.",
+                        "description": "The UUID of the variable. <meqa pipeline_variable:uuid>",
                         "name": "variable_uuid",
                         "in": "path",
                         "required": true
@@ -7381,7 +7381,7 @@
                     },
                     {
                         "type": "string",
-                        "description": "The UUID of the variable to delete.",
+                        "description": "The UUID of the variable to delete. <meqa pipeline_variable:uuid>",
                         "name": "variable_uuid",
                         "in": "path",
                         "required": true
