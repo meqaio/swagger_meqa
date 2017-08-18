@@ -259,8 +259,8 @@ func CollectResponseDependencies(responses *spec.Responses, swagger *Swagger, da
 			return err
 		}
 	}
-	for _, respSpec := range responses.StatusCodeResponses {
-		if respSpec.Schema != nil {
+	for respCode, respSpec := range responses.StatusCodeResponses {
+		if respSpec.Schema != nil && respCode >= 200 && respCode < 400 {
 			err := CollectSchemaDependencies((*Schema)(respSpec.Schema), swagger, dag, tags, post)
 			if err != nil {
 				return err
@@ -278,7 +278,8 @@ func AddOperation(pathName string, method string, op *spec.Operation, swagger *S
 
 	// The nodes that are part of outputs depends on this operation. The outputs are children.
 	// We have to be careful here. Get operations will also return objects. The outputs
-	// are only the children for "post" (create) operations.
+	// are only the children for "post" (create) operations. The outputs are only the children
+	// on the success code path.
 	tag := GetMeqaTag(op.Description)
 	creates := make(map[string]interface{})
 	tags := make(map[string]interface{})

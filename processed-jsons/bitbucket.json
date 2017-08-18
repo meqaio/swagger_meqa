@@ -4080,7 +4080,7 @@
                     },
                     {
                         "type": "string",
-                        "description": "The UUID of the variable to retrieve. <meqa pipeline_variable:uuid>",
+                        "description": "The UUID of the variable to retrieve. <meqa pipeline_variable.uuid>",
                         "name": "variable_uuid",
                         "in": "path",
                         "required": true
@@ -4124,7 +4124,7 @@
                     },
                     {
                         "type": "string",
-                        "description": "The UUID of the variable to update.  <meqa pipeline_variable:uuid>",
+                        "description": "The UUID of the variable to update.  <meqa pipeline_variable.uuid>",
                         "name": "variable_uuid",
                         "in": "path",
                         "required": true
@@ -4177,7 +4177,7 @@
                     },
                     {
                         "type": "string",
-                        "description": "The UUID of the variable to delete. <meqa pipeline_variable:uuid>",
+                        "description": "The UUID of the variable to delete. <meqa pipeline_variable.uuid>",
                         "name": "variable_uuid",
                         "in": "path",
                         "required": true
@@ -6813,7 +6813,7 @@
                     },
                     {
                         "type": "string",
-                        "description": "The UUID of the variable to retrieve. <meqa pipeline_variable:uuid>",
+                        "description": "The UUID of the variable to retrieve. <meqa pipeline_variable.uuid>",
                         "name": "variable_uuid",
                         "in": "path",
                         "required": true
@@ -6850,7 +6850,7 @@
                     },
                     {
                         "type": "string",
-                        "description": "The UUID of the variable. <meqa pipeline_variable:uuid>",
+                        "description": "The UUID of the variable. <meqa pipeline_variable.uuid>",
                         "name": "variable_uuid",
                         "in": "path",
                         "required": true
@@ -6896,7 +6896,7 @@
                     },
                     {
                         "type": "string",
-                        "description": "The UUID of the variable to delete. <meqa pipeline_variable:uuid>",
+                        "description": "The UUID of the variable to delete. <meqa pipeline_variable.uuid>",
                         "name": "variable_uuid",
                         "in": "path",
                         "required": true
@@ -7299,7 +7299,7 @@
                     },
                     {
                         "type": "string",
-                        "description": "The UUID of the variable to retrieve. <meqa pipeline_variable:uuid>",
+                        "description": "The UUID of the variable to retrieve. <meqa pipeline_variable.uuid>",
                         "name": "variable_uuid",
                         "in": "path",
                         "required": true
@@ -7336,7 +7336,7 @@
                     },
                     {
                         "type": "string",
-                        "description": "The UUID of the variable. <meqa pipeline_variable:uuid>",
+                        "description": "The UUID of the variable. <meqa pipeline_variable.uuid>",
                         "name": "variable_uuid",
                         "in": "path",
                         "required": true
@@ -7382,7 +7382,7 @@
                     },
                     {
                         "type": "string",
-                        "description": "The UUID of the variable to delete. <meqa pipeline_variable:uuid>",
+                        "description": "The UUID of the variable to delete. <meqa pipeline_variable.uuid>",
                         "name": "variable_uuid",
                         "in": "path",
                         "required": true

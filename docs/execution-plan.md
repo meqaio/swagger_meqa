@@ -55,6 +55,28 @@ The server has the following pieces
 * Generating test plan.
 * REST server - account management, communicate with the golang client, support UI.
 
+## Iterations
+
+With imperfect swagger.json, we need to iterate several times. Guide line - no customer data leaves the LAN. Failures can happen in the middle (for instance customer's REST server can fail), and we should be able to resume from where we left.
+
+* Format clean up, no real changes, just marshal a json out. This allows us to do clean diffs later on.
+* Server NLP and generate meqa tags.
+* Server generate a simple testplan - all it does is exercise all the endpoints, for both success and error path.
+* Client try the test plan.
+    * Client captures all the responses that don't have a matching response value. Client matches the object agains the swagger schema and sends the result back to server.
+    * Other discrepancies the client can catch?
+* Server updates the swagger.json file with the new info from the client.
+* Server generates meqa tags again with the new info.
+* Server generates full test plan.
+* Present the object DAG and test plan to the customer.
+* Client runs the test plan.
+* Customer modifies swagger.json or the test plan.
+    * We will test plan steps are numbered. The server remembers how many steps it has generated in the last iteration.
+    * When the server is enhanced to generate more tests. It will only append to the end of the test plan. This means customer's modifications to the test plan is unchanged.
+    * Customer can also create a separate test plan file to run.
+    * When swagger.json is modified incrementally, the test plan changes we generate should also be incremental. Currently this more or less works. The test case's name will not change. The steps number may change, but it means we will only modify a few test cases.
+* Re-iterate from the top.
+
 ## Test Plan Generation
 
 ### Learning from Trello
@@ -77,6 +99,7 @@ The server has the following pieces
     * Likely what we do for foreign keys can sufficiently cover this.
 * Incomplete swagger.json
     * for instance, sometimes the example contains more fields than the json object. This we can actually figure out with an ExampleToSchema method. Punt for now unless it becomes a real pain.
+    * Sometimes the response object only describes the error, but not the success case. This is probably because the success case can be assumed from the signature of the request itself. For instance, GET /repositories/{username}/{repo_slug}/commits. People would expect it returns an array of commit objects. To make this work, we need to try the API and check which object in the definitions section match the response. Punt for now, make people clean up their swagger.json.
 * Type confusion
     * Sometimes, an enum is specified as a regular string, with the description saying: valid values are: true, false.
     * We can change the swagger.json to specify the enum properly.
