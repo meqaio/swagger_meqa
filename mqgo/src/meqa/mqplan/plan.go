@@ -118,7 +118,7 @@ func (plan *TestPlan) DumpToFile(path string) error {
 	defer f.Close()
 
 	for _, testCase := range plan.CaseList {
-		count, err := f.WriteString("---\n")
+		count, err := f.WriteString("\n---\n")
 		if err != nil {
 			return err
 		}

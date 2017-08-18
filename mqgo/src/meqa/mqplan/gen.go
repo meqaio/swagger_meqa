@@ -2,7 +2,6 @@ package mqplan
 
 import (
 	"fmt"
-	"math/rand"
 	"meqa/mqswag"
 	"meqa/mqutil"
 
@@ -31,10 +30,27 @@ func GenerateTestsForObject(create *mqswag.DAGNode, obj *mqswag.DAGNode, plan *T
 	createPath := mqswag.GetName(create.Name)
 	objName := mqswag.GetName(obj.Name)
 
-	// First a loop where we pick random operations and pair it with the create operation.
+	// A loop where we go through all the child operations
+	testId := 1
+	testCase := &TestCase{nil, fmt.Sprintf("%s -- %s -- all", createPath, objName)}
+	testCase.Tests = append(testCase.Tests, CreateTestFromOp(create, testId))
+	for _, child := range obj.Children {
+		if mqswag.GetType(child.Name) != mqswag.TypeOp {
+			mqutil.Logger.Printf("unexpected: (%s) has a child (%s) that's not an operation", obj.Name, child.Name)
+			continue
+		}
+		testId++
+		testCase.Tests = append(testCase.Tests, CreateTestFromOp(child, testId))
+	}
+	if len(testCase.Tests) > 0 {
+		plan.Add(testCase)
+	}
+
+	// a loop where we pick random operations and pair it with the create operation.
 	// This would generate a few objects.
-	testId := 0
-	testCase := &TestCase{nil, fmt.Sprintf("%s_%s_random", createPath, objName)}
+	/* disable random stuff during development
+	testId = 0
+	testCase = &TestCase{nil, fmt.Sprintf("%s -- %s -- random", createPath, objName)}
 	for i := 0; i < 2*len(obj.Children); i++ {
 		j := rand.Intn(len(obj.Children))
 		child := obj.Children[j]
@@ -49,22 +65,7 @@ func GenerateTestsForObject(create *mqswag.DAGNode, obj *mqswag.DAGNode, plan *T
 	if len(testCase.Tests) > 0 {
 		plan.Add(testCase)
 	}
-
-	// A loop where we go through all the child operations
-	testId = 1
-	testCase = &TestCase{nil, fmt.Sprintf("%s_%s_all", createPath, objName)}
-	testCase.Tests = append(testCase.Tests, CreateTestFromOp(create, testId))
-	for _, child := range obj.Children {
-		if mqswag.GetType(child.Name) != mqswag.TypeOp {
-			mqutil.Logger.Printf("unexpected: (%s) has a child (%s) that's not an operation", obj.Name, child.Name)
-			continue
-		}
-		testId++
-		testCase.Tests = append(testCase.Tests, CreateTestFromOp(child, testId))
-	}
-	if len(testCase.Tests) > 0 {
-		plan.Add(testCase)
-	}
+	*/
 
 	return nil
 }
