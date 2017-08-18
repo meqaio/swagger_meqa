@@ -72,6 +72,34 @@ func main() {
 		}
 	}
 
+	// We don't want to ask the user for the tags they have done themselves already. Go through
+	// the swagger parameters and look for the ones we would tag given what we have.
+	newMap := make(map[string]*mqswag.MeqaTag)
+	findPotentialTags := func(params []spec.Parameter) {
+		for _, param := range params {
+			t := varMap[param.Name]
+			if t != nil {
+				existingTag := mqswag.GetMeqaTag(param.Description)
+				if existingTag == nil {
+					newMap[param.Name] = t
+				}
+			}
+		}
+	}
+
+	// Go through all the parameters, and tag the ones matching varMap.
+	for _, pathItem := range pathMap {
+		findPotentialTags(pathItem.Parameters)
+		for _, opName := range mqswag.MethodAll {
+			op := mqplan.GetOperationByMethod(&pathItem, opName)
+			if op != nil {
+				findPotentialTags(op.Parameters)
+			}
+		}
+	}
+
+	varMap = newMap
+
 	// Then go through all the parameters and propose tags.
 	ask := !(*yesToAll)
 	for paramName, paramTag := range varMap {

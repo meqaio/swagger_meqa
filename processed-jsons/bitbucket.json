@@ -684,8 +684,8 @@
                 },
                 {
                     "type": "string",
-                    "name": "id",
                     "description": "The restriction rule's id <meqa branchrestriction.id>",
+                    "name": "id",
                     "in": "path",
                     "required": true
                 },
@@ -5861,7 +5861,7 @@
                     },
                     {
                         "type": "string",
-                        "description": "A commit revision (SHA1).",
+                        "description": "A commit revision (SHA1). <meqa commit.hash>",
                         "name": "node_id",
                         "in": "path",
                         "required": true
@@ -5966,6 +5966,7 @@
                 },
                 {
                     "type": "string",
+                    "description": " <meqa commit.hash>",
                     "name": "node_id",
                     "in": "path",
                     "required": true
@@ -6041,6 +6042,7 @@
                 },
                 {
                     "type": "string",
+                    "description": " <meqa commit.hash>",
                     "name": "node_id",
                     "in": "path",
                     "required": true
