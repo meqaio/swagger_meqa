@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"os"
 
 	"meqa/mqplan"
@@ -14,32 +15,31 @@ import (
 )
 
 const (
-	meqaDataDir     = "meqa_data"
-	swaggerJSONFile = "swagger.json"
+	meqaDataDir = "meqa_data"
+	swaggerFile = "swagger.yaml"
 )
 
 func main() {
 	mqutil.Logger = mqutil.NewStdLogger()
 
-	meqaPath := flag.String("meqa", meqaDataDir, "the directory that holds the meqa data and swagger.json files")
-	swaggerFile := flag.String("input", swaggerJSONFile, "the swagger.json file name")
-	outputFile := flag.String("output", swaggerJSONFile+".new", "the new swagger file name")
+	meqaPath := flag.String("meqa", meqaDataDir, "the directory that holds the meqa data and swagger.yaml files")
+	inputFile := flag.String("input", swaggerFile, "the swagger spec file name")
+	outputFile := flag.String("output", "swagger_tagged", "the new swagger file name, we will generated swagger_tagged.json and swagger_tagged.yaml by default")
 	yesToAll := flag.Bool("y", false, "yes to all the replacements")
 
 	flag.Parse()
-	swaggerJsonPath := filepath.Join(*meqaPath, *swaggerFile)
-	outputPath := filepath.Join(*meqaPath, *outputFile)
-	if _, err := os.Stat(swaggerJsonPath); os.IsNotExist(err) {
-		mqutil.Logger.Printf("can't load swagger file at the following location %s", swaggerJsonPath)
+	inputPath := filepath.Join(*meqaPath, *inputFile)
+	outputYamlPath := filepath.Join(*meqaPath, *outputFile+".yaml")
+	if _, err := os.Stat(inputPath); os.IsNotExist(err) {
+		mqutil.Logger.Printf("can't load swagger file at the following location %s", inputPath)
 		return
 	}
-	if _, err := os.Stat(outputPath); !os.IsNotExist(err) {
-		mqutil.Logger.Printf("file exists already at the output location %s", outputPath)
+	if _, err := os.Stat(outputYamlPath); !os.IsNotExist(err) {
+		mqutil.Logger.Printf("file exists already at the output location %s", outputYamlPath)
 		return
 	}
-
 	// loading swagger.json
-	swagger, err := mqswag.CreateSwaggerFromURL(swaggerJsonPath)
+	swagger, err := mqswag.CreateSwaggerFromURL(inputPath, *meqaPath)
 	if err != nil {
 		mqutil.Logger.Printf("Error: %s", err.Error())
 		return
@@ -150,13 +150,14 @@ func main() {
 	if err != nil {
 		mqutil.Logger.Fatal(err)
 	}
-	f, err := os.Create(outputPath)
+
+	newYamlBytes, err := mqutil.JsonToYaml(newSwaggerBytes)
 	if err != nil {
 		mqutil.Logger.Fatal(err)
 	}
-	_, err = f.Write(newSwaggerBytes)
+
+	err = ioutil.WriteFile(outputYamlPath, newYamlBytes, 0644)
 	if err != nil {
 		mqutil.Logger.Fatal(err)
 	}
-	f.Close()
 }

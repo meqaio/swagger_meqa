@@ -100,6 +100,11 @@ With imperfect swagger.json, we need to iterate several times. Guide line - no c
 * Incomplete swagger.json
     * for instance, sometimes the example contains more fields than the json object. This we can actually figure out with an ExampleToSchema method. Punt for now unless it becomes a real pain.
     * Sometimes the response object only describes the error, but not the success case. This is probably because the success case can be assumed from the signature of the request itself. For instance, GET /repositories/{username}/{repo_slug}/commits. People would expect it returns an array of commit objects. To make this work, we need to try the API and check which object in the definitions section match the response. Punt for now, make people clean up their swagger.json.
+    * uvdesk.com's official swagger.json didn't describe any reponse objects. For instance, it only has: 200: {description: '', schema: {type: object}}
+    * No "definitions" section. For instance uvdesk.com. All the POST schemas are defined inline, and no responses are defined for GETs. It seems that the first step may be to consolidate the swagger.json using the real responses.
+        * We put the inline definitions into the definitions section.
+        * We try to match responses to the schema definitions.
+        * The danger is we will generate a spec that matches the implementation.
 * Type confusion
     * Sometimes, an enum is specified as a regular string, with the description saying: valid values are: true, false.
     * We can change the swagger.json to specify the enum properly.

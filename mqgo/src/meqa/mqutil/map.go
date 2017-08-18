@@ -6,6 +6,9 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"github.com/go-openapi/swag"
+	"gopkg.in/yaml.v2"
 )
 
 // MapInterfaceToMapString converts the params map (all primitive types with exception of array)
@@ -166,4 +169,23 @@ func MarshalJsonIndentNoEscape(i interface{}) ([]byte, error) {
 	result = strings.Replace(result, "\\u003e", ">", -1)
 
 	return []byte(result), nil
+}
+
+// Given a yaml stream, output a json stream.
+func YamlToJson(in []byte) (json.RawMessage, error) {
+	var unmarshaled interface{}
+	err := yaml.Unmarshal(in, &unmarshaled)
+	if err != nil {
+		return nil, err
+	}
+	return swag.YAMLToJSON(unmarshaled)
+}
+
+func JsonToYaml(in []byte) ([]byte, error) {
+	var out interface{}
+	err := json.Unmarshal(in, &out)
+	if err != nil {
+		return nil, err
+	}
+	return yaml.Marshal(out)
 }

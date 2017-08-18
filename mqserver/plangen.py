@@ -9,9 +9,9 @@ from bravado_core.spec import Spec
 #class Def:
 
 def main():
-    parser = argparse.ArgumentParser(description='generate testplan.yml from swagger.json')
+    parser = argparse.ArgumentParser(description='generate testplan.yaml from swagger.json')
     parser.add_argument("-i", "--input", help="the swagger.json file", default="./meqa_data/swagger.json")
-    parser.add_argument("-o", "--output", help="the output file name", default="./meqa_data/testplan.yml")
+    parser.add_argument("-o", "--output", help="the output file name", default="./meqa_data/testplan.yaml")
     args = parser.parse_args()
 
     spec_dict = json.loads(open(args.input, 'r').read())

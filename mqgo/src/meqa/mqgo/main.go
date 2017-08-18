@@ -13,8 +13,8 @@ import (
 
 const (
 	meqaDataDir     = "meqa_data"
-	swaggerJSONFile = "swagger.json"
-	testPlanFile    = "testplan.yml"
+	swaggerJSONFile = "swagger.yaml"
+	testPlanFile    = "testplan.yaml"
 )
 
 func main() {
@@ -40,7 +40,7 @@ func main() {
 	}
 
 	// Test loading swagger.json
-	swagger, err := mqswag.CreateSwaggerFromURL(swaggerJsonPath)
+	swagger, err := mqswag.CreateSwaggerFromURL(swaggerJsonPath, *meqaPath)
 	if err != nil {
 		mqutil.Logger.Printf("Error: %s", err.Error())
 	}

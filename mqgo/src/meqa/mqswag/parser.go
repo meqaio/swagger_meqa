@@ -3,8 +3,11 @@ package mqswag
 
 import (
 	"fmt"
+	"io/ioutil"
 	"log"
 	"meqa/mqutil"
+	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 
@@ -109,8 +112,41 @@ func GetMeqaTag(desc string) *MeqaTag {
 type Swagger spec.Swagger
 
 // Init from a file
-func CreateSwaggerFromURL(path string) (*Swagger, error) {
-	specDoc, err := loads.Spec(path)
+func CreateSwaggerFromURL(path string, meqaPath string) (*Swagger, error) {
+	tmpPath := filepath.Join(meqaPath, ".meqatmp")
+	os.Remove(tmpPath)
+	tmpFile, err := os.Create(tmpPath)
+	if err != nil {
+		mqutil.Logger.Printf("can't access tmp file %s", tmpPath)
+		return nil, err
+	}
+	defer os.Remove(tmpPath)
+
+	// If input is yaml, transform to json
+	var swaggerJsonPath string
+	ar := strings.Split(path, ".")
+	if ar[len(ar)-1] == "json" {
+		swaggerJsonPath = path
+	} else {
+		yamlBytes, err := ioutil.ReadFile(path)
+		if err != nil {
+			mqutil.Logger.Printf("can't read file %s", path)
+			return nil, err
+		}
+		jsonBytes, err := mqutil.YamlToJson(yamlBytes)
+		if err != nil {
+			mqutil.Logger.Printf("invalid yaml in file %s %v", path, err)
+			return nil, err
+		}
+		_, err = tmpFile.Write(jsonBytes)
+		if err != nil {
+			mqutil.Logger.Printf("can't access tmp file %s", tmpPath)
+			return nil, err
+		}
+		swaggerJsonPath = tmpPath
+	}
+
+	specDoc, err := loads.Spec(swaggerJsonPath)
 	if err != nil {
 		mqutil.Logger.Printf("Can't open the following file: %s", path)
 		mqutil.Logger.Println(err.Error())
