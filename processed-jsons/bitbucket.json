@@ -2940,6 +2940,7 @@
                 {
                     "type": "string",
                     "name": "spec",
+                    "description": " <meqa commit.hash>",
                     "in": "path",
                     "required": true
                 },
