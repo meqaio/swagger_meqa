@@ -48,6 +48,7 @@ func main() {
 		return
 	}
 
+	dag.Sort()
 	dag.CheckWeight()
 
 	testPlan, err := mqplan.GenerateTestPlan(swagger, dag)

@@ -34,6 +34,7 @@ func GenerateTestsForObject(create *mqswag.DAGNode, obj *mqswag.DAGNode, plan *T
 	testId := 1
 	testCase := &TestCase{nil, fmt.Sprintf("%s -- %s -- all", createPath, objName)}
 	testCase.Tests = append(testCase.Tests, CreateTestFromOp(create, testId))
+	testCase.Tests = append(testCase.Tests, CreateTestFromOp(create, testId))
 	for _, child := range obj.Children {
 		if mqswag.GetType(child.Name) != mqswag.TypeOp {
 			mqutil.Logger.Printf("unexpected: (%s) has a child (%s) that's not an operation", obj.Name, child.Name)

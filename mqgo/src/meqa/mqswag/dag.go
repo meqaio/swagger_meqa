@@ -3,6 +3,7 @@ package mqswag
 import (
 	"fmt"
 	"meqa/mqutil"
+	"sort"
 )
 
 const (
@@ -15,7 +16,7 @@ type DAGNode struct {
 	Name     string
 	Weight   int
 	Data     interface{}
-	Children []*DAGNode
+	Children NodeList
 
 	dag *DAG
 }
@@ -58,10 +59,24 @@ func (node *DAGNode) AddChild(child *DAGNode) error {
 	return nil
 }
 
+type NodeList []*DAGNode
+
+func (n NodeList) Len() int {
+	return len(n)
+}
+
+func (n NodeList) Swap(i, j int) {
+	n[i], n[j] = n[j], n[i]
+}
+
+func (n NodeList) Less(i, j int) bool {
+	return n[i].Name < n[j].Name
+}
+
 // We expect a single thread on the server would handle the DAG creation and traversing. So no mutex for now.
 type DAG struct {
-	NameMap    map[string]*DAGNode  // DAGNode name to node mapping.
-	WeightList [DAGDepth][]*DAGNode // List ordered by DAGNodes' weights. Max of 1000 levels in DAG depth.
+	NameMap    map[string]*DAGNode // DAGNode name to node mapping.
+	WeightList [DAGDepth]NodeList  // List ordered by DAGNodes' weights. Max of 1000 levels in DAG depth.
 }
 
 func (dag *DAG) Init() {
@@ -133,6 +148,19 @@ func (dag *DAG) IterateByWeight(f DAGIterFunc) error {
 		}
 	}
 	return nil
+}
+
+// sort the dag by name
+func (dag *DAG) Sort() {
+	for w := 0; w < DAGDepth; w++ {
+		sort.Sort(dag.WeightList[w])
+	}
+
+	sortChildren := func(previous *DAGNode, current *DAGNode) error {
+		sort.Sort(current.Children)
+		return nil
+	}
+	dag.IterateByWeight(sortChildren)
 }
 
 func (dag *DAG) CheckWeight() {
