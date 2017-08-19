@@ -18,6 +18,17 @@ func CreateTestFromOp(opNode *mqswag.DAGNode, testId int) *Test {
 	return t
 }
 
+func OperationIsDelete(node *mqswag.DAGNode) bool {
+	op, ok := node.Data.(*spec.Operation)
+	if ok && op != nil {
+		tag := mqswag.GetMeqaTag(op.Description)
+		if (tag != nil && tag.Operation == mqswag.MethodDelete) || (tag == nil && mqswag.GetMethod(node.Name) == mqswag.MethodDelete) {
+			return true
+		}
+	}
+	return false
+}
+
 // GenerateTestsForObject for the obj that we traversed to from create. Add the test cases
 // generated to plan.
 func GenerateTestsForObject(create *mqswag.DAGNode, obj *mqswag.DAGNode, plan *TestPlan) error {
@@ -34,7 +45,6 @@ func GenerateTestsForObject(create *mqswag.DAGNode, obj *mqswag.DAGNode, plan *T
 	testId := 1
 	testCase := &TestCase{nil, fmt.Sprintf("%s -- %s -- all", createPath, objName)}
 	testCase.Tests = append(testCase.Tests, CreateTestFromOp(create, testId))
-	testCase.Tests = append(testCase.Tests, CreateTestFromOp(create, testId))
 	for _, child := range obj.Children {
 		if mqswag.GetType(child.Name) != mqswag.TypeOp {
 			mqutil.Logger.Printf("unexpected: (%s) has a child (%s) that's not an operation", obj.Name, child.Name)
@@ -42,6 +52,9 @@ func GenerateTestsForObject(create *mqswag.DAGNode, obj *mqswag.DAGNode, plan *T
 		}
 		testId++
 		testCase.Tests = append(testCase.Tests, CreateTestFromOp(child, testId))
+		if OperationIsDelete(child) {
+			testCase.Tests = append(testCase.Tests, CreateTestFromOp(create, testId))
+		}
 	}
 	if len(testCase.Tests) > 0 {
 		plan.Add(testCase)
