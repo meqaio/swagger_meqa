@@ -823,6 +823,9 @@ func generateString(s *spec.Schema, prefix string) (string, error) {
 	if s.Format == "binary" {
 		return hex.EncodeToString([]byte(str)), nil
 	}
+	if s.Format == "uri" || s.Format == "url" {
+		return "https://www.google.com/search?q=" + str, nil
+	}
 	return "", mqutil.NewError(mqutil.ErrInvalid, fmt.Sprintf("Invalid format string: %s", s.Format))
 }
 
@@ -998,6 +1001,25 @@ func (t *Test) GenerateSchema(name string, tag *mqswag.MeqaTag, schema *spec.Sch
 	if len(schema.Enum) != 0 {
 		return generateEnum(schema.Enum)
 	}
+
+	if len(schema.AllOf) > 0 {
+		combined := make(map[string]interface{})
+		for _, s := range schema.AllOf {
+			m, err := t.GenerateSchema(name, tag, &s, db)
+			if err != nil {
+				return nil, err
+			}
+			if o, isMap := m.(map[string]interface{}); isMap {
+				combined = mqutil.MapCombine(combined, o)
+			} else {
+				// We don't know how to combine AllOf properties of non-map types.
+				jsonStr, _ := json.MarshalIndent(schema, "", "    ")
+				return nil, mqutil.NewError(mqutil.ErrInvalid, fmt.Sprintf("can't combine AllOf schema that's not map: %s", jsonStr))
+			}
+		}
+		return combined, nil
+	}
+
 	if len(schema.Type) == 0 {
 		return nil, mqutil.NewError(mqutil.ErrInvalid, "Parameter doesn't have type")
 	}

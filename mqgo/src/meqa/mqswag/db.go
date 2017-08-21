@@ -57,6 +57,25 @@ func (schema *Schema) Matches(object interface{}, swagger *Swagger) bool {
 		return referredSchema.Matches(object, swagger)
 	}
 
+	// This check works right now because we are not too strict in MatchesMap function.
+	if len(schema.AllOf) > 0 {
+		for _, s := range schema.AllOf {
+			if !((*Schema)(&s)).Matches(object, swagger) {
+				return false
+			}
+		}
+		return true
+	}
+
+	if len(schema.AnyOf) > 0 {
+		for _, s := range schema.AnyOf {
+			if !((*Schema)(&s)).Matches(object, swagger) {
+				return true
+			}
+		}
+		return false
+	}
+
 	k := reflect.TypeOf(object).Kind()
 	if k == reflect.Bool {
 		return schema.Type.Contains(gojsonschema.TYPE_BOOLEAN)
@@ -111,6 +130,8 @@ func (schema *Schema) MatchesMap(obj map[string]interface{}, swagger *Swagger) b
 			return false
 		}
 	}
+
+	/* This check is too strict. Sometimes people have a schema with type "object" but no field to mean a generic object.
 	// check all object's fields are in schema and the types match.
 	for k, v := range obj {
 		if p, ok := schema.Properties[k]; ok {
@@ -120,6 +141,7 @@ func (schema *Schema) MatchesMap(obj map[string]interface{}, swagger *Swagger) b
 			}
 		}
 	}
+	*/
 	return true
 }
 
