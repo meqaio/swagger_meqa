@@ -52,12 +52,12 @@ func main() {
 	mqswag.ObjDB.Init(swagger)
 
 	// Test loading test plan
+	mqplan.Current.Username = *username
+	mqplan.Current.Password = *password
 	err = mqplan.Current.InitFromFile(testPlanPath, &mqswag.ObjDB)
 	if err != nil {
 		mqutil.Logger.Printf("Error loading test plan: %s", err.Error())
 	}
-	mqplan.Current.Username = *username
-	mqplan.Current.Password = *password
 
 	if *testToRun == "all" {
 		for _, testCase := range mqplan.Current.CaseList {
