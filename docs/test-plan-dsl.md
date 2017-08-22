@@ -37,6 +37,10 @@ create verify:
 Each test suite has a unique name. It can be run individually by name. A test suite is comprised of a list
 of tests. In the above example "create user auto", "get user auto" and "create verify" are test suites.
 
+The test suite can have parameters just like the test objects. The rule is that the lower level overrides the
+higher level. So if the test suite and the underlying test has the same parameter, the one specified in the test
+takes priority.
+
 ## Test Object
 A test object defines a single REST API call, and has the following fields.
 * name: an optional name. The name is useful when multiple tests in a test case need to refer to each other.
@@ -64,9 +68,14 @@ The parameters allow special values, and defaults to the special value "auto". T
     - DELETE - delete all known objects.
 * `<test name.parameter name>` - use the parameter value in a previous test.
 
-Parameters passed in from caller will override the lower level test cases' parameters. For instance, if a test named "create user" is constructued to create a user named "user1", and in the test plan we call "create user" with parameters "user2", then we will use "user2".
+The rule for parameters when there is a name conflict are:
+* The same syntax is to specify parameters at the test plan level, test suite level, and individual test level.
+* Specified parameters will override generated parameters.
+* Parameters specified at lower level will override the parameters at higher level. This is just like child classes can override parent classes.
+* The above means that if a bottom level test hardcodes a certain parameter, we can't call that test by reference and change the parameter.
+* For parameters that have a name (field in a map), it will only affect the property with that name. For instance, if the post body needs username and password as two properties, if the caller specifies the username, the password will be generated.
 
-Each test object can by run by itself. Each one is always run using the existing in-memory state. For instance, if a GET type method is run by itself, it will try to retrieve object the test has created before. If there doesn't exist any object, the test will just verify the failure case.
+Each test suite can by run by itself. Each one is always run using the existing in-memory state. For instance, if a GET type method is run by itself, it will try to retrieve object the test has created before. If there doesn't exist any object, the test will just verify the failure case.
 
 When running a whole test plan, all the tests are run in sequence.
 

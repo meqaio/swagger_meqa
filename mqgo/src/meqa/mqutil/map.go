@@ -78,13 +78,42 @@ func TimeCompare(v1 interface{}, v2 interface{}) bool {
 // MapCombine combines two map together. If there is any overlap the dst will be overwritten.
 func MapCombine(dst map[string]interface{}, src map[string]interface{}) map[string]interface{} {
 	if len(dst) == 0 {
-		return src
+		return MapCopy(src)
 	}
 	if len(src) == 0 {
 		return dst
 	}
 	for k, v := range src {
 		dst[k] = v
+	}
+	return dst
+}
+
+// Just like MapCombine but keep the original dst value if there is an overlap.
+func MapAdd(dst map[string]interface{}, src map[string]interface{}) map[string]interface{} {
+	if len(dst) == 0 {
+		return MapCopy(src)
+	}
+	if len(src) == 0 {
+		return dst
+	}
+	for k, v := range src {
+		if _, exist := dst[k]; !exist {
+			dst[k] = v
+		}
+	}
+	return dst
+}
+
+// MapReplace replaces the values in dst with the ones in src with the matching keys.
+func MapReplace(dst map[string]interface{}, src map[string]interface{}) map[string]interface{} {
+	if len(src) == 0 {
+		return dst
+	}
+	for k := range dst {
+		if v, ok := src[k]; ok {
+			dst[k] = v
+		}
 	}
 	return dst
 }
@@ -188,4 +217,17 @@ func JsonToYaml(in []byte) ([]byte, error) {
 		return nil, err
 	}
 	return yaml.Marshal(out)
+}
+
+func YamlObjToJsonObj(in interface{}) (interface{}, error) {
+	jsonRaw, err := swag.YAMLToJSON(in)
+	if err != nil {
+		return nil, err
+	}
+	var out interface{}
+	err = json.Unmarshal(jsonRaw, &out)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }

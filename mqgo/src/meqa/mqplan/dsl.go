@@ -86,16 +86,12 @@ func (comp *Comparison) GetMapByOp(op string) map[string]interface{} {
 // Test represents a test object in the DSL. Extra care needs to be taken to copy the
 // Test before running it, because running it would change the parameter maps.
 type Test struct {
-	Name         string                 `yaml:"name,omitempty"`
-	Path         string                 `yaml:"path,omitempty"`
-	Method       string                 `yaml:"method,omitempty"`
-	Ref          string                 `yaml:"ref,omitempty"`
-	Expect       map[string]interface{} `yaml:"expect,omitempty"`
-	QueryParams  map[string]interface{} `yaml:"queryParams,omitempty"`
-	BodyParams   interface{}            `yaml:"bodyParams,omitempty"`
-	FormParams   map[string]interface{} `yaml:"formParams,omitempty"`
-	PathParams   map[string]interface{} `yaml:"pathParams,omitempty"`
-	HeaderParams map[string]interface{} `yaml:"headerParams,omitempty"`
+	Name       string                 `yaml:"name,omitempty"`
+	Path       string                 `yaml:"path,omitempty"`
+	Method     string                 `yaml:"method,omitempty"`
+	Ref        string                 `yaml:"ref,omitempty"`
+	Expect     map[string]interface{} `yaml:"expect,omitempty"`
+	TestParams `yaml:",inline,omitempty" json:",inline,omitempty"`
 
 	// Map of Object name (matching definitions) to the Comparison object.
 	// This tracks what objects we need to add to DB at the end of test.
@@ -114,12 +110,10 @@ func (t *Test) Init(db *mqswag.DB) {
 		t.Method = strings.ToLower(t.Method)
 	}
 	// if BodyParams is map, after unmarshal it is map[interface{}]
-	if bodyMap, ok := t.BodyParams.(map[interface{}]interface{}); ok {
-		newMap := make(map[string]interface{})
-		for k, v := range bodyMap {
-			newMap[fmt.Sprint(k)] = v
-		}
-		t.BodyParams = newMap
+	var err error
+	t.BodyParams, err = mqutil.YamlObjToJsonObj(t.BodyParams)
+	if err != nil {
+		panic(err)
 	}
 }
 
@@ -411,13 +405,13 @@ func (t *Test) SetRequestParameters(req *resty.Request) string {
 	return path
 }
 
-func (t *Test) CopyParams(parentTest *Test) {
+func (t *Test) CopyParent(parentTest *Test) {
 	if parentTest != nil {
 		t.Expect = mqutil.MapCopy(parentTest.Expect)
-		t.QueryParams = mqutil.MapCombine(t.QueryParams, parentTest.QueryParams)
-		t.PathParams = mqutil.MapCombine(t.PathParams, parentTest.PathParams)
-		t.HeaderParams = mqutil.MapCombine(t.HeaderParams, parentTest.HeaderParams)
-		t.FormParams = mqutil.MapCombine(t.FormParams, parentTest.FormParams)
+		t.QueryParams = mqutil.MapAdd(t.QueryParams, parentTest.QueryParams)
+		t.PathParams = mqutil.MapAdd(t.PathParams, parentTest.PathParams)
+		t.HeaderParams = mqutil.MapAdd(t.HeaderParams, parentTest.HeaderParams)
+		t.FormParams = mqutil.MapAdd(t.FormParams, parentTest.FormParams)
 
 		if parentTest.BodyParams != nil {
 			if t.BodyParams == nil {
@@ -440,17 +434,17 @@ func (t *Test) CopyParams(parentTest *Test) {
 }
 
 // Run runs the test. Returns the test result.
-func (t *Test) Run(plan *TestPlan) error {
+func (t *Test) Run(tc *TestCase) error {
 
 	mqutil.Logger.Print("\n--- " + t.Name)
-	err := t.ResolveParameters(plan)
+	err := t.ResolveParameters(tc)
 	if err != nil {
 		return err
 	}
 
 	req := resty.R()
-	if len(plan.Username) > 0 {
-		req.SetBasicAuth(plan.Username, plan.Password)
+	if len(tc.Username) > 0 {
+		req.SetBasicAuth(tc.Username, tc.Password)
 	}
 	path := GetBaseURL(t.db.Swagger) + t.SetRequestParameters(req)
 	var resp *resty.Response
@@ -577,7 +571,8 @@ func (t *Test) ResolveHistoryParameters(h *TestHistory) {
 	}
 }
 
-func ParamsCombine(dst []spec.Parameter, src []spec.Parameter) []spec.Parameter {
+// ParamsAdd adds the parameters from src to dst if the param doesn't already exist on dst.
+func ParamsAdd(dst []spec.Parameter, src []spec.Parameter) []spec.Parameter {
 	if len(dst) == 0 {
 		return src
 	}
@@ -599,14 +594,15 @@ func ParamsCombine(dst []spec.Parameter, src []spec.Parameter) []spec.Parameter 
 
 // ResolveParameters fullfills the parameters for the specified request using the in-mem DB.
 // The resolved parameters will be added to test.Parameters map.
-func (t *Test) ResolveParameters(plan *TestPlan) error {
+func (t *Test) ResolveParameters(tc *TestCase) error {
 	pathItem := t.db.Swagger.Paths.Paths[t.Path]
 	t.op = GetOperationByMethod(&pathItem, t.Method)
 	if t.op == nil {
 		return mqutil.NewError(mqutil.ErrNotFound, fmt.Sprintf("Path %s not found in swagger file", t.Path))
 	}
+
 	// There can be parameters at the path level. We merge these with the operation parameters.
-	t.op.Parameters = ParamsCombine(t.op.Parameters, pathItem.Parameters)
+	t.op.Parameters = ParamsAdd(t.op.Parameters, pathItem.Parameters)
 
 	t.tag = mqswag.GetMeqaTag(t.op.Description)
 
@@ -616,9 +612,13 @@ func (t *Test) ResolveParameters(plan *TestPlan) error {
 	var genParam interface{}
 	for _, params := range t.op.Parameters {
 		if params.In == "body" {
+			var bodyMap map[string]interface{}
+			bodyIsMap := false
 			if t.BodyParams != nil {
-				// There is only one body parameter. No need to check name. In fact, we don't
-				// even store the name in the DSL.
+				bodyMap, bodyIsMap = t.BodyParams.(map[string]interface{})
+			}
+			if t.BodyParams != nil && !bodyIsMap {
+				// Body is not map, we use it directly.
 				objarray := mqutil.InterfaceToArray(t.BodyParams)
 				paramTag, schema := t.GetSchemaRootType((*mqswag.Schema)(params.Schema), mqswag.GetMeqaTag(params.Description))
 				method := t.Method
@@ -632,8 +632,19 @@ func (t *Test) ResolveParameters(plan *TestPlan) error {
 				}
 				continue
 			}
+			// Body is map, we generate parameters, then use the value in the original t and tc's bodyParam where possible
 			genParam, err = t.GenerateParameter(&params, t.db)
-			t.BodyParams = genParam
+			if err != nil {
+				return err
+			}
+			if genMap, genIsMap := genParam.(map[string]interface{}); genIsMap {
+				if tcBodyMap, tcIsMap := tc.BodyParams.(map[string]interface{}); tcIsMap {
+					bodyMap = mqutil.MapAdd(bodyMap, tcBodyMap)
+				}
+				t.BodyParams = mqutil.MapReplace(genMap, bodyMap)
+			} else {
+				t.BodyParams = genParam
+			}
 		} else {
 			switch params.In {
 			case "path":
@@ -641,25 +652,25 @@ func (t *Test) ResolveParameters(plan *TestPlan) error {
 					t.PathParams = make(map[string]interface{})
 				}
 				paramsMap = t.PathParams
-				globalParamsMap = plan.PathParams
+				globalParamsMap = tc.PathParams
 			case "query":
 				if t.QueryParams == nil {
 					t.QueryParams = make(map[string]interface{})
 				}
 				paramsMap = t.QueryParams
-				globalParamsMap = plan.QueryParams
+				globalParamsMap = tc.QueryParams
 			case "header":
 				if t.HeaderParams == nil {
 					t.HeaderParams = make(map[string]interface{})
 				}
 				paramsMap = t.HeaderParams
-				globalParamsMap = plan.HeaderParams
+				globalParamsMap = tc.HeaderParams
 			case "formData":
 				if t.FormParams == nil {
 					t.FormParams = make(map[string]interface{})
 				}
 				paramsMap = t.FormParams
-				globalParamsMap = plan.FormParams
+				globalParamsMap = tc.FormParams
 			}
 
 			// If there is a parameter passed in, just use it. Otherwise generate one.

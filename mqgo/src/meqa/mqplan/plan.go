@@ -17,12 +17,78 @@ import (
 )
 
 const (
-	MeqaGlobal = "meqa_global"
+	MeqaInit = "meqa_init"
 )
+
+type TestParams struct {
+	QueryParams  map[string]interface{} `yaml:"queryParams,omitempty"`
+	FormParams   map[string]interface{} `yaml:"formParams,omitempty"`
+	PathParams   map[string]interface{} `yaml:"pathParams,omitempty"`
+	HeaderParams map[string]interface{} `yaml:"headerParams,omitempty"`
+	BodyParams   interface{}            `yaml:"bodyParams,omitempty"`
+}
+
+// Copy the parameters from src. If there is a conflict dst will be overwritten.
+func (dst *TestParams) Copy(src *TestParams) {
+	dst.QueryParams = mqutil.MapCombine(dst.QueryParams, src.QueryParams)
+	dst.FormParams = mqutil.MapCombine(dst.FormParams, src.FormParams)
+	dst.PathParams = mqutil.MapCombine(dst.PathParams, src.PathParams)
+	dst.HeaderParams = mqutil.MapCombine(dst.HeaderParams, src.HeaderParams)
+
+	if caseMap, caseIsMap := dst.BodyParams.(map[string]interface{}); caseIsMap {
+		if testMap, testIsMap := src.BodyParams.(map[string]interface{}); testIsMap {
+			dst.BodyParams = mqutil.MapCombine(caseMap, testMap)
+			// for map, just combine and return
+			return
+		}
+	}
+	dst.BodyParams = src.BodyParams
+}
+
+// Add the parameters from src. If there is a conflict the dst original value will be kept.
+func (dst *TestParams) Add(src *TestParams) {
+	dst.QueryParams = mqutil.MapAdd(dst.QueryParams, src.QueryParams)
+	dst.FormParams = mqutil.MapAdd(dst.FormParams, src.FormParams)
+	dst.PathParams = mqutil.MapAdd(dst.PathParams, src.PathParams)
+	dst.HeaderParams = mqutil.MapAdd(dst.HeaderParams, src.HeaderParams)
+
+	if caseMap, caseIsMap := dst.BodyParams.(map[string]interface{}); caseIsMap {
+		if testMap, testIsMap := src.BodyParams.(map[string]interface{}); testIsMap {
+			dst.BodyParams = mqutil.MapAdd(caseMap, testMap)
+			// for map, just combine and return
+			return
+		}
+	}
+
+	if dst.BodyParams == nil {
+		dst.BodyParams = src.BodyParams
+	}
+}
 
 type TestCase struct {
 	Tests []*Test
 	Name  string
+
+	// test case parameters
+	TestParams `yaml:",inline,omitempty" json:",inline,omitempty"`
+
+	// Authentication
+	Username string
+	Password string
+
+	plan *TestPlan
+}
+
+func CreateTestCase(name string, tests []*Test, plan *TestPlan) *TestCase {
+	c := TestCase{}
+	c.Name = name
+	c.Tests = tests
+	(&c.TestParams).Copy(&plan.TestParams)
+
+	c.Username = plan.Username
+	c.Password = plan.Password
+	c.plan = plan
+	return &c
 }
 
 // Represents all the test cases in the DSL.
@@ -33,11 +99,7 @@ type TestPlan struct {
 	swagger  *mqswag.Swagger
 
 	// global parameters
-	QueryParams  map[string]interface{} `yaml:"queryParams,omitempty"`
-	BodyParams   interface{}            `yaml:"bodyParams,omitempty"`
-	FormParams   map[string]interface{} `yaml:"formParams,omitempty"`
-	PathParams   map[string]interface{} `yaml:"pathParams,omitempty"`
-	HeaderParams map[string]interface{} `yaml:"headerParams,omitempty"`
+	TestParams `yaml:",inline,omitempty" json:",inline,omitempty"`
 
 	// Authentication
 	Username string
@@ -63,21 +125,13 @@ func (plan *TestPlan) AddFromString(data string) error {
 		mqutil.Logger.Printf("The following is not a valud TestCase:\n%s", data)
 		return err
 	}
+
 	for caseName, testList := range caseMap {
-		if caseName == MeqaGlobal {
+		if caseName == MeqaInit {
 			// global parameters
 			for _, t := range testList {
-				plan.PathParams = mqutil.MapCombine(plan.PathParams, t.PathParams)
-				plan.QueryParams = mqutil.MapCombine(plan.QueryParams, t.QueryParams)
-				plan.FormParams = mqutil.MapCombine(plan.FormParams, t.FormParams)
-				plan.HeaderParams = mqutil.MapCombine(plan.HeaderParams, t.HeaderParams)
-				if bodyMap, ok := t.BodyParams.(map[string]interface{}); ok {
-					if plan.BodyParams == nil {
-						plan.BodyParams = bodyMap
-					} else {
-						plan.BodyParams = mqutil.MapCombine(plan.BodyParams.(map[string]interface{}), bodyMap)
-					}
-				}
+				t.Init(nil)
+				(&plan.TestParams).Copy(&t.TestParams)
 			}
 
 			continue
@@ -85,8 +139,8 @@ func (plan *TestPlan) AddFromString(data string) error {
 		for _, t := range testList {
 			t.Init(plan.db)
 		}
-		testCase := TestCase{testList, caseName}
-		err = plan.Add(&testCase)
+		testCase := CreateTestCase(caseName, testList, plan)
+		err = plan.Add(testCase)
 		if err != nil {
 			return err
 		}
@@ -160,16 +214,22 @@ func (plan *TestPlan) Run(name string, parentTest *Test) error {
 			continue
 		}
 
+		if test.Name == MeqaInit {
+			// Apply the parameters to the test case.
+			(&tc.TestParams).Copy(&test.TestParams)
+			continue
+		}
+
 		dup := test.Duplicate()
 		if parentTest != nil {
-			dup.CopyParams(parentTest)
+			dup.CopyParent(parentTest)
 		}
 		dup.ResolveHistoryParameters(&History)
 		History.Append(dup)
 		if parentTest != nil {
 			dup.Name = parentTest.Name // always inherit the name
 		}
-		err := dup.Run(plan)
+		err := dup.Run(tc)
 		if err != nil {
 			dup.err = err
 			return err
