@@ -333,7 +333,16 @@ func CollectResponseDependencies(responses *spec.Responses, swagger *Swagger, da
 	return nil
 }
 
-func AddOperation(pathName string, method string, op *spec.Operation, swagger *Swagger, dag *DAG) error {
+func AddOperation(pathName string, pathItem *spec.PathItem, method string, swagger *Swagger, dag *DAG) error {
+	opInterface, err := pathItem.JSONLookup(method)
+	if err != nil {
+		return err
+	}
+	op := opInterface.(*spec.Operation)
+	if op == nil {
+		return nil
+	}
+
 	node, err := dag.NewNode(GetDAGName(TypeOp, pathName, method), op)
 	if err != nil {
 		return err
@@ -356,6 +365,11 @@ func AddOperation(pathName string, method string, op *spec.Operation, swagger *S
 	// The order matters. At the end of CollectParamDependencies we collect the parameters
 	// referred by the object we produce.
 	err = CollectParamDependencies(op.Parameters, swagger, dag, dep)
+	if err != nil {
+		return err
+	}
+
+	err = CollectParamDependencies(pathItem.Parameters, swagger, dag, dep)
 	if err != nil {
 		return err
 	}
@@ -383,7 +397,6 @@ func AddOperation(pathName string, method string, op *spec.Operation, swagger *S
 		return err
 	}
 
-	// If we know for sure we create something, we remove it from parameters.
 	return node.AddDependencies(dag, dep.Consumes, false)
 }
 
@@ -413,44 +426,8 @@ func (swagger *Swagger) AddToDAG(dag *DAG) error {
 
 	// Add all operations
 	for pathName, pathItem := range swagger.Paths.Paths {
-		if op := pathItem.Get; op != nil {
-			err := AddOperation(pathName, MethodGet, op, swagger, dag)
-			if err != nil {
-				return err
-			}
-		}
-		if op := pathItem.Put; op != nil {
-			err := AddOperation(pathName, MethodPut, op, swagger, dag)
-			if err != nil {
-				return err
-			}
-		}
-		if op := pathItem.Post; op != nil {
-			err := AddOperation(pathName, MethodPost, op, swagger, dag)
-			if err != nil {
-				return err
-			}
-		}
-		if op := pathItem.Delete; op != nil {
-			err := AddOperation(pathName, MethodDelete, op, swagger, dag)
-			if err != nil {
-				return err
-			}
-		}
-		if op := pathItem.Patch; op != nil {
-			err := AddOperation(pathName, MethodPatch, op, swagger, dag)
-			if err != nil {
-				return err
-			}
-		}
-		if op := pathItem.Head; op != nil {
-			err := AddOperation(pathName, MethodHead, op, swagger, dag)
-			if err != nil {
-				return err
-			}
-		}
-		if op := pathItem.Options; op != nil {
-			err := AddOperation(pathName, MethodOptions, op, swagger, dag)
+		for _, method := range MethodAll {
+			err := AddOperation(pathName, &pathItem, method, swagger, dag)
 			if err != nil {
 				return err
 			}
