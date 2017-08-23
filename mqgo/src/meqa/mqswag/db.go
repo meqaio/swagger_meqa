@@ -233,9 +233,12 @@ func MatchAllFields(criteria interface{}, existing interface{}) bool {
 	if !ok {
 		return false
 	}
-	// We only do simple value comparision for now. We know that our search keys are simple types.
+	// We only do simple value comparision for now. TODO search into nested maps.
 	for k, v := range cm {
-		if em[k] != v {
+		if reflect.TypeOf(v) != reflect.TypeOf(em[k]) {
+			return false
+		}
+		if reflect.TypeOf(v).Comparable() && em[k] != v {
 			return false
 		}
 	}
