@@ -211,32 +211,47 @@ func AddDef(name string, schema *Schema, swagger *Swagger, dag *DAG) error {
 	return nil
 }
 
+// Dependencies keeps track of what this operation consumes and produces. It also keeps
+// track of what the default dependency is when there is no tag. Default always point to
+// either "Produces" or "Consumes"
+type Dependencies struct {
+	Produces map[string]interface{}
+	Consumes map[string]interface{}
+	Default  map[string]interface{}
+	IsPost   bool
+}
+
+// CollectFromTag collects from the tag. It returns true if successful, false if not.
+func (dep *Dependencies) CollectFromTag(tag *MeqaTag) bool {
+	if tag != nil && len(tag.Class) > 0 {
+		// If there is a tag, and the tag's operation (which is always correct)
+		// doesn't match what we want to collect, then skip.
+		if len(tag.Operation) > 0 {
+			if tag.Operation == MethodPost {
+				dep.Produces[tag.Class] = 1
+			} else {
+				dep.Consumes[tag.Class] = 1
+			}
+		} else {
+			dep.Default[tag.Class] = 1
+		}
+		return true
+	}
+	return false
+}
+
 // collects all the objects referred to by the schema. All the object names are put into
 // the specified map.
-func CollectSchemaDependencies(schema *Schema, swagger *Swagger, dag *DAG, collection map[string]interface{}, post bool) error {
-	iterFunc := func(swagger *Swagger, schemaName string, schema *Schema, context map[string]interface{}) error {
-		tag := GetMeqaTag(schema.Description)
-		if tag != nil {
-			// If there is a tag, and the tag's operation (which is always correct)
-			// doesn't match what we want to collect, then skip.
-			if post && len(tag.Operation) > 0 && tag.Operation != MethodPost {
-				return nil
-			}
-			if !post && len(tag.Operation) > 0 && tag.Operation == MethodPost {
-				return nil
-			}
-			if len(tag.Class) > 0 {
-				context[tag.Class] = 1
-			}
-		}
-
-		if len(schemaName) > 0 {
-			context[schemaName] = 1
+func CollectSchemaDependencies(schema *Schema, swagger *Swagger, dag *DAG, dep *Dependencies) error {
+	iterFunc := func(swagger *Swagger, schemaName string, schema *Schema, context interface{}) error {
+		collected := dep.CollectFromTag(GetMeqaTag(schema.Description))
+		if !collected && len(schemaName) > 0 {
+			dep.Default[schemaName] = 1
 		}
 		return nil
 	}
 
-	return schema.Iterate(iterFunc, collection, swagger)
+	return schema.Iterate(iterFunc, dep, swagger)
 }
 
 func AddTagsToNode(node *DAGNode, dag *DAG, tags map[string]interface{}, asChild bool) error {
@@ -259,14 +274,18 @@ func AddTagsToNode(node *DAGNode, dag *DAG, tags map[string]interface{}, asChild
 	return nil
 }
 
-func CollectParamDependencies(params []spec.Parameter, swagger *Swagger, dag *DAG, tags map[string]interface{}, post bool) error {
+func CollectParamDependencies(params []spec.Parameter, swagger *Swagger, dag *DAG, dep *Dependencies) error {
+	defer func() { dep.Default = nil }()
 	for _, param := range params {
+		if dep.IsPost && (param.In == "body" || param.In == "formData") {
+			dep.Default = dep.Produces
+		} else {
+			dep.Default = dep.Consumes
+		}
+
 		tag := GetMeqaTag(param.Description)
-		if tag != nil && len(tag.Class) > 0 {
-			// Maybe we should also add checks for whether it's in body or formData.
-			if (!post && tag.Operation != MethodPost) || (post && tag.Operation == MethodPost) {
-				tags[tag.Class] = 1
-			}
+		collected := dep.CollectFromTag(tag)
+		if collected {
 			continue
 		}
 
@@ -277,7 +296,8 @@ func CollectParamDependencies(params []spec.Parameter, swagger *Swagger, dag *DA
 			// construct a full schema from simple ones
 			schema = CreateSchemaFromSimple(&param.SimpleSchema, &param.CommonValidations)
 		}
-		err := CollectSchemaDependencies(schema, swagger, dag, tags, post)
+
+		err := CollectSchemaDependencies(schema, swagger, dag, dep)
 		if err != nil {
 			return err
 		}
@@ -285,19 +305,19 @@ func CollectParamDependencies(params []spec.Parameter, swagger *Swagger, dag *DA
 	return nil
 }
 
-func CollectResponseDependencies(responses *spec.Responses, swagger *Swagger, dag *DAG, tags map[string]interface{}, post bool) error {
+func CollectResponseDependencies(responses *spec.Responses, swagger *Swagger, dag *DAG, dep *Dependencies) error {
 	if responses == nil {
 		return nil
 	}
-	if respSpec := responses.Default; respSpec != nil && respSpec.Schema != nil {
-		err := CollectSchemaDependencies((*Schema)(respSpec.Schema), swagger, dag, tags, post)
-		if err != nil {
-			return err
-		}
-	}
+	dep.Default = dep.Produces
+	defer func() { dep.Default = nil }()
 	for respCode, respSpec := range responses.StatusCodeResponses {
-		if respSpec.Schema != nil && respCode >= 200 && respCode < 400 {
-			err := CollectSchemaDependencies((*Schema)(respSpec.Schema), swagger, dag, tags, post)
+		collected := dep.CollectFromTag(GetMeqaTag(respSpec.Description))
+		if collected {
+			continue
+		}
+		if respSpec.Schema != nil && respCode >= 200 && respCode < 300 {
+			err := CollectSchemaDependencies((*Schema)(respSpec.Schema), swagger, dag, dep)
 			if err != nil {
 				return err
 			}
@@ -313,46 +333,49 @@ func AddOperation(pathName string, method string, op *spec.Operation, swagger *S
 	}
 
 	// The nodes that are part of outputs depends on this operation. The outputs are children.
-	// We have to be careful here. Get operations will also return objects. The outputs
-	// are only the children for "post" (create) operations. The outputs are only the children
-	// on the success code path.
+	// We have to be careful here. Get operations will also return objects. For gets, the outputs
+	// are children only if they are not part of input parameters.
 	tag := GetMeqaTag(op.Description)
-	creates := make(map[string]interface{})
-	tags := make(map[string]interface{})
+	dep := &Dependencies{}
+	dep.Produces = make(map[string]interface{})
+	dep.Consumes = make(map[string]interface{})
+
 	if (tag != nil && tag.Operation == MethodPost) || (tag == nil && method == MethodPost) {
-		err = CollectResponseDependencies(op.Responses, swagger, dag, creates, true)
-		if err != nil {
-			return err
-		}
-		err = CollectParamDependencies(op.Parameters, swagger, dag, creates, true)
-		if err != nil {
-			return err
-		}
-		err = AddTagsToNode(node, dag, creates, true)
-		if err != nil {
-			return err
-		}
-	}
-	if (tag != nil && tag.Operation != MethodPost) || (tag == nil && method == MethodGet) {
-		// For gets, we must provide some parameter in the input to get the output. It means
-		// the outputs should exist on server before we make the GET call.
-		err = CollectResponseDependencies(op.Responses, swagger, dag, tags, false)
-		if err != nil {
-			return err
-		}
+		dep.IsPost = true
+	} else {
+		dep.IsPost = false
 	}
 
-	// This node depends on the nodes that are part of the input parameters. The input parameters
-	// are parents of this node. This is the
-	err = CollectParamDependencies(op.Parameters, swagger, dag, tags, false)
+	err = CollectParamDependencies(op.Parameters, swagger, dag, dep)
 	if err != nil {
 		return err
 	}
-	// If we know for sure we create something, we remove it from parameters.
-	for k := range creates {
-		delete(tags, k)
+
+	err = CollectResponseDependencies(op.Responses, swagger, dag, dep)
+	if err != nil {
+		return err
 	}
-	return AddTagsToNode(node, dag, tags, false)
+
+	if dep.IsPost {
+		// We are creating object. Some of the inputs will be from the same object, remove them from
+		// the consumes field.
+		for k := range dep.Produces {
+			delete(dep.Consumes, k)
+		}
+	} else {
+		// We are getting objects. We definitely depend on the parameters we consume.
+		for k := range dep.Consumes {
+			delete(dep.Produces, k)
+		}
+	}
+
+	err = AddTagsToNode(node, dag, dep.Produces, true)
+	if err != nil {
+		return err
+	}
+
+	// If we know for sure we create something, we remove it from parameters.
+	return AddTagsToNode(node, dag, dep.Consumes, false)
 }
 
 func (swagger *Swagger) AddToDAG(dag *DAG) error {

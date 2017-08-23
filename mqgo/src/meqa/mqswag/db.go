@@ -146,7 +146,7 @@ func (schema *Schema) MatchesMap(obj map[string]interface{}, swagger *Swagger) b
 }
 
 func (schema *Schema) Contains(name string, swagger *Swagger) bool {
-	iterFunc := func(swagger *Swagger, schemaName string, schema *Schema, context map[string]interface{}) error {
+	iterFunc := func(swagger *Swagger, schemaName string, schema *Schema, context interface{}) error {
 		// The only way we have to abort is through an error.
 		if schemaName == name {
 			return errors.New("found")
@@ -161,11 +161,11 @@ func (schema *Schema) Contains(name string, swagger *Swagger) bool {
 	return false
 }
 
-type SchemaIterator func(swagger *Swagger, schemaName string, schema *Schema, context map[string]interface{}) error
+type SchemaIterator func(swagger *Swagger, schemaName string, schema *Schema, context interface{}) error
 
 // IterateSchema descends down the starting schema and call the iterator function for all the child schemas.
 // The iteration order is parent first then children. It will abort on error.
-func (schema *Schema) Iterate(iterFunc SchemaIterator, context map[string]interface{}, swagger *Swagger) error {
+func (schema *Schema) Iterate(iterFunc SchemaIterator, context interface{}, swagger *Swagger) error {
 	err := iterFunc(swagger, "", schema, context)
 	if err != nil {
 		return err
@@ -178,6 +178,7 @@ func (schema *Schema) Iterate(iterFunc SchemaIterator, context map[string]interf
 	}
 	if referredSchema != nil {
 		// We don't want to go down nested schemas.
+		// XXX
 		return iterFunc(swagger, referenceName, referredSchema, context)
 		// return referredSchema.Iterate(iterFunc, context, swagger)
 	}

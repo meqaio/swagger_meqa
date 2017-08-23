@@ -79,7 +79,7 @@ With imperfect swagger.json, we need to iterate several times. Guide line - no c
 
 ## Test Plan Generation
 
-### Learning from Trello
+### Learning from Trello and Bitbucket
 
 * Foreign keys - the data model the server implements can have pretty complex data relationships. 
     * Pet belongs to stores
@@ -115,6 +115,11 @@ With imperfect swagger.json, we need to iterate several times. Guide line - no c
     * `<meqa enum:v1,v2,v3>` - note that the swagger.json already has a type for the field.
     * `<meqa range:10,20>` - integer range between 10 and 20.
     * `<meqa range:1.1,102.0>` - float range, again the field has a type in swagger.json
+* Good GET starting points.
+    * Some systems (e.g. bitbucket) not all objects are created from REST.
+    * We should treat the GETs which we know all the required parameters (e.g. /teams no params) as highest priority. We shall use the return value from them to populate the local in-mem DB. This should be higher priority than the POSTs.
+    * When building the DAG, we will see the object dependency. We should do the GET for the objects that people depend on first.
+    * If an object A is AllOf object B + properties, we need to understand that A is also an instance of B. When generating A, we should also populate the in-mem DB of B with the portion of A that's generated.
 
 ### Test Scenarios
 
