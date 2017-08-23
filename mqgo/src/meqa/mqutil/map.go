@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"reflect"
 	"strings"
 	"time"
 
@@ -123,7 +124,13 @@ func MapEquals(big map[string]interface{}, small map[string]interface{}, strict 
 		return false
 	}
 	for k, v := range small {
-		if big[k] != v && fmt.Sprint(big[k]) != fmt.Sprint(v) && !TimeCompare(big[k], v) {
+		vType := reflect.TypeOf(v)
+		if reflect.TypeOf(big[k]) == vType && vType.Comparable() && big[k] == v {
+			continue
+		}
+		bJson, _ := json.Marshal(big[k])
+		vJson, _ := json.Marshal(v)
+		if string(bJson) != string(vJson) && !TimeCompare(big[k], v) {
 			fmt.Printf("key %v: %v %v mismatch", k, big[k], v)
 			return false
 		}
