@@ -171,6 +171,16 @@ func (schema *Schema) Iterate(iterFunc SchemaIterator, context interface{}, swag
 		return err
 	}
 
+	if len(schema.AllOf) > 0 {
+		for _, s := range schema.AllOf {
+			err = ((*Schema)(&s)).Iterate(iterFunc, context, swagger)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+
 	// Deal with refs.
 	referenceName, referredSchema, err := swagger.GetReferredSchema(schema)
 	if err != nil {

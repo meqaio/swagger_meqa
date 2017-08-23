@@ -252,9 +252,9 @@ func (t *Test) ProcessOneComparison(className string, comp *Comparison, resultAr
 		}
 	} else if method == mqswag.MethodDelete {
 		t.db.Delete(className, comp.old, mqswag.MatchAllFields, -1)
-	} else if method == mqswag.MethodPost {
+	} else if method == mqswag.MethodPost && comp.new != nil {
 		return t.db.Insert(className, comp.schema, comp.new)
-	} else if method == mqswag.MethodPatch || method == mqswag.MethodPut {
+	} else if (method == mqswag.MethodPatch || method == mqswag.MethodPut) && comp.new != nil {
 		count := t.db.Update(className, comp.old, mqswag.MatchAllFields, comp.new, 1, method == mqswag.MethodPatch)
 		if count != 1 {
 			mqutil.Logger.Printf("Failed to find any entry to update")

@@ -59,6 +59,27 @@ func (node *DAGNode) AddChild(child *DAGNode) error {
 	return nil
 }
 
+// AddDependencies adds the nodes named in the tags map either as child or parent of this node
+func (node *DAGNode) AddDependencies(dag *DAG, tags map[string]interface{}, asChild bool) error {
+	var err error
+	for className, _ := range tags {
+		pNode := dag.NameMap[GetDAGName(TypeDef, className, "")]
+		if pNode == nil {
+			return mqutil.NewError(mqutil.ErrInvalid, fmt.Sprintf("tag doesn't point to a definition: %s",
+				className))
+		}
+		if asChild {
+			err = node.AddChild(pNode)
+		} else {
+			err = pNode.AddChild(node)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 type NodeList []*DAGNode
 
 func (n NodeList) Len() int {

@@ -240,6 +240,19 @@ func (dep *Dependencies) CollectFromTag(tag *MeqaTag) bool {
 	return false
 }
 
+// FindRefs finds all the schemas referred by the given schema, but not their children.
+// The found schema names are put into collection.
+func FindRefs(schema *Schema, swagger *Swagger, collection map[string]interface{}) error {
+	iterFunc := func(swagger *Swagger, schemaName string, s *Schema, context interface{}) error {
+		if len(schemaName) > 0 {
+			collection[schemaName] = 1
+		}
+		return nil
+	}
+
+	return schema.Iterate(iterFunc, nil, swagger)
+}
+
 // collects all the objects referred to by the schema. All the object names are put into
 // the specified map.
 func CollectSchemaDependencies(schema *Schema, swagger *Swagger, dag *DAG, dep *Dependencies) error {
@@ -248,30 +261,11 @@ func CollectSchemaDependencies(schema *Schema, swagger *Swagger, dag *DAG, dep *
 		if !collected && len(schemaName) > 0 {
 			dep.Default[schemaName] = 1
 		}
+
 		return nil
 	}
 
 	return schema.Iterate(iterFunc, dep, swagger)
-}
-
-func AddTagsToNode(node *DAGNode, dag *DAG, tags map[string]interface{}, asChild bool) error {
-	var err error
-	for className, _ := range tags {
-		pNode := dag.NameMap[GetDAGName(TypeDef, className, "")]
-		if pNode == nil {
-			return mqutil.NewError(mqutil.ErrInvalid, fmt.Sprintf("tag doesn't point to a definition: %s",
-				className))
-		}
-		if asChild {
-			err = node.AddChild(pNode)
-		} else {
-			err = pNode.AddChild(node)
-		}
-		if err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 func CollectParamDependencies(params []spec.Parameter, swagger *Swagger, dag *DAG, dep *Dependencies) error {
@@ -302,6 +296,19 @@ func CollectParamDependencies(params []spec.Parameter, swagger *Swagger, dag *DA
 			return err
 		}
 	}
+
+	// This heuristics is for the common case. When posting an object, the fields referred by it are input
+	// parameters needed to create this object. More complicated cases are to be handled by tags.
+	for name := range dep.Produces {
+		schema := swagger.FindSchemaByName(name)
+		dep.Default = dep.Consumes
+
+		err := CollectSchemaDependencies(schema, swagger, dag, dep)
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -309,7 +316,7 @@ func CollectResponseDependencies(responses *spec.Responses, swagger *Swagger, da
 	if responses == nil {
 		return nil
 	}
-	dep.Default = dep.Produces
+	dep.Default = make(map[string]interface{}) // We don't assume by default anything so we throw Default away.
 	defer func() { dep.Default = nil }()
 	for respCode, respSpec := range responses.StatusCodeResponses {
 		collected := dep.CollectFromTag(GetMeqaTag(respSpec.Description))
@@ -346,6 +353,8 @@ func AddOperation(pathName string, method string, op *spec.Operation, swagger *S
 		dep.IsPost = false
 	}
 
+	// The order matters. At the end of CollectParamDependencies we collect the parameters
+	// referred by the object we produce.
 	err = CollectParamDependencies(op.Parameters, swagger, dag, dep)
 	if err != nil {
 		return err
@@ -369,13 +378,13 @@ func AddOperation(pathName string, method string, op *spec.Operation, swagger *S
 		}
 	}
 
-	err = AddTagsToNode(node, dag, dep.Produces, true)
+	err = node.AddDependencies(dag, dep.Produces, true)
 	if err != nil {
 		return err
 	}
 
 	// If we know for sure we create something, we remove it from parameters.
-	return AddTagsToNode(node, dag, dep.Consumes, false)
+	return node.AddDependencies(dag, dep.Consumes, false)
 }
 
 func (swagger *Swagger) AddToDAG(dag *DAG) error {
@@ -386,6 +395,20 @@ func (swagger *Swagger) AddToDAG(dag *DAG) error {
 		if err != nil {
 			return err
 		}
+	}
+	// Add all children
+	for name, schema := range swagger.Definitions {
+		node := dag.NameMap[GetDAGName(TypeDef, name, "")]
+		collections := make(map[string]interface{})
+		collectInner := func(swagger *Swagger, schemaName string, schema *Schema, context interface{}) error {
+			if len(schemaName) > 0 && schemaName != name {
+				collections[schemaName] = 1
+			}
+			return nil
+		}
+		((*Schema)(&schema)).Iterate(collectInner, nil, swagger)
+		// The inner fields are the parents. The child depends on parents.
+		node.AddDependencies(dag, collections, false)
 	}
 
 	// Add all operations
