@@ -92,7 +92,7 @@ func GenerateTestPlan(swagger *mqswag.Swagger, dag *mqswag.DAG) (*TestPlan, erro
 		}
 
 		// Exercise the function by itself.
-		testCase := CreateTestCase(mqswag.GetName(current.Name), nil, testPlan)
+		testCase := CreateTestCase(mqswag.GetName(current.Name)+" "+mqswag.GetMethod(current.Name), nil, testPlan)
 		testCase.Tests = append(testCase.Tests, CreateTestFromOp(current, 1))
 		testPlan.Add(testCase)
 

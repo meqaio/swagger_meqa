@@ -327,15 +327,18 @@ func (t *Test) ProcessResult(resp *resty.Response) error {
 			err := json.Unmarshal(respBody, &resultObj)
 			if err == nil {
 				if !respSchema.Matches(resultObj, t.db.Swagger) {
-					return mqutil.NewError(mqutil.ErrServerResp, fmt.Sprintf("server response doesn't match swagger spec: %s", string(respBody)))
+					// Just log an error. This is actually quite common because people don't specify all the details in the spec.
+					specBytes, _ := json.MarshalIndent(respSpec, "", "    ")
+					mqutil.Logger.Printf("server response doesn't match swagger spec: \n%s", string(specBytes))
 				}
 			} else if !respSchema.Type.Contains(gojsonschema.TYPE_STRING) {
-				return mqutil.NewError(mqutil.ErrServerResp, fmt.Sprintf("server response doesn't match swagger spec: %s", string(respBody)))
+				specBytes, _ := json.MarshalIndent(respSpec, "", "    ")
+				mqutil.Logger.Printf("server response doesn't match swagger spec: \n%s", string(specBytes))
 			}
 		} else {
 			// If schema is an array, then not having a body is OK
 			if !respSchema.Type.Contains(gojsonschema.TYPE_ARRAY) {
-				return mqutil.NewError(mqutil.ErrServerResp, fmt.Sprintf("swagger.spec expects a non-empty response, but response body is actually empty"))
+				mqutil.Logger.Printf("swagger.spec expects a non-empty response, but response body is actually empty")
 			}
 		}
 

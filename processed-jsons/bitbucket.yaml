@@ -128,9 +128,6 @@ definitions:
         id:
           description: The branch restriction status' id.
           type: integer
-        pattern:
-          type: string
-          pattern: "[a-z]+\\*"
         kind:
           description: The type of restriction that is being applied
           enum:
@@ -158,6 +155,9 @@ definitions:
                   type: string
               type: object
           type: object
+        pattern:
+          pattern: '[a-z]+\*'
+          type: string
         users:
           items:
             $ref: '#/definitions/account'
@@ -167,8 +167,8 @@ definitions:
           description: 'Value with kind-specific semantics: "require_approvals_to_merge"
             uses it to require a minimum number of approvals on a PR; "require_passing_builds_to_merge"
             uses it to require a minimum number of passing builds.'
-          type: integer
           maximum: 10
+          type: integer
       type: object
   commit:
     allOf:
@@ -4384,6 +4384,7 @@ paths:
       type: string
     - in: path
       name: spec
+      description: <meqa commit.hash>
       required: true
       type: string
     - in: path
