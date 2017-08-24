@@ -1012,6 +1012,7 @@ func (t *Test) GenerateSchema(name string, parentTag *mqswag.MeqaTag, schema *sp
 
 	if len(schema.AllOf) > 0 {
 		combined := make(map[string]interface{})
+		discriminator := ""
 		for _, s := range schema.AllOf {
 			m, err := t.GenerateSchema(name, nil, &s, db)
 			if err != nil {
@@ -1024,6 +1025,18 @@ func (t *Test) GenerateSchema(name string, parentTag *mqswag.MeqaTag, schema *sp
 				jsonStr, _ := json.MarshalIndent(schema, "", "    ")
 				return nil, mqutil.NewError(mqutil.ErrInvalid, fmt.Sprintf("can't combine AllOf schema that's not map: %s", jsonStr))
 			}
+			if len(s.Discriminator) > 0 {
+				discriminator = s.Discriminator
+			} else {
+				// This is more common, the discriminator is in a common object referred from AllOf
+				_, rs, _ := swagger.GetReferredSchema((*mqswag.Schema)(&s))
+				if rs != nil && len(rs.Discriminator) > 0 {
+					discriminator = rs.Discriminator
+				}
+			}
+		}
+		if len(discriminator) > 0 && len(tag.Class) > 0 {
+			combined[discriminator] = tag.Class
 		}
 		// Add combined to the comparison under tag.
 		t.AddObjectComparison(tag, combined, schema)
