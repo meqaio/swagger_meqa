@@ -181,7 +181,29 @@ func (t *Test) AddBasicComparison(tag *mqswag.MeqaTag, paramSpec *spec.Parameter
 	t.comparisons[tag.Class] = append(t.comparisons[tag.Class], comp)
 }
 
-func (t *Test) AddObjectComparison(class string, method string, obj map[string]interface{}, schema *spec.Schema) {
+func (t *Test) AddObjectComparison(tag *mqswag.MeqaTag, obj map[string]interface{}, schema *spec.Schema) {
+	var class, method string
+	if tag != nil {
+		class = tag.Class
+		method = tag.Operation
+	}
+	// again the rule is that the child overrides the parent.
+	if len(method) == 0 {
+		if t.tag != nil && len(t.tag.Operation) > 0 {
+			method = t.tag.Operation // At test level the tag indicates the real method
+		} else {
+			method = t.Method
+		}
+	}
+	if len(class) == 0 {
+		cl, s := t.db.FindMatchingSchema(obj)
+		if s == nil {
+			mqutil.Logger.Printf("Can't find a known schema for obj %v", obj)
+			return
+		}
+		class = cl
+	}
+
 	if method == mqswag.MethodPost {
 		t.comparisons[class] = append(t.comparisons[class], &Comparison{nil, obj, schema})
 	} else if method == mqswag.MethodPut || method == mqswag.MethodPatch {
@@ -621,13 +643,9 @@ func (t *Test) ResolveParameters(tc *TestCase) error {
 				// Body is not map, we use it directly.
 				objarray := mqutil.InterfaceToArray(t.BodyParams)
 				paramTag, schema := t.GetSchemaRootType((*mqswag.Schema)(params.Schema), mqswag.GetMeqaTag(params.Description))
-				method := t.Method
-				if t.tag != nil && len(t.tag.Operation) > 0 {
-					method = t.tag.Operation
-				}
 				if schema != nil && paramTag != nil {
 					for _, obj := range objarray {
-						t.AddObjectComparison(paramTag.Class, method, obj, (*spec.Schema)(schema))
+						t.AddObjectComparison(paramTag, obj, (*spec.Schema)(schema))
 					}
 				}
 				continue
@@ -724,13 +742,8 @@ func (t *Test) GenerateParameter(paramSpec *spec.Parameter, db *mqswag.DB) (inte
 		return nil, mqutil.NewError(mqutil.ErrInvalid, "Parameter doesn't have type")
 	}
 
-	var schema *spec.Schema
-	if paramSpec.Schema != nil {
-		schema = paramSpec.Schema
-	} else {
-		// construct a full schema from simple ones
-		schema = (*spec.Schema)(mqswag.CreateSchemaFromSimple(&paramSpec.SimpleSchema, &paramSpec.CommonValidations))
-	}
+	// construct a full schema from simple ones
+	schema := (*spec.Schema)(mqswag.CreateSchemaFromSimple(&paramSpec.SimpleSchema, &paramSpec.CommonValidations))
 	if paramSpec.Type == gojsonschema.TYPE_OBJECT {
 		return t.generateObject("param_", tag, schema, db)
 	}
@@ -955,11 +968,7 @@ func (t *Test) generateArray(name string, parentTag *mqswag.MeqaTag, schema *spe
 func (t *Test) generateObject(name string, parentTag *mqswag.MeqaTag, schema *spec.Schema, db *mqswag.DB) (interface{}, error) {
 	obj := make(map[string]interface{})
 	for k, v := range schema.Properties {
-		propertyTag := mqswag.GetMeqaTag(v.Description)
-		if propertyTag == nil {
-			propertyTag = parentTag
-		}
-		o, err := t.GenerateSchema(k+"_", propertyTag, &v, db)
+		o, err := t.GenerateSchema(k+"_", nil, &v, db)
 		if err != nil {
 			return nil, err
 		}
@@ -970,43 +979,28 @@ func (t *Test) generateObject(name string, parentTag *mqswag.MeqaTag, schema *sp
 	if tag == nil {
 		tag = parentTag
 	}
-	var class, method string
-	if tag != nil {
-		class = tag.Class
-	}
-	if t.tag != nil && len(t.tag.Operation) > 0 {
-		method = t.tag.Operation // At test level the tag indicates the real method
-	} else {
-		method = t.Method
-	}
-	if len(class) == 0 {
-		cl, s := db.FindMatchingSchema(obj)
-		if s == nil {
-			mqutil.Logger.Printf("Can't find a known schema for obj %s", name)
-			return obj, nil
-		}
-		class = cl
-	}
 
-	t.AddObjectComparison(class, method, obj, schema)
+	t.AddObjectComparison(tag, obj, schema)
 	return obj, nil
 }
 
-func (t *Test) GenerateSchema(name string, tag *mqswag.MeqaTag, schema *spec.Schema, db *mqswag.DB) (interface{}, error) {
+// The parentTag passed in is what the higher level thinks this schema object should be.
+func (t *Test) GenerateSchema(name string, parentTag *mqswag.MeqaTag, schema *spec.Schema, db *mqswag.DB) (interface{}, error) {
 	swagger := db.Swagger
+
+	// The tag that's closest to the object takes priority, much like child class can override parent class.
+	tag := mqswag.GetMeqaTag(schema.Description)
+	if tag == nil {
+		tag = parentTag
+	}
+
 	// Deal with refs.
 	referenceName, referredSchema, err := swagger.GetReferredSchema((*mqswag.Schema)(schema))
 	if err != nil {
 		return nil, err
 	}
 	if referredSchema != nil {
-		var paramTag mqswag.MeqaTag
-		if tag != nil {
-			paramTag = mqswag.MeqaTag{referenceName, tag.Property, tag.Operation}
-		} else {
-			paramTag = mqswag.MeqaTag{referenceName, "", ""}
-		}
-		return t.GenerateSchema(name, &paramTag, (*spec.Schema)(referredSchema), db)
+		return t.GenerateSchema(name, &mqswag.MeqaTag{referenceName, "", ""}, (*spec.Schema)(referredSchema), db)
 	}
 
 	if len(schema.Enum) != 0 {
@@ -1016,7 +1010,7 @@ func (t *Test) GenerateSchema(name string, tag *mqswag.MeqaTag, schema *spec.Sch
 	if len(schema.AllOf) > 0 {
 		combined := make(map[string]interface{})
 		for _, s := range schema.AllOf {
-			m, err := t.GenerateSchema(name, tag, &s, db)
+			m, err := t.GenerateSchema(name, nil, &s, db)
 			if err != nil {
 				return nil, err
 			}
@@ -1028,6 +1022,8 @@ func (t *Test) GenerateSchema(name string, tag *mqswag.MeqaTag, schema *spec.Sch
 				return nil, mqutil.NewError(mqutil.ErrInvalid, fmt.Sprintf("can't combine AllOf schema that's not map: %s", jsonStr))
 			}
 		}
+		// Add combined to the comparison under tag.
+		t.AddObjectComparison(tag, combined, schema)
 		return combined, nil
 	}
 
