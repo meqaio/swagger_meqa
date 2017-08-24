@@ -333,7 +333,7 @@ func CollectResponseDependencies(responses *spec.Responses, swagger *Swagger, da
 	return nil
 }
 
-func AddOperation(pathName string, pathItem *spec.PathItem, method string, swagger *Swagger, dag *DAG) error {
+func AddOperation(pathName string, pathItem *spec.PathItem, method string, swagger *Swagger, dag *DAG, setPriority bool) error {
 	opInterface, err := pathItem.JSONLookup(method)
 	if err != nil {
 		return err
@@ -343,9 +343,14 @@ func AddOperation(pathName string, pathItem *spec.PathItem, method string, swagg
 		return nil
 	}
 
-	node, err := dag.NewNode(GetDAGName(TypeOp, pathName, method), op)
-	if err != nil {
-		return err
+	var node *DAGNode
+	if setPriority {
+		node = dag.NameMap[GetDAGName(TypeOp, pathName, method)]
+	} else {
+		node, err = dag.NewNode(GetDAGName(TypeOp, pathName, method), op)
+		if err != nil {
+			return err
+		}
 	}
 
 	// The nodes that are part of outputs depends on this operation. The outputs are children.
@@ -380,11 +385,14 @@ func AddOperation(pathName string, pathItem *spec.PathItem, method string, swagg
 	}
 
 	// Get the highest parameter weight before we remove circular dependencies.
-	for consumeName := range dep.Consumes {
-		paramNode := dag.NameMap[GetDAGName(TypeDef, consumeName, "")]
-		if node.Priority < paramNode.Weight {
-			node.Priority = paramNode.Weight
+	if setPriority {
+		for consumeName := range dep.Consumes {
+			paramNode := dag.NameMap[GetDAGName(TypeDef, consumeName, "")]
+			if node.Priority < paramNode.Weight {
+				node.Priority = paramNode.Weight
+			}
 		}
+		return nil
 	}
 
 	if dep.IsPost {
@@ -435,7 +443,16 @@ func (swagger *Swagger) AddToDAG(dag *DAG) error {
 	// Add all operations
 	for pathName, pathItem := range swagger.Paths.Paths {
 		for _, method := range MethodAll {
-			err := AddOperation(pathName, &pathItem, method, swagger, dag)
+			err := AddOperation(pathName, &pathItem, method, swagger, dag, false)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	// set priorities. This can only be done after the above, where all weights for all operations are set.
+	for pathName, pathItem := range swagger.Paths.Paths {
+		for _, method := range MethodAll {
+			err := AddOperation(pathName, &pathItem, method, swagger, dag, true)
 			if err != nil {
 				return err
 			}

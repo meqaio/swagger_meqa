@@ -40,7 +40,7 @@ func (node *DAGNode) CheckChildrenWeight() bool {
 		if c.Weight <= node.Weight {
 			return false
 		}
-		mqutil.Logger.Printf("       -  %s, weight %d", c.Name, c.Weight)
+		fmt.Printf("       -  %s, weight: %d priority: %d\n", c.Name, c.Weight, c.Priority)
 	}
 	return true
 }
@@ -92,7 +92,9 @@ func (n NodeList) Swap(i, j int) {
 }
 
 func (n NodeList) Less(i, j int) bool {
-	return n[i].Priority < n[j].Priority || (n[i].Priority == n[j].Priority && n[i].Name < n[j].Name)
+	wi := n[i].Weight*DAGDepth*10 + n[i].Priority
+	wj := n[j].Weight*DAGDepth*10 + n[j].Priority
+	return wi < wj || (wi == wj && n[i].Name < n[j].Name)
 }
 
 // We expect a single thread on the server would handle the DAG creation and traversing. So no mutex for now.
@@ -187,8 +189,7 @@ func (dag *DAG) Sort() {
 
 func (dag *DAG) CheckWeight() {
 	checkChildren := func(previous *DAGNode, current *DAGNode) error {
-		mqutil.Logger.Print("")
-		mqutil.Logger.Printf("name: %s weight: %d, children: ", current.Name, current.Weight)
+		fmt.Printf("\nname: %s weight: %d priority: %d, children: \n", current.Name, current.Weight, current.Priority)
 		ok := current.CheckChildrenWeight()
 		if !ok {
 			panic("bad weight detected")
