@@ -4194,7 +4194,7 @@ paths:
     get:
       description: Returns the specified issue tracker component object.
       parameters:
-      - description: The component's id
+      - description: The component's id <meqa component.id>
         in: path
         name: component_id
         required: true
