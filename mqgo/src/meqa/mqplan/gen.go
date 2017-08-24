@@ -3,7 +3,6 @@ package mqplan
 import (
 	"fmt"
 	"meqa/mqswag"
-	"meqa/mqutil"
 
 	"github.com/go-openapi/spec"
 )
@@ -47,7 +46,6 @@ func GenerateTestsForObject(create *mqswag.DAGNode, obj *mqswag.DAGNode, plan *T
 	testCase.Tests = append(testCase.Tests, CreateTestFromOp(create, testId))
 	for _, child := range obj.Children {
 		if mqswag.GetType(child.Name) != mqswag.TypeOp {
-			mqutil.Logger.Printf("unexpected: (%s) has a child (%s) that's not an operation", obj.Name, child.Name)
 			continue
 		}
 		testId++
@@ -89,6 +87,15 @@ func GenerateTestPlan(swagger *mqswag.Swagger, dag *mqswag.DAG) (*TestPlan, erro
 	testPlan.Init(swagger, nil)
 
 	genFunc := func(previous *mqswag.DAGNode, current *mqswag.DAGNode) error {
+		if mqswag.GetType(current.Name) != mqswag.TypeOp {
+			return nil
+		}
+
+		// Exercise the function by itself.
+		testCase := CreateTestCase(mqswag.GetName(current.Name), nil, testPlan)
+		testCase.Tests = append(testCase.Tests, CreateTestFromOp(current, 1))
+		testPlan.Add(testCase)
+
 		// When iterating by weight previous is always nil.
 		for _, c := range current.Children {
 			err := GenerateTestsForObject(current, c, testPlan)

@@ -379,6 +379,14 @@ func AddOperation(pathName string, pathItem *spec.PathItem, method string, swagg
 		return err
 	}
 
+	// Get the highest parameter weight before we remove circular dependencies.
+	for consumeName := range dep.Consumes {
+		paramNode := dag.NameMap[GetDAGName(TypeDef, consumeName, "")]
+		if node.Priority < paramNode.Weight {
+			node.Priority = paramNode.Weight
+		}
+	}
+
 	if dep.IsPost {
 		// We are creating object. Some of the inputs will be from the same object, remove them from
 		// the consumes field.
@@ -433,6 +441,7 @@ func (swagger *Swagger) AddToDAG(dag *DAG) error {
 			}
 		}
 	}
+
 	return nil
 }
 
