@@ -1,3 +1,9 @@
+---
+meqa_init:
+- name: init
+  pathParams:
+    username: meqatest
+    repo_slug: swagger_repo_1
 
 ---
 /repositories/{username}/{repo_slug}/branch-restrictions get:
