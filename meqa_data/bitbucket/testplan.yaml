@@ -24,12 +24,6 @@ meqa_init:
   method: post
 
 ---
-/repositories/{username}/{repo_slug}/components/{component_id} get:
-- name: _1
-  path: /repositories/{username}/{repo_slug}/components/{component_id}
-  method: get
-
----
 /repositories/{username}/{repo_slug}/components get:
 - name: _1
   path: /repositories/{username}/{repo_slug}/components
@@ -478,6 +472,12 @@ meqa_init:
 - name: updatePipelineVariableForUser_10
   path: /users/{username}/pipelines_config/variables/{variable_uuid}
   method: put
+
+---
+/repositories/{username}/{repo_slug}/components/{component_id} get:
+- name: _1
+  path: /repositories/{username}/{repo_slug}/components/{component_id}
+  method: get
 
 ---
 /repositories/{username}/{repo_slug}/milestones/{milestone_id} get:
