@@ -137,6 +137,19 @@ With imperfect swagger.json, we need to iterate several times. Guide line - no c
     * When there is pagination, we should also expect the server to return less.
 * Incomplete swagger.json - this causes a lot of trouble. Static parsing is not possible. Dynamic testing is possible, but it basically requires us to say that the behavior of the server makes sense. This is difficult. Punt for now. We can raise an error instead to let the user know.
 
+### Data Verification
+
+The question is how to verify the data. There are two large scenarios:
+* Testing on empty system, where the data we get back should match what we put in.
+* Testing on system that has data before. In this case we should use the data we got back to populate the client side in-mem DB.
+
+Algorithm
+* Has a strict flag to indicate testing on empty system.
+* We traverse the response object and figure out all the objects that we have a schema for. In v1 we just use the response schema to see what we expect.
+* We match the response objects against client side DB
+    * under strict mode, we verify that everything returned are found in DB.
+    * under relaxed mode, we verify that nothing is in conflict (e.g. asking for dogs but getting cats), but otherwise insert all the objects into client side DB.
+
 ### Expand DSL
 
 * Add support for curl -F files=@hello.txt type of syntax to allow uploading files. Allow specify files in the meqa_init section.

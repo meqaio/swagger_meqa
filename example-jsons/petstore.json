@@ -303,14 +303,14 @@
                     {
                         "name": "name",
                         "in": "formData",
-                        "description": "Updated name of the pet <meqa Pet.name.write>",
+                        "description": "Updated name of the pet <meqa Pet.name.put>",
                         "required": false,
                         "type": "string"
                     },
                     {
                         "name": "status",
                         "in": "formData",
-                        "description": "Updated status of the pet <meqa Pet.status.write>",
+                        "description": "Updated status of the pet <meqa Pet.status.put>",
                         "required": false,
                         "type": "string"
                     }

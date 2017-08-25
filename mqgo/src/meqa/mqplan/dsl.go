@@ -22,13 +22,6 @@ import (
 	"github.com/xeipuuv/gojsonschema"
 )
 
-// The operation code in <meqa ....op> for parameters. The op code at the path level
-// is the above Rest methods.
-const (
-	OpRead  = "read"
-	OpWrite = "write"
-)
-
 // The class code in <meqa class> for responses.
 const (
 	ClassSuccess = "success"
@@ -71,7 +64,7 @@ type Comparison struct {
 }
 
 func (comp *Comparison) GetMapByOp(op string) map[string]interface{} {
-	if op == OpRead {
+	if op == mqswag.MethodGet {
 		if comp.old == nil {
 			comp.old = make(map[string]interface{})
 		}
@@ -159,9 +152,9 @@ func (t *Test) AddBasicComparison(tag *mqswag.MeqaTag, paramSpec *spec.Parameter
 		op = tag.Operation
 	} else {
 		if paramSpec.In == "formData" || paramSpec.In == "body" {
-			op = OpWrite
+			op = mqswag.MethodPut
 		} else {
-			op = OpRead
+			op = mqswag.MethodGet
 		}
 	}
 	var comp *Comparison
