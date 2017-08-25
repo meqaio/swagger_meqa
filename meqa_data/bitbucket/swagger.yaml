@@ -8750,7 +8750,7 @@ paths:
         If the team's profile is private, `location`, `website` and
         `created_on` elements are omitted.
       parameters:
-      - description: The team's username or UUID.
+      - description: The team's username or UUID. <meqa team.username>
         in: path
         name: username
         required: true
@@ -8780,7 +8780,7 @@ paths:
     get:
       description: Returns the list of accounts that are following this team.
       parameters:
-      - description: The team's username
+      - description: The team's username <meqa team.username>
         in: path
         name: username
         required: true
@@ -8810,7 +8810,7 @@ paths:
     get:
       description: Returns the list of accounts this team is following.
       parameters:
-      - description: The team's username
+      - description: The team's username <meqa team.username>
         in: path
         name: username
         required: true
@@ -8869,6 +8869,7 @@ paths:
     parameters:
     - in: path
       name: username
+      description: <meqa team.username>
       required: true
       type: string
   /teams/{username}/pipelines_config/variables/:
@@ -8879,6 +8880,7 @@ paths:
       - description: The account.
         in: path
         name: username
+        description: <meqa team.username>
         required: true
         type: string
       responses:
@@ -8926,7 +8928,7 @@ paths:
       description: Delete a team level variable.
       operationId: deletePipelineVariableForTeam
       parameters:
-      - description: The account.
+      - description: The account. <meqa team.username>
         in: path
         name: username
         required: true
@@ -9024,6 +9026,7 @@ paths:
     parameters:
     - in: path
       name: username
+      description: <meqa team.username>
       required: true
       type: string
   /user:
