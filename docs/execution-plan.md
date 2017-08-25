@@ -137,6 +137,10 @@ With imperfect swagger.json, we need to iterate several times. Guide line - no c
     * When there is pagination, we should also expect the server to return less.
 * Incomplete swagger.json - this causes a lot of trouble. Static parsing is not possible. Dynamic testing is possible, but it basically requires us to say that the behavior of the server makes sense. This is difficult. Punt for now. We can raise an error instead to let the user know.
 
+### Expand DSL
+
+* Add support for curl -F files=@hello.txt type of syntax to allow uploading files. Allow specify files in the meqa_init section.
+
 ### NLP
 
 * Look around
