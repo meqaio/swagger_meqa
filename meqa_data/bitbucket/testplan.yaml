@@ -222,60 +222,6 @@ meqa_init:
   method: get
 
 ---
-/teams/{owner}/projects/ get:
-- name: _1
-  path: /teams/{owner}/projects/
-  method: get
-
----
-/teams/{owner}/projects/{project_key} delete:
-- name: _1
-  path: /teams/{owner}/projects/{project_key}
-  method: delete
-
----
-/teams/{owner}/projects/{project_key} get:
-- name: _1
-  path: /teams/{owner}/projects/{project_key}
-  method: get
-
----
-/teams/{username}/followers get:
-- name: _1
-  path: /teams/{username}/followers
-  method: get
-
----
-/teams/{username}/following get:
-- name: _1
-  path: /teams/{username}/following
-  method: get
-
----
-/teams/{username}/members get:
-- name: _1
-  path: /teams/{username}/members
-  method: get
-
----
-/teams/{username}/pipelines_config/variables/ get:
-- name: getPipelineVariablesForTeam_1
-  path: /teams/{username}/pipelines_config/variables/
-  method: get
-
----
-/teams/{username}/repositories get:
-- name: _1
-  path: /teams/{username}/repositories
-  method: get
-
----
-/teams/{username} get:
-- name: _1
-  path: /teams/{username}
-  method: get
-
----
 /teams get:
 - name: _1
   path: /teams
@@ -825,6 +771,12 @@ meqa_init:
   method: put
 
 ---
+/teams/{owner}/projects/ get:
+- name: _1
+  path: /teams/{owner}/projects/
+  method: get
+
+---
 /teams/{owner}/projects/ post:
 - name: _1
   path: /teams/{owner}/projects/
@@ -843,6 +795,42 @@ meqa_init:
   method: post
 
 ---
+/teams/{owner}/projects/{project_key} delete:
+- name: _1
+  path: /teams/{owner}/projects/{project_key}
+  method: delete
+
+---
+/teams/{owner}/projects/{project_key} get:
+- name: _1
+  path: /teams/{owner}/projects/{project_key}
+  method: get
+
+---
+/teams/{username}/followers get:
+- name: _1
+  path: /teams/{username}/followers
+  method: get
+
+---
+/teams/{username}/following get:
+- name: _1
+  path: /teams/{username}/following
+  method: get
+
+---
+/teams/{username}/members get:
+- name: _1
+  path: /teams/{username}/members
+  method: get
+
+---
+/teams/{username}/pipelines_config/variables/ get:
+- name: getPipelineVariablesForTeam_1
+  path: /teams/{username}/pipelines_config/variables/
+  method: get
+
+---
 /teams/{username}/pipelines_config/variables/{variable_uuid} delete:
 - name: deletePipelineVariableForTeam_1
   path: /teams/{username}/pipelines_config/variables/{variable_uuid}
@@ -859,6 +847,18 @@ meqa_init:
 - name: updatePipelineVariableForTeam_1
   path: /teams/{username}/pipelines_config/variables/{variable_uuid}
   method: put
+
+---
+/teams/{username}/repositories get:
+- name: _1
+  path: /teams/{username}/repositories
+  method: get
+
+---
+/teams/{username} get:
+- name: _1
+  path: /teams/{username}
+  method: get
 
 ---
 /users/{username}/pipelines_config/variables/{variable_uuid} delete:

@@ -8527,7 +8527,7 @@ paths:
     parameters:
     - description: |
         The team which owns the project. This can either be the `username` of
-        the team or the `UUID` of the team (surrounded by curly-braces (`{}`)).
+        the team or the `UUID` of the team (surrounded by curly-braces (`{}`)). <meqa team.username>
       in: path
       name: owner
       required: true
@@ -8663,7 +8663,7 @@ paths:
     parameters:
     - description: |
         The team which owns the project. This can either be the `username` of
-        the team or the `UUID` of the team (surrounded by curly-braces (`{}`)).
+        the team or the `UUID` of the team (surrounded by curly-braces (`{}`)). <meqa team.username>
       in: path
       name: owner
       required: true
