@@ -1,6 +1,7 @@
 package mqswag
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"meqa/mqutil"
@@ -40,55 +41,92 @@ func CreateSchemaFromSimple(s *spec.SimpleSchema, v *spec.CommonValidations) *Sc
 	return (*Schema)(&schema)
 }
 
-// Matches checks if the Schema matches the input interface. In proper swagger.json
-// Enums should have types as well. So we don't check for untyped enums.
-// TODO check format, handle AllOf, AnyOf, OneOf
-func (schema *Schema) Matches(object interface{}, swagger *Swagger) bool {
-	if object == nil {
-		return schema.Type.Contains(gojsonschema.TYPE_NULL)
+// Prases the object against this schema. If the obj and schema doesn't match
+// return an error. Otherwise parse all the objects identified by the schema
+// into the map indexed by the object class name.
+func (schema *Schema) Parses(name string, object interface{}, collection map[string][]interface{}, swagger *Swagger) error {
+	raiseError := func() error {
+		schemaBytes, _ := json.MarshalIndent(schema, "", "    ")
+		objectBytes, _ := json.MarshalIndent(object, "", "    ")
+		return mqutil.NewError(mqutil.ErrInvalid, fmt.Sprintf(
+			"schema and object doesn't match. Schema:\n%s\nObject:\n%s\n",
+			string(schemaBytes), string(objectBytes)))
 	}
-
-	_, referredSchema, err := swagger.GetReferredSchema(schema)
+	if object == nil {
+		return nil
+	}
+	refName, referredSchema, err := swagger.GetReferredSchema(schema)
 	if err != nil {
-		mqutil.Logger.Print(err.Error())
-		return false
+		return err
 	}
 	if referredSchema != nil {
-		return referredSchema.Matches(object, swagger)
+		return referredSchema.Parses(refName, object, collection, swagger)
 	}
 
-	// This check works right now because we are not too strict in MatchesMap function.
 	if len(schema.AllOf) > 0 {
 		for _, s := range schema.AllOf {
-			if !((*Schema)(&s)).Matches(object, swagger) {
-				return false
+			// The name doesn't get passed down. The name is handled at the current level.
+			err = ((*Schema)(&s)).Parses("", object, collection, swagger)
+			if err != nil {
+				return err
 			}
 		}
-		return true
-	}
 
-	if len(schema.AnyOf) > 0 {
-		for _, s := range schema.AnyOf {
-			if !((*Schema)(&s)).Matches(object, swagger) {
-				return true
-			}
+		// AllOf is satisfied. We can add the object to our collection
+		if len(name) > 0 {
+			collection[name] = append(collection[name], object)
 		}
-		return false
+		return nil
 	}
 
 	k := reflect.TypeOf(object).Kind()
 	if k == reflect.Bool {
-		return schema.Type.Contains(gojsonschema.TYPE_BOOLEAN)
+		if !schema.Type.Contains(gojsonschema.TYPE_BOOLEAN) {
+			return raiseError()
+		}
 	} else if k >= reflect.Int && k <= reflect.Uint64 {
-		return schema.Type.Contains(gojsonschema.TYPE_INTEGER) || schema.Type.Contains(gojsonschema.TYPE_NUMBER)
+		if !schema.Type.Contains(gojsonschema.TYPE_INTEGER) && !schema.Type.Contains(gojsonschema.TYPE_NUMBER) {
+			return raiseError()
+		}
 	} else if k == reflect.Float32 || k == reflect.Float64 {
 		// After unmarshal, the map only holds floats. It doesn't differentiate int and float.
-		return schema.Type.Contains(gojsonschema.TYPE_INTEGER) || schema.Type.Contains(gojsonschema.TYPE_NUMBER)
+		if !schema.Type.Contains(gojsonschema.TYPE_INTEGER) && !schema.Type.Contains(gojsonschema.TYPE_NUMBER) {
+			return raiseError()
+		}
 	} else if k == reflect.String {
-		return schema.Type.Contains(gojsonschema.TYPE_STRING)
+		if !schema.Type.Contains(gojsonschema.TYPE_STRING) {
+			return raiseError()
+		}
+	} else if k == reflect.Map {
+		objMap, objIsMap := object.(map[string]interface{})
+		if !objIsMap || !schema.Type.Contains(gojsonschema.TYPE_OBJECT) {
+			return raiseError()
+		}
+		for _, requiredName := range schema.Required {
+			if _, exist := objMap[requiredName]; !exist {
+				mqutil.Logger.Printf("required field not present: %s", requiredName)
+				return raiseError()
+			}
+		}
+		// descend into the object's properties. If all checks out we can add the object
+		// to the collection under the current name.
+		for propertyName, propertySchema := range schema.Properties {
+			objProperty, exist := objMap[propertyName]
+			if !exist {
+				continue // we have checked for required fields already, so this is ok
+			}
+			err = ((*Schema)(&propertySchema)).Parses("", objProperty, collection, swagger)
+			if err != nil {
+				return err
+			}
+		}
+		// all the properties are OK.
+		if len(name) > 0 {
+			collection[name] = append(collection[name], object)
+		}
 	} else if k == reflect.Array || k == reflect.Slice {
 		if !schema.Type.Contains(gojsonschema.TYPE_ARRAY) {
-			return false
+			return raiseError()
 		}
 		// Check the array elements.
 		itemsSchema := (*Schema)(schema.Items.Schema)
@@ -97,52 +135,28 @@ func (schema *Schema) Matches(object interface{}, swagger *Swagger) bool {
 			itemsSchema = &s
 		}
 		if itemsSchema == nil {
-			return false
+			return raiseError()
 		}
 		ar := object.([]interface{})
 		for _, item := range ar {
-			if !itemsSchema.Matches(item, swagger) {
-				return false
+			err = itemsSchema.Parses("", item, collection, swagger)
+			if err != nil {
+				return err
 			}
 		}
-		return true
-	} else if k == reflect.Map {
-		if !schema.Type.Contains(gojsonschema.TYPE_OBJECT) {
-			return false
-		}
-		// check the object content.
-		return schema.MatchesMap(object.(map[string]interface{}), swagger)
 	} else {
 		mqutil.Logger.Printf("unknown type: %v", k)
+		return raiseError()
 	}
-	return false
+	return nil
 }
 
-// MatchesMap checks if the Schema matches the input map.
-func (schema *Schema) MatchesMap(obj map[string]interface{}, swagger *Swagger) bool {
-	if obj == nil {
-		return false
-	}
-	// check all required fields in Schema are present in the object.
-	for _, requiredName := range schema.Required {
-		if obj[requiredName] == nil {
-			mqutil.Logger.Printf("required field not present: %s", requiredName)
-			return false
-		}
-	}
-
-	/* This check is too strict. Sometimes people have a schema with type "object" but no field to mean a generic object.
-	// check all object's fields are in schema and the types match.
-	for k, v := range obj {
-		if p, ok := schema.Properties[k]; ok {
-			if !((*Schema)(&p)).Matches(v, swagger) {
-				mqutil.Logger.Printf("property type mismatch: %s %v", k, p)
-				return false
-			}
-		}
-	}
-	*/
-	return true
+// Matches checks if the Schema matches the input interface. In proper swagger.json
+// Enums should have types as well. So we don't check for untyped enums.
+// TODO check format, handle AllOf, AnyOf, OneOf
+func (schema *Schema) Matches(object interface{}, swagger *Swagger) bool {
+	err := schema.Parses("", object, make(map[string][]interface{}), swagger)
+	return err == nil
 }
 
 func (schema *Schema) Contains(name string, swagger *Swagger) bool {
@@ -219,14 +233,17 @@ func (schema *Schema) Iterate(iterFunc SchemaIterator, context interface{}, swag
 // SchemaDB is our in-memory DB. It is organized around Schemas. Each schema maintains a list of objects that matches
 // the schema. We don't build indexes and do linear search. This keeps the searching flexible for now.
 type SchemaDB struct {
-	Name    string
-	Schema  *Schema
-	Objects []interface{}
+	Name      string
+	Schema    *Schema
+	NoHistory bool
+	Objects   []interface{}
 }
 
 // Insert inserts an object into the schema's object list.
 func (db *SchemaDB) Insert(obj interface{}) error {
-	db.Objects = append(db.Objects, obj)
+	if !db.NoHistory {
+		db.Objects = append(db.Objects, obj)
+	}
 	return nil
 }
 
@@ -245,6 +262,17 @@ func MatchAllFields(criteria interface{}, existing interface{}) bool {
 	}
 	// We only do simple value comparision for now. TODO search into nested maps.
 	for k, v := range cm {
+		if em[k] == nil {
+			if v == nil {
+				continue
+			} else {
+				return false
+			}
+		} else {
+			if v == nil {
+				return false
+			}
+		}
 		if reflect.TypeOf(v) != reflect.TypeOf(em[k]) {
 			return false
 		}
@@ -319,6 +347,10 @@ type DB struct {
 	mutex   sync.Mutex // We don't expect much contention, as such mutex will be fast
 }
 
+// TODO it seems that if an object is not being used as a parameter to any operation, we don't
+// need to track it in DB. This will save some resources. We can do this by adding swagger to
+// a dag, then iterate through all the objects, and find those that doesn't have any oepration
+// as a child.
 func (db *DB) Init(s *Swagger) {
 	db.Swagger = s
 	db.schemas = make(map[string](*SchemaDB))
@@ -328,7 +360,7 @@ func (db *DB) Init(s *Swagger) {
 		}
 		// Note that schema variable is reused in the loop
 		schemaCopy := schema
-		db.schemas[schemaName] = &SchemaDB{schemaName, (*Schema)(&schemaCopy), nil}
+		db.schemas[schemaName] = &SchemaDB{schemaName, (*Schema)(&schemaCopy), false, nil}
 	}
 }
 
@@ -341,18 +373,12 @@ func (db *DB) GetSchema(name string) *Schema {
 	return db.schemas[name].Schema
 }
 
-func (db *DB) Insert(name string, schema *spec.Schema, obj interface{}) error {
+func (db *DB) Insert(name string, obj interface{}) error {
 	db.mutex.Lock()
 	defer db.mutex.Unlock()
 
 	if db.schemas[name] == nil {
-		// To be consistent with the other place, we will make a copy
-		schemaCopy := *schema
-		db.schemas[name] = &SchemaDB{name, (*Schema)(&schemaCopy), nil}
-	}
-	if !db.schemas[name].Schema.Matches(obj, db.Swagger) {
-		return errors.New(fmt.Sprintf("object and schema doesn't match, name: %s obj type %v schema type %v",
-			name, reflect.TypeOf(obj).Kind(), db.schemas[name].Schema.Type))
+		return mqutil.NewError(mqutil.ErrInternal, fmt.Sprintf("inserting into non-existing schema: %s", name))
 	}
 	return db.schemas[name].Insert(obj)
 }

@@ -84,6 +84,7 @@ type Test struct {
 	Method     string                 `yaml:"method,omitempty"`
 	Ref        string                 `yaml:"ref,omitempty"`
 	Expect     map[string]interface{} `yaml:"expect,omitempty"`
+	Strict     bool                   `yaml:"strict,omitempty"`
 	TestParams `yaml:",inline,omitempty" json:",inline,omitempty"`
 
 	// Map of Object name (matching definitions) to the Comparison object.
@@ -176,10 +177,12 @@ func (t *Test) AddBasicComparison(tag *mqswag.MeqaTag, paramSpec *spec.Parameter
 
 func (t *Test) AddObjectComparison(tag *mqswag.MeqaTag, obj map[string]interface{}, schema *spec.Schema) {
 	var class, method string
-	if tag != nil {
-		class = tag.Class
-		method = tag.Operation
+	if tag == nil {
+		return
 	}
+	class = tag.Class
+	method = tag.Operation
+
 	// again the rule is that the child overrides the parent.
 	if len(method) == 0 {
 		if t.tag != nil && len(t.tag.Operation) > 0 {
@@ -218,57 +221,64 @@ func (t *Test) AddObjectComparison(tag *mqswag.MeqaTag, obj map[string]interface
 	}
 }
 
-// ProcessOneComparison processes one comparison object.
-func (t *Test) ProcessOneComparison(className string, comp *Comparison, resultArray []interface{}) error {
-	method := t.Method
-	if t.tag != nil && len(t.tag.Operation) > 0 {
-		method = t.tag.Operation
+func (t *Test) CompareGetResult(className string, comp *Comparison, resultArray []interface{}) error {
+	var matchFunc mqswag.MatchFunc
+	if comp.old == nil {
+		matchFunc = mqswag.MatchAlways
+	} else {
+		matchFunc = mqswag.MatchAllFields
 	}
+	dbArray := t.db.Find(className, comp.old, matchFunc, -1)
 
-	if method == mqswag.MethodGet {
-		var matchFunc mqswag.MatchFunc
-		if comp.old == nil {
-			matchFunc = mqswag.MatchAlways
-		} else {
-			matchFunc = mqswag.MatchAllFields
-		}
-		dbArray := t.db.Find(className, comp.old, matchFunc, -1)
-		// What we found from the server (resultArray) and from in-memory DB using the same criteria should match.
-		if len(resultArray) != len(dbArray) {
-			resultBytes, _ := json.Marshal(resultArray)
-			mqutil.Logger.Print(string(resultBytes))
-			return mqutil.NewError(mqutil.ErrHttp, fmt.Sprintf("expecting %d entries got %d entries",
-				len(dbArray), len(resultArray)))
-		}
-
-		// TODO optimize later. Should sort first.
-		for _, entry := range resultArray {
-			found := false
-			entryMap, _ := entry.(map[string]interface{})
-			if entryMap == nil {
-				if len(dbArray) == 0 {
-					// Server returned array of non-map types. The db shouldn't expect anything.
-					continue
-				}
-			} else {
-				for _, dbEntry := range dbArray {
-					dbentryMap, _ := dbEntry.(map[string]interface{})
-					if dbentryMap != nil && mqutil.MapEquals(entryMap, dbentryMap, false) {
-						found = true
-						break
-					}
-				}
+	// TODO optimize later. Should sort first.
+	for _, entry := range resultArray {
+		found := false
+		entryMap, _ := entry.(map[string]interface{})
+		if entryMap == nil {
+			if len(dbArray) == 0 {
+				// Server returned array of non-map types. The db shouldn't expect anything.
+				continue
 			}
-			if !found {
+		} else {
+			// What is returned should match our criteria.
+			matches := matchFunc(comp.old, entryMap)
+			if !matches {
 				b, _ := json.Marshal(entry)
-				return mqutil.NewError(mqutil.ErrHttp, fmt.Sprintf("result returned is not found on client\n%s\n",
+				return mqutil.NewError(mqutil.ErrHttp, fmt.Sprintf("result returned doesn't match query parameters:\n%s\n",
 					string(b)))
 			}
+			if !t.Strict {
+				continue
+			}
+			for _, dbEntry := range dbArray {
+				dbentryMap, _ := dbEntry.(map[string]interface{})
+				if dbentryMap != nil && mqutil.MapEquals(entryMap, dbentryMap, false) {
+					found = true
+					break
+				}
+			}
+		}
+		if !found {
+			b, _ := json.Marshal(entry)
+			return mqutil.NewError(mqutil.ErrHttp, fmt.Sprintf("result returned is not found on client\n%s\n",
+				string(b)))
+		}
+	}
+	return nil
+}
+
+// ProcessOneComparison processes one comparison object.
+func (t *Test) ProcessOneComparison(className string, method string, comp *Comparison, collection map[string][]interface{}) error {
+	if method == mqswag.MethodGet {
+		if collection == nil {
+			return nil
+		} else {
+			return t.CompareGetResult(className, comp, collection[className])
 		}
 	} else if method == mqswag.MethodDelete {
 		t.db.Delete(className, comp.old, mqswag.MatchAllFields, -1)
 	} else if method == mqswag.MethodPost && comp.new != nil {
-		return t.db.Insert(className, comp.schema, comp.new)
+		return t.db.Insert(className, comp.new)
 	} else if (method == mqswag.MethodPatch || method == mqswag.MethodPut) && comp.new != nil {
 		count := t.db.Update(className, comp.old, mqswag.MatchAllFields, comp.new, 1, method == mqswag.MethodPatch)
 		if count != 1 {
@@ -310,44 +320,6 @@ func (t *Test) ProcessResult(resp *resty.Response) error {
 		respSpec = &spec.Response{}
 	}
 
-	respBody := resp.Body()
-	// Check if the response obj and respSchema match
-	respSchema := (*mqswag.Schema)(respSpec.Schema)
-	var resultObj interface{}
-
-	if respSchema != nil {
-		if len(respBody) > 0 {
-			err := json.Unmarshal(respBody, &resultObj)
-			if err == nil {
-				if !respSchema.Matches(resultObj, t.db.Swagger) {
-					// Just log an error. This is actually quite common because people don't specify all the details in the spec.
-					specBytes, _ := json.MarshalIndent(respSpec, "", "    ")
-					mqutil.Logger.Printf("server response doesn't match swagger spec: \n%s", string(specBytes))
-				}
-			} else if !respSchema.Type.Contains(gojsonschema.TYPE_STRING) {
-				specBytes, _ := json.MarshalIndent(respSpec, "", "    ")
-				mqutil.Logger.Printf("server response doesn't match swagger spec: \n%s", string(specBytes))
-			}
-		} else {
-			// If schema is an array, then not having a body is OK
-			if !respSchema.Type.Contains(gojsonschema.TYPE_ARRAY) {
-				mqutil.Logger.Printf("swagger.spec expects a non-empty response, but response body is actually empty")
-			}
-		}
-
-		// Remove the comparison objects that 1) swagger doesn't expect back 2) we didn't modify
-		for className, compList := range t.comparisons {
-			count := 0
-			for i, comp := range compList {
-				if comp.new == nil && !respSchema.Contains(className, t.db.Swagger) {
-					compList[i] = compList[count]
-					count++
-				}
-			}
-			t.comparisons[className] = compList[count:]
-		}
-	}
-
 	// success based on return status
 	success := (status >= 200 && status < 300)
 	tag := mqswag.GetMeqaTag(respSpec.Description)
@@ -374,19 +346,75 @@ func (t *Test) ProcessResult(resp *resty.Response) error {
 		return nil
 	}
 
-	var resultArray []interface{}
-	var ok bool
-	if resultObj != nil {
-		if resultArray, ok = resultObj.([]interface{}); !ok {
-			resultArray = []interface{}{resultObj}
+	respBody := resp.Body()
+	// Check if the response obj and respSchema match
+	respSchema := (*mqswag.Schema)(respSpec.Schema)
+	var resultObj interface{}
+	collection := make(map[string][]interface{})
+
+	if respSchema != nil {
+		if len(respBody) > 0 {
+			err := json.Unmarshal(respBody, &resultObj)
+			if err == nil {
+				err := respSchema.Parses("", resultObj, collection, t.db.Swagger)
+				if err != nil {
+					// Just log an error. This is actually quite common because people don't specify all the details in the spec.
+					specBytes, _ := json.MarshalIndent(respSpec, "", "    ")
+					mqutil.Logger.Printf("server response doesn't match swagger spec: \n%s", string(specBytes))
+				}
+			} else if !respSchema.Type.Contains(gojsonschema.TYPE_STRING) {
+				specBytes, _ := json.MarshalIndent(respSpec, "", "    ")
+				mqutil.Logger.Printf("server response doesn't match swagger spec: \n%s", string(specBytes))
+			}
+		} else {
+			// If schema is an array, then not having a body is OK
+			if !respSchema.Type.Contains(gojsonschema.TYPE_ARRAY) {
+				mqutil.Logger.Printf("swagger.spec expects a non-empty response, but response body is actually empty")
+			}
 		}
 	}
+
+	// Sometimes the server will return more data than requested. For instance, the server may generate
+	// a uuid that the client didn't send. So for post and puts, we first go through the collection.
+	// The assumption is that if the server returned an object of matching type, we should use that
+	// instead of what the client thinks.
+	method := t.Method
+	if t.tag != nil && len(t.tag.Operation) > 0 {
+		method = t.tag.Operation
+	}
+
+	// For posts, it's possible that the server has replaced certain fields (such as uuid). We should just
+	// use the server's result.
+	if method == mqswag.MethodPost {
+		for className, classList := range collection {
+			if compList := t.comparisons[className]; compList != nil {
+				// replace what we posted with what the server returned
+				var newcompList []*Comparison
+				for _, entry := range classList {
+					c := Comparison{nil, entry.(map[string]interface{}), nil}
+					newcompList = append(newcompList, &c)
+				}
+				collection[className] = nil
+				t.comparisons[className] = newcompList
+			}
+		}
+	}
+
 	// Success, replace or verify based on method.
 	for className, compArray := range t.comparisons {
 		for _, c := range compArray {
-			err := t.ProcessOneComparison(className, c, resultArray)
+			err := t.ProcessOneComparison(className, method, c, collection)
 			if err != nil {
 				return err
+			}
+		}
+	}
+
+	if !t.Strict {
+		// Add everything from the collection to the in-mem DB
+		for className, classList := range collection {
+			for _, entry := range classList {
+				t.db.Insert(className, entry)
 			}
 		}
 	}
@@ -976,7 +1004,9 @@ func (t *Test) generateObject(name string, parentTag *mqswag.MeqaTag, schema *sp
 		tag = parentTag
 	}
 
-	t.AddObjectComparison(tag, obj, schema)
+	if tag != nil {
+		t.AddObjectComparison(tag, obj, schema)
+	}
 	return obj, nil
 }
 
