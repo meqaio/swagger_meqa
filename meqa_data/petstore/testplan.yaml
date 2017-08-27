@@ -1,0 +1,228 @@
+
+---
+/pet/findByStatus get:
+- name: findPetsByStatus_1
+  path: /pet/findByStatus
+  method: get
+
+---
+/store/inventory get:
+- name: getInventory_1
+  path: /store/inventory
+  method: get
+
+---
+/user/createWithArray post:
+- name: createUsersWithArrayInput_1
+  path: /user/createWithArray
+  method: post
+
+---
+/user/createWithArray -- User -- all:
+- name: createUsersWithArrayInput_1
+  path: /user/createWithArray
+  method: post
+- name: loginUser_2
+  path: /user/login
+  method: get
+- name: deleteUser_3
+  path: /user/{username}
+  method: delete
+- name: createUsersWithArrayInput_3
+  path: /user/createWithArray
+  method: post
+- name: getUserByName_4
+  path: /user/{username}
+  method: get
+- name: updateUser_5
+  path: /user/{username}
+  method: put
+
+---
+/user/createWithList post:
+- name: createUsersWithListInput_1
+  path: /user/createWithList
+  method: post
+
+---
+/user/createWithList -- User -- all:
+- name: createUsersWithListInput_1
+  path: /user/createWithList
+  method: post
+- name: loginUser_2
+  path: /user/login
+  method: get
+- name: deleteUser_3
+  path: /user/{username}
+  method: delete
+- name: createUsersWithListInput_3
+  path: /user/createWithList
+  method: post
+- name: getUserByName_4
+  path: /user/{username}
+  method: get
+- name: updateUser_5
+  path: /user/{username}
+  method: put
+
+---
+/user/logout get:
+- name: logoutUser_1
+  path: /user/logout
+  method: get
+
+---
+/user post:
+- name: createUser_1
+  path: /user
+  method: post
+
+---
+/user -- User -- all:
+- name: createUser_1
+  path: /user
+  method: post
+- name: loginUser_2
+  path: /user/login
+  method: get
+- name: deleteUser_3
+  path: /user/{username}
+  method: delete
+- name: createUser_3
+  path: /user
+  method: post
+- name: getUserByName_4
+  path: /user/{username}
+  method: get
+- name: updateUser_5
+  path: /user/{username}
+  method: put
+
+---
+/pet post:
+- name: addPet_1
+  path: /pet
+  method: post
+
+---
+/pet -- Pet -- all:
+- name: addPet_1
+  path: /pet
+  method: post
+- name: findPetsByTags_2
+  path: /pet/findByTags
+  method: get
+- name: uploadFile_3
+  path: /pet/{petId}/uploadImage
+  method: post
+- name: deletePet_4
+  path: /pet/{petId}
+  method: delete
+- name: addPet_4
+  path: /pet
+  method: post
+- name: getPetById_5
+  path: /pet/{petId}
+  method: get
+- name: updatePetWithForm_6
+  path: /pet/{petId}
+  method: post
+- name: updatePet_7
+  path: /pet
+  method: put
+- name: placeOrder_8
+  path: /store/order
+  method: post
+
+---
+/user/login get:
+- name: loginUser_1
+  path: /user/login
+  method: get
+
+---
+/user/{username} delete:
+- name: deleteUser_1
+  path: /user/{username}
+  method: delete
+
+---
+/user/{username} get:
+- name: getUserByName_1
+  path: /user/{username}
+  method: get
+
+---
+/user/{username} put:
+- name: updateUser_1
+  path: /user/{username}
+  method: put
+
+---
+/pet/findByTags get:
+- name: findPetsByTags_1
+  path: /pet/findByTags
+  method: get
+
+---
+/pet/{petId}/uploadImage post:
+- name: uploadFile_1
+  path: /pet/{petId}/uploadImage
+  method: post
+
+---
+/pet/{petId} delete:
+- name: deletePet_1
+  path: /pet/{petId}
+  method: delete
+
+---
+/pet/{petId} get:
+- name: getPetById_1
+  path: /pet/{petId}
+  method: get
+
+---
+/pet/{petId} post:
+- name: updatePetWithForm_1
+  path: /pet/{petId}
+  method: post
+
+---
+/pet put:
+- name: updatePet_1
+  path: /pet
+  method: put
+
+---
+/store/order post:
+- name: placeOrder_1
+  path: /store/order
+  method: post
+
+---
+/store/order -- Order -- all:
+- name: placeOrder_1
+  path: /store/order
+  method: post
+- name: deleteOrder_2
+  path: /store/order/{orderId}
+  method: delete
+- name: placeOrder_2
+  path: /store/order
+  method: post
+- name: getOrderById_3
+  path: /store/order/{orderId}
+  method: get
+
+---
+/store/order/{orderId} delete:
+- name: deleteOrder_1
+  path: /store/order/{orderId}
+  method: delete
+
+---
+/store/order/{orderId} get:
+- name: getOrderById_1
+  path: /store/order/{orderId}
+  method: get
