@@ -988,15 +988,15 @@ func (t *Test) generateArray(name string, parentTag *mqswag.MeqaTag, schema *spe
 		var maxItems int = 10
 		if schema.MaxItems != nil {
 			maxItems = int(*schema.MaxItems)
-			if maxItems < 0 {
-				maxItems = 0
+			if maxItems <= 0 {
+				maxItems = 1
 			}
 		}
 		var minItems int
 		if schema.MinItems != nil {
 			minItems = int(*schema.MinItems)
-			if minItems < 0 {
-				minItems = 0
+			if minItems <= 0 {
+				minItems = 1
 			}
 		}
 		maxDiff := maxItems - minItems
