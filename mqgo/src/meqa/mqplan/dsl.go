@@ -498,6 +498,7 @@ func (t *Test) SetRequestParameters(req *resty.Request) string {
 
 func (t *Test) CopyParent(parentTest *Test) {
 	if parentTest != nil {
+		t.Strict = parentTest.Strict
 		t.Expect = mqutil.MapCopy(parentTest.Expect)
 		t.QueryParams = mqutil.MapAdd(t.QueryParams, parentTest.QueryParams)
 		t.PathParams = mqutil.MapAdd(t.PathParams, parentTest.PathParams)

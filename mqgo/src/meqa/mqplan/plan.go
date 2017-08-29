@@ -211,6 +211,7 @@ func (plan *TestPlan) Run(name string, parentTest *Test) error {
 
 	for _, test := range tc.Tests {
 		if len(test.Ref) != 0 {
+			test.Strict = tc.Strict
 			err := plan.Run(test.Ref, test)
 			if err != nil {
 				return err
@@ -225,8 +226,8 @@ func (plan *TestPlan) Run(name string, parentTest *Test) error {
 			continue
 		}
 
-		test.Strict = tc.Strict
 		dup := test.Duplicate()
+		dup.Strict = tc.Strict
 		if parentTest != nil {
 			dup.CopyParent(parentTest)
 		}
