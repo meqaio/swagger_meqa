@@ -30,6 +30,7 @@ const (
 
 const (
 	ExpectStatus = "status"
+	ExpectBody   = "body"
 )
 
 func GetBaseURL(swagger *mqswag.Swagger) string {
@@ -125,9 +126,20 @@ func (t *Test) Init(db *mqswag.DB) {
 	}
 	// if BodyParams is map, after unmarshal it is map[interface{}]
 	var err error
-	t.BodyParams, err = mqutil.YamlObjToJsonObj(t.BodyParams)
-	if err != nil {
-		panic(err)
+	var i interface{}
+	if t.BodyParams != nil {
+		t.BodyParams, err = mqutil.YamlObjToJsonObj(t.BodyParams)
+		if err != nil {
+			panic(err)
+		}
+	}
+	if len(t.Expect) > 0 && t.Expect[ExpectBody] != nil {
+		i, err = mqutil.YamlObjToJsonObj(t.Expect[ExpectBody])
+		ok := false
+		t.Expect[ExpectBody], ok = i.(map[string]interface{})
+		if err != nil || !ok {
+			panic(err)
+		}
 	}
 }
 
@@ -348,6 +360,13 @@ func (t *Test) ProcessResult(resp *resty.Response) error {
 		respSpec = &spec.Response{}
 	}
 
+	respBody := resp.Body()
+	respSchema := (*mqswag.Schema)(respSpec.Schema)
+	var resultObj interface{}
+	if len(respBody) > 0 {
+		json.Unmarshal(respBody, &resultObj)
+	}
+
 	// success based on return status
 	success := (status >= 200 && status < 300)
 	tag := mqswag.GetMeqaTag(respSpec.Description)
@@ -362,39 +381,42 @@ func (t *Test) ProcessResult(resp *resty.Response) error {
 			testSuccess = !success
 		} else if expectedStatusNum, ok := expectedStatus.(int); ok {
 			testSuccess = (expectedStatusNum == status)
+		}
+
+		if testSuccess {
+			// result status matches the expected status, now check whether to body matches.
+			testSuccess = mqutil.InterfaceEquals(t.Expect[ExpectBody], resultObj)
+			if !testSuccess {
+				ejson, _ := json.Marshal(t.Expect[ExpectBody])
+				mqutil.Logger.Printf("=== test failed, expecting body: \n%s\ngot body:\n%s\n===", string(ejson), respBody)
+				return nil
+			}
 		} else {
-			testSuccess = false
+			mqutil.Logger.Printf("=== test failed, response code %d ===", status)
+			return nil
 		}
 	}
 
-	if !testSuccess {
-		mqutil.Logger.Printf("=== test failed, response code %d ===", status)
-		return nil
+	// Check if the response obj and respSchema match
+	collection := make(map[string][]interface{})
+	if resultObj != nil && respSchema != nil {
+		err := respSchema.Parses("", resultObj, collection, t.db.Swagger)
+		if err != nil {
+			specBytes, _ := json.MarshalIndent(respSpec, "", "    ")
+			mqutil.Logger.Printf("server response doesn't match swagger spec: \n%s", string(specBytes))
+
+			// We ignore this if the response is success, and the spec we used is the default. This is a strong
+			// indicator that the author didn't spec out all the success cases.
+			if !(useDefaultSpec && success) {
+				return err
+			}
+		}
 	}
 
-	respBody := resp.Body()
-	// Check if the response obj and respSchema match
-	respSchema := (*mqswag.Schema)(respSpec.Schema)
-	var resultObj interface{}
-	collection := make(map[string][]interface{})
-
+	// Log some non-fatal errors.
 	if respSchema != nil {
 		if len(respBody) > 0 {
-			err := json.Unmarshal(respBody, &resultObj)
-			if err == nil {
-				err := respSchema.Parses("", resultObj, collection, t.db.Swagger)
-				if err != nil {
-					// Just log an error. This is actually quite common because people don't specify all the details in the spec.
-					specBytes, _ := json.MarshalIndent(respSpec, "", "    ")
-					mqutil.Logger.Printf("server response doesn't match swagger spec: \n%s", string(specBytes))
-
-					// We ignore this if the response is success, and the spec we used is the default. This is a strong
-					// indicator that the author didn't spec out all the success cases.
-					if !(useDefaultSpec && success) {
-						return err
-					}
-				}
-			} else if !respSchema.Type.Contains(gojsonschema.TYPE_STRING) {
+			if resultObj == nil && !respSchema.Type.Contains(gojsonschema.TYPE_STRING) {
 				specBytes, _ := json.MarshalIndent(respSpec, "", "    ")
 				mqutil.Logger.Printf("server response doesn't match swagger spec: \n%s", string(specBytes))
 			}
