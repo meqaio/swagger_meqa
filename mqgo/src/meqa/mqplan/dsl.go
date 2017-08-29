@@ -58,15 +58,17 @@ func GetBaseURL(swagger *mqswag.Swagger) string {
 // Get: old - the old object, new - the one we get from the server.
 // Delete: old - the existing object, new - nil.
 type Comparison struct {
-	old    map[string]interface{} // For put and patch, it stores the keys used in lookup
-	new    map[string]interface{}
-	schema *spec.Schema
+	old     map[string]interface{} // For put and patch, it stores the keys used in lookup
+	oldUsed map[string]interface{} // The same as the old object but with only the fields that are used in the call.
+	new     map[string]interface{}
+	schema  *spec.Schema
 }
 
 func (comp *Comparison) GetMapByOp(op string) map[string]interface{} {
 	if op == mqswag.MethodGet {
 		if comp.old == nil {
 			comp.old = make(map[string]interface{})
+			comp.oldUsed = make(map[string]interface{})
 		}
 		return comp.old
 	}
@@ -74,6 +76,24 @@ func (comp *Comparison) GetMapByOp(op string) map[string]interface{} {
 		comp.new = make(map[string]interface{})
 	}
 	return comp.new
+}
+
+func (comp *Comparison) SetForOp(op string, key string, value interface{}) *Comparison {
+	var newComp *Comparison
+	m := comp.GetMapByOp(op)
+	if _, ok := m[key]; !ok {
+		m[key] = value
+	} else {
+		// exist already, create a new comparison object. This only happens when we update
+		// an array of objects.
+		newComp := &Comparison{nil, nil, nil, comp.schema}
+		m = newComp.GetMapByOp(op)
+		m[key] = value
+	}
+	if op == mqswag.MethodGet {
+		comp.oldUsed[key] = m[key]
+	}
+	return newComp
 }
 
 // Test represents a test object in the DSL. Extra care needs to be taken to copy the
@@ -161,17 +181,16 @@ func (t *Test) AddBasicComparison(tag *mqswag.MeqaTag, paramSpec *spec.Parameter
 	var comp *Comparison
 	if t.comparisons[tag.Class] != nil && len(t.comparisons[tag.Class]) > 0 {
 		comp = t.comparisons[tag.Class][len(t.comparisons[tag.Class])-1]
-		m := comp.GetMapByOp(op)
-		if _, ok := m[tag.Property]; !ok {
-			m[tag.Property] = data
-			return
+		newComp := comp.SetForOp(op, tag.Property, data)
+		if newComp != nil {
+			t.comparisons[tag.Class] = append(t.comparisons[tag.Class], newComp)
 		}
+		return
 	}
 	// Need to create a new compare object.
 	comp = &Comparison{}
 	comp.schema = (*spec.Schema)(t.db.Swagger.FindSchemaByName(tag.Class))
-	m := comp.GetMapByOp(op)
-	m[tag.Property] = data
+	comp.SetForOp(op, tag.Property, data)
 	t.comparisons[tag.Class] = append(t.comparisons[tag.Class], comp)
 }
 
@@ -200,9 +219,7 @@ func (t *Test) AddObjectComparison(tag *mqswag.MeqaTag, obj map[string]interface
 		class = cl
 	}
 
-	if method == mqswag.MethodPost {
-		t.comparisons[class] = append(t.comparisons[class], &Comparison{nil, obj, schema})
-	} else if method == mqswag.MethodPut || method == mqswag.MethodPatch {
+	if method == mqswag.MethodPost || method == mqswag.MethodPut || method == mqswag.MethodPatch {
 		// It's possible that we are updating a list of objects. Due to the way we generate parameters,
 		// we will always generate one complete object (both the lookup key and the new data) before we
 		// move on to the next.
@@ -215,49 +232,64 @@ func (t *Test) AddObjectComparison(tag *mqswag.MeqaTag, obj map[string]interface
 			// During put, having an array of objects with just the "new" part is allowed. This
 			// means the update key is included in the new object.
 		}
-		t.comparisons[class] = append(t.comparisons[class], &Comparison{nil, obj, schema})
+		t.comparisons[class] = append(t.comparisons[class], &Comparison{nil, nil, obj, schema})
 	} else {
 		mqutil.Logger.Printf("unexpected: generating object %s for GET method.", class)
 	}
 }
 
-func (t *Test) CompareGetResult(className string, comp *Comparison, resultArray []interface{}) error {
-	var matchFunc mqswag.MatchFunc
-	if comp.old == nil {
-		matchFunc = mqswag.MatchAlways
+func (t *Test) CompareGetResult(className string, associations map[string]map[string]interface{}, resultArray []interface{}) error {
+
+	var dbArray []interface{}
+	if len(t.comparisons[className]) > 0 {
+		for _, comp := range t.comparisons[className] {
+			dbArray = append(dbArray, t.db.Find(className, comp.oldUsed, associations, mqswag.MatchAllFields, -1)...)
+		}
 	} else {
-		matchFunc = mqswag.MatchAllFields
+		dbArray = t.db.Find(className, nil, associations, mqswag.MatchAllFields, -1)
 	}
-	dbArray := t.db.Find(className, comp.old, matchFunc, -1)
+	mqutil.Logger.Printf("got %d entries from db", len(dbArray))
 
 	// TODO optimize later. Should sort first.
 	for _, entry := range resultArray {
-		found := false
 		entryMap, _ := entry.(map[string]interface{})
 		if entryMap == nil {
-			if len(dbArray) == 0 {
-				// Server returned array of non-map types. The db shouldn't expect anything.
-				continue
+			// Server returned array of non-map types. Nothing for us to do. If the schema and server result doesn't
+			// match we will catch that when we verify schema.
+			continue
+		}
+
+		// What is returned should match our criteria.
+		if len(t.comparisons[className]) > 0 {
+			compFound := false
+			for _, comp := range t.comparisons[className] {
+				// One of the comparison should match
+				if mqswag.MatchAllFields(comp.oldUsed, entryMap) {
+					compFound = true
+					break
+				}
 			}
-		} else {
-			// What is returned should match our criteria.
-			matches := matchFunc(comp.old, entryMap)
-			if !matches {
+			if !compFound {
 				b, _ := json.Marshal(entry)
 				return mqutil.NewError(mqutil.ErrHttp, fmt.Sprintf("result returned doesn't match query parameters:\n%s\n",
 					string(b)))
 			}
-			if !t.Strict {
-				continue
-			}
-			for _, dbEntry := range dbArray {
-				dbentryMap, _ := dbEntry.(map[string]interface{})
-				if dbentryMap != nil && mqutil.MapEquals(entryMap, dbentryMap, false) {
-					found = true
-					break
-				}
+		}
+
+		if !t.Strict {
+			continue
+		}
+		found := false
+		for _, dbEntry := range dbArray {
+			dbentryMap, _ := dbEntry.(map[string]interface{})
+			b, _ := json.Marshal(dbentryMap)
+			mqutil.Logger.Printf("comparing: %s", string(b))
+			if dbentryMap != nil && mqutil.MapEquals(entryMap, dbentryMap, false) {
+				found = true
+				break
 			}
 		}
+
 		if !found {
 			b, _ := json.Marshal(entry)
 			return mqutil.NewError(mqutil.ErrHttp, fmt.Sprintf("result returned is not found on client\n%s\n",
@@ -268,19 +300,15 @@ func (t *Test) CompareGetResult(className string, comp *Comparison, resultArray 
 }
 
 // ProcessOneComparison processes one comparison object.
-func (t *Test) ProcessOneComparison(className string, method string, comp *Comparison, collection map[string][]interface{}) error {
-	if method == mqswag.MethodGet {
-		if collection == nil {
-			return nil
-		} else {
-			return t.CompareGetResult(className, comp, collection[className])
-		}
-	} else if method == mqswag.MethodDelete {
-		t.db.Delete(className, comp.old, mqswag.MatchAllFields, -1)
+func (t *Test) ProcessOneComparison(className string, method string, comp *Comparison,
+	associations map[string]map[string]interface{}, collection map[string][]interface{}) error {
+
+	if method == mqswag.MethodDelete {
+		t.db.Delete(className, comp.oldUsed, associations, mqswag.MatchAllFields, -1)
 	} else if method == mqswag.MethodPost && comp.new != nil {
-		return t.db.Insert(className, comp.new)
+		return t.db.Insert(className, comp.new, associations)
 	} else if (method == mqswag.MethodPatch || method == mqswag.MethodPut) && comp.new != nil {
-		count := t.db.Update(className, comp.old, mqswag.MatchAllFields, comp.new, 1, method == mqswag.MethodPatch)
+		count := t.db.Update(className, comp.oldUsed, associations, mqswag.MatchAllFields, comp.new, 1, method == mqswag.MethodPatch)
 		if count != 1 {
 			mqutil.Logger.Printf("Failed to find any entry to update")
 		}
@@ -387,11 +415,11 @@ func (t *Test) ProcessResult(resp *resty.Response) error {
 	// use the server's result.
 	if method == mqswag.MethodPost {
 		for className, classList := range collection {
-			if compList := t.comparisons[className]; compList != nil {
+			if compList := t.comparisons[className]; len(compList) > 0 && compList[0].new != nil {
 				// replace what we posted with what the server returned
 				var newcompList []*Comparison
 				for _, entry := range classList {
-					c := Comparison{nil, entry.(map[string]interface{}), nil}
+					c := Comparison{nil, nil, entry.(map[string]interface{}), nil}
 					newcompList = append(newcompList, &c)
 				}
 				collection[className] = nil
@@ -400,12 +428,29 @@ func (t *Test) ProcessResult(resp *resty.Response) error {
 		}
 	}
 
-	// Success, replace or verify based on method.
+	// Associations are only for the objects that has one for each class and has an old object.
+	associations := make(map[string]map[string]interface{})
 	for className, compArray := range t.comparisons {
-		for _, c := range compArray {
-			err := t.ProcessOneComparison(className, method, c, collection)
+		if len(compArray) == 1 && compArray[0].oldUsed != nil {
+			associations[className] = compArray[0].oldUsed
+		}
+	}
+
+	if method == mqswag.MethodGet {
+		// For gets, we process based on the result collection's class.
+		for className, resultArray := range collection {
+			err := t.CompareGetResult(className, associations, resultArray)
 			if err != nil {
 				return err
+			}
+		}
+	} else {
+		for className, compArray := range t.comparisons {
+			for _, c := range compArray {
+				err := t.ProcessOneComparison(className, method, c, associations, collection)
+				if err != nil {
+					return err
+				}
 			}
 		}
 	}
@@ -414,7 +459,7 @@ func (t *Test) ProcessResult(resp *resty.Response) error {
 		// Add everything from the collection to the in-mem DB
 		for className, classList := range collection {
 			for _, entry := range classList {
-				t.db.Insert(className, entry)
+				t.db.Insert(className, entry, associations)
 			}
 		}
 	}
@@ -791,14 +836,16 @@ func (t *Test) generateByType(s *spec.Schema, prefix string, parentTag *mqswag.M
 			// Try to get one from the comparison objects.
 			for _, c := range t.comparisons[tag.Class] {
 				if c.old != nil {
+					c.oldUsed[tag.Property] = c.old[tag.Property]
 					return c.old[tag.Property], nil
 				}
 			}
 			// Get one from in-mem db and populate the comparison structure.
-			ar := t.db.Find(tag.Class, nil, mqswag.MatchAlways, 5)
+			ar := t.db.Find(tag.Class, nil, nil, mqswag.MatchAlways, 5)
 			if len(ar) > 0 {
 				obj := ar[rand.Intn(len(ar))].(map[string]interface{})
-				comp := &Comparison{obj, nil, (*spec.Schema)(t.db.GetSchema(tag.Class))}
+				comp := &Comparison{obj, make(map[string]interface{}), nil, (*spec.Schema)(t.db.GetSchema(tag.Class))}
+				comp.oldUsed[tag.Property] = comp.old[tag.Property]
 				t.comparisons[tag.Class] = append(t.comparisons[tag.Class], comp)
 				return obj[tag.Property], nil
 			}

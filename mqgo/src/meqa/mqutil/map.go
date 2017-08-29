@@ -124,6 +124,13 @@ func MapEquals(big map[string]interface{}, small map[string]interface{}, strict 
 		return false
 	}
 	for k, v := range small {
+		if big[k] == nil {
+			if v == nil {
+				continue
+			} else {
+				return false
+			}
+		}
 		vType := reflect.TypeOf(v)
 		if reflect.TypeOf(big[k]) == vType && vType.Comparable() && big[k] == v {
 			continue
@@ -131,7 +138,7 @@ func MapEquals(big map[string]interface{}, small map[string]interface{}, strict 
 		bJson, _ := json.Marshal(big[k])
 		vJson, _ := json.Marshal(v)
 		if string(bJson) != string(vJson) && !TimeCompare(big[k], v) {
-			fmt.Printf("key %v: %v %v mismatch", k, big[k], v)
+			fmt.Printf("key %v: %v %v mismatch\n", k, big[k], v)
 			return false
 		}
 	}

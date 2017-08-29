@@ -230,19 +230,34 @@ func (schema *Schema) Iterate(iterFunc SchemaIterator, context interface{}, swag
 	return nil
 }
 
+type DBEntry struct {
+	Data         map[string]interface{}            // The object itself.
+	Associations map[string]map[string]interface{} // The objects associated with this object. Class to object map.
+}
+
+func (entry *DBEntry) Matches(criteria interface{}, associations map[string]map[string]interface{}, matches MatchFunc) bool {
+	for className, classAssociation := range associations {
+		if !MatchAllFields(classAssociation, entry.Associations[className]) {
+			return false
+		}
+	}
+	return matches(criteria, entry.Data)
+}
+
 // SchemaDB is our in-memory DB. It is organized around Schemas. Each schema maintains a list of objects that matches
 // the schema. We don't build indexes and do linear search. This keeps the searching flexible for now.
 type SchemaDB struct {
 	Name      string
 	Schema    *Schema
 	NoHistory bool
-	Objects   []interface{}
+	Objects   []*DBEntry
 }
 
 // Insert inserts an object into the schema's object list.
-func (db *SchemaDB) Insert(obj interface{}) error {
+func (db *SchemaDB) Insert(obj interface{}, associations map[string]map[string]interface{}) error {
 	if !db.NoHistory {
-		db.Objects = append(db.Objects, obj)
+		dbentry := &DBEntry{obj.(map[string]interface{}), associations}
+		db.Objects = append(db.Objects, dbentry)
 	}
 	return nil
 }
@@ -252,6 +267,9 @@ type MatchFunc func(criteria interface{}, existing interface{}) bool
 
 // An implementation of the MatchFunc that returns true if the existing object matches all the fields in the criteria obj.
 func MatchAllFields(criteria interface{}, existing interface{}) bool {
+	if criteria == nil {
+		return true
+	}
 	cm, ok := criteria.(map[string]interface{})
 	if !ok {
 		return false
@@ -288,12 +306,12 @@ func MatchAlways(criteria interface{}, existing interface{}) bool {
 }
 
 // Find finds the specified number of objects that match the input criteria.
-func (db *SchemaDB) Find(criteria interface{}, matches MatchFunc, desiredCount int) []interface{} {
+func (db *SchemaDB) Find(criteria interface{}, associations map[string]map[string]interface{}, matches MatchFunc, desiredCount int) []interface{} {
 	var result []interface{}
-	for _, obj := range db.Objects {
-		if matches(criteria, obj) {
-			result = append(result, obj)
-			if len(result) >= desiredCount {
+	for _, entry := range db.Objects {
+		if entry.Matches(criteria, associations, matches) {
+			result = append(result, entry.Data)
+			if desiredCount >= 0 && len(result) >= desiredCount {
 				return result
 			}
 		}
@@ -303,13 +321,13 @@ func (db *SchemaDB) Find(criteria interface{}, matches MatchFunc, desiredCount i
 
 // Delete deletes the specified number of elements that match the criteria. Input -1 for delete all.
 // Returns the number of elements deleted.
-func (db *SchemaDB) Delete(criteria interface{}, matches MatchFunc, desiredCount int) int {
+func (db *SchemaDB) Delete(criteria interface{}, associations map[string]map[string]interface{}, matches MatchFunc, desiredCount int) int {
 	count := 0
-	for i, obj := range db.Objects {
-		if matches(criteria, obj) {
+	for i, entry := range db.Objects {
+		if entry.Matches(criteria, associations, matches) {
 			db.Objects[i] = db.Objects[count]
 			count++
-			if count >= desiredCount {
+			if desiredCount >= 0 && count >= desiredCount {
 				break
 			}
 		}
@@ -319,21 +337,19 @@ func (db *SchemaDB) Delete(criteria interface{}, matches MatchFunc, desiredCount
 }
 
 // Update finds the matching object, then update with the new one.
-func (db *SchemaDB) Update(criteria interface{}, matches MatchFunc, newObj map[string]interface{}, desiredCount int, patch bool) int {
+func (db *SchemaDB) Update(criteria interface{}, associations map[string]map[string]interface{},
+	matches MatchFunc, newObj map[string]interface{}, desiredCount int, patch bool) int {
+
 	count := 0
-	for i, obj := range db.Objects {
-		if matches(criteria, obj) {
-			m, ok := obj.(map[string]interface{})
-			if !ok {
-				continue
-			}
+	for _, entry := range db.Objects {
+		if entry.Matches(criteria, associations, matches) {
 			if patch {
-				mqutil.MapCombine(m, newObj)
+				mqutil.MapCombine(entry.Data, newObj)
 			} else {
-				db.Objects[i] = newObj
+				entry.Data = newObj
 			}
 			count++
-			if count >= desiredCount {
+			if desiredCount >= 0 && count >= desiredCount {
 				break
 			}
 		}
@@ -373,44 +389,60 @@ func (db *DB) GetSchema(name string) *Schema {
 	return db.schemas[name].Schema
 }
 
-func (db *DB) Insert(name string, obj interface{}) error {
+func CopyWithoutClass(src map[string]map[string]interface{}, className string) map[string]map[string]interface{} {
+	dst := make(map[string]map[string]interface{})
+	for k, v := range src {
+		if k != className {
+			dst[k] = v
+		}
+	}
+	return dst
+}
+
+func (db *DB) Insert(name string, obj interface{}, associations map[string]map[string]interface{}) error {
 	db.mutex.Lock()
 	defer db.mutex.Unlock()
 
 	if db.schemas[name] == nil {
 		return mqutil.NewError(mqutil.ErrInternal, fmt.Sprintf("inserting into non-existing schema: %s", name))
 	}
-	return db.schemas[name].Insert(obj)
+	return db.schemas[name].Insert(obj, CopyWithoutClass(associations, name))
 }
 
-func (db *DB) Find(name string, criteria interface{}, matches MatchFunc, desiredCount int) []interface{} {
+func (db *DB) Find(name string, criteria interface{}, associations map[string]map[string]interface{},
+	matches MatchFunc, desiredCount int) []interface{} {
+
 	db.mutex.Lock()
 	defer db.mutex.Unlock()
 
 	if db.schemas[name] == nil {
 		return nil
 	}
-	return db.schemas[name].Find(criteria, matches, desiredCount)
+	return db.schemas[name].Find(criteria, CopyWithoutClass(associations, name), matches, desiredCount)
 }
 
-func (db *DB) Delete(name string, criteria interface{}, matches MatchFunc, desiredCount int) int {
+func (db *DB) Delete(name string, criteria interface{}, associations map[string]map[string]interface{},
+	matches MatchFunc, desiredCount int) int {
+
 	db.mutex.Lock()
 	defer db.mutex.Unlock()
 
 	if db.schemas[name] == nil {
 		return 0
 	}
-	return db.schemas[name].Delete(criteria, matches, desiredCount)
+	return db.schemas[name].Delete(criteria, CopyWithoutClass(associations, name), matches, desiredCount)
 }
 
-func (db *DB) Update(name string, criteria interface{}, matches MatchFunc, newObj map[string]interface{}, desiredCount int, patch bool) int {
+func (db *DB) Update(name string, criteria interface{}, associations map[string]map[string]interface{},
+	matches MatchFunc, newObj map[string]interface{}, desiredCount int, patch bool) int {
+
 	db.mutex.Lock()
 	defer db.mutex.Unlock()
 
 	if db.schemas[name] == nil {
 		return 0
 	}
-	return db.schemas[name].Update(criteria, matches, newObj, desiredCount, patch)
+	return db.schemas[name].Update(criteria, CopyWithoutClass(associations, name), matches, newObj, desiredCount, patch)
 }
 
 // FindMatchingSchema finds the schema that matches the obj.

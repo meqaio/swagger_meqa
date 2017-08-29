@@ -71,6 +71,7 @@ type TestCase struct {
 
 	// test case parameters
 	TestParams `yaml:",inline,omitempty" json:",inline,omitempty"`
+	Strict     bool
 
 	// Authentication
 	Username string
@@ -84,6 +85,7 @@ func CreateTestCase(name string, tests []*Test, plan *TestPlan) *TestCase {
 	c.Name = name
 	c.Tests = tests
 	(&c.TestParams).Copy(&plan.TestParams)
+	c.Strict = plan.Strict
 
 	c.Username = plan.Username
 	c.Password = plan.Password
@@ -100,6 +102,7 @@ type TestPlan struct {
 
 	// global parameters
 	TestParams `yaml:",inline,omitempty" json:",inline,omitempty"`
+	Strict     bool
 
 	// Authentication
 	Username string
@@ -132,6 +135,7 @@ func (plan *TestPlan) AddFromString(data string) error {
 			for _, t := range testList {
 				t.Init(nil)
 				(&plan.TestParams).Copy(&t.TestParams)
+				plan.Strict = t.Strict
 			}
 
 			continue
@@ -217,9 +221,11 @@ func (plan *TestPlan) Run(name string, parentTest *Test) error {
 		if test.Name == MeqaInit {
 			// Apply the parameters to the test case.
 			(&tc.TestParams).Copy(&test.TestParams)
+			tc.Strict = test.Strict
 			continue
 		}
 
+		test.Strict = tc.Strict
 		dup := test.Duplicate()
 		if parentTest != nil {
 			dup.CopyParent(parentTest)
