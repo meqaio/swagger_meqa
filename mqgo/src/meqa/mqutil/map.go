@@ -174,7 +174,7 @@ func InterfaceToArray(obj interface{}) []map[string]interface{} {
 
 // Check if existing matches criteria. When criteria is a map, we check whether
 // everything in criteria can be found and equals a field in existing.
-func MatchAllFields(criteria interface{}, existing interface{}) bool {
+func InterfaceEquals(criteria interface{}, existing interface{}) bool {
 	if criteria == nil {
 		if existing == nil {
 			return true
@@ -222,7 +222,7 @@ func MatchAllFields(criteria interface{}, existing interface{}) bool {
 			return false
 		}
 		for k, v := range cm {
-			if !MatchAllFields(v, em[k]) {
+			if !InterfaceEquals(v, em[k]) {
 				return false
 			}
 		}

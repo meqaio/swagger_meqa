@@ -237,7 +237,7 @@ type DBEntry struct {
 
 func (entry *DBEntry) Matches(criteria interface{}, associations map[string]map[string]interface{}, matches MatchFunc) bool {
 	for className, classAssociation := range associations {
-		if !mqutil.MatchAllFields(classAssociation, entry.Associations[className]) {
+		if !mqutil.InterfaceEquals(classAssociation, entry.Associations[className]) {
 			return false
 		}
 	}
@@ -256,7 +256,7 @@ type SchemaDB struct {
 // Insert inserts an object into the schema's object list.
 func (db *SchemaDB) Insert(obj interface{}, associations map[string]map[string]interface{}) error {
 	if !db.NoHistory {
-		found := db.Find(obj, associations, mqutil.MatchAllFields, 1)
+		found := db.Find(obj, associations, mqutil.InterfaceEquals, 1)
 		if len(found) == 0 {
 			dbentry := &DBEntry{obj.(map[string]interface{}), associations}
 			db.Objects = append(db.Objects, dbentry)
