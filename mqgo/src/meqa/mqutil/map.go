@@ -119,32 +119,6 @@ func MapReplace(dst map[string]interface{}, src map[string]interface{}) map[stri
 	return dst
 }
 
-func MapEquals(big map[string]interface{}, small map[string]interface{}, strict bool) bool {
-	if strict && len(big) != len(small) {
-		return false
-	}
-	for k, v := range small {
-		if big[k] == nil {
-			if v == nil {
-				continue
-			} else {
-				return false
-			}
-		}
-		vType := reflect.TypeOf(v)
-		if reflect.TypeOf(big[k]) == vType && vType.Comparable() && big[k] == v {
-			continue
-		}
-		bJson, _ := json.Marshal(big[k])
-		vJson, _ := json.Marshal(v)
-		if string(bJson) != string(vJson) && !TimeCompare(big[k], v) {
-			fmt.Printf("key %v: %v %v mismatch\n", k, big[k], v)
-			return false
-		}
-	}
-	return true
-}
-
 func MapCopy(src map[string]interface{}) map[string]interface{} {
 	if len(src) == 0 {
 		return nil
@@ -196,6 +170,69 @@ func InterfaceToArray(obj interface{}) []map[string]interface{} {
 		objarray = []map[string]interface{}{o}
 	}
 	return objarray
+}
+
+// Check if existing matches criteria. When criteria is a map, we check whether
+// everything in criteria can be found and equals a field in existing.
+func MatchAllFields(criteria interface{}, existing interface{}) bool {
+	if criteria == nil {
+		if existing == nil {
+			return true
+		} else {
+			existingKind := reflect.TypeOf(existing).Kind()
+			if existingKind == reflect.Map || existingKind == reflect.Array {
+				return true
+			}
+			return false
+		}
+	} else {
+		if existing == nil {
+			return false
+		}
+	}
+	cType := reflect.TypeOf(criteria)
+	eType := reflect.TypeOf(existing)
+	if cType == eType && cType.Comparable() {
+		if criteria == existing {
+			return true
+		}
+		// The only exception is time, where the format may be different on both ends.
+		return TimeCompare(criteria, existing)
+	}
+
+	cKind := cType.Kind()
+	eKind := eType.Kind()
+	if cKind == reflect.Array || cKind == reflect.Slice {
+		if eKind == reflect.Array || eKind == reflect.Slice {
+			// We don't compare arrays
+			return true
+		}
+		return false
+	}
+	if cKind == reflect.Map {
+		if eKind != reflect.Map {
+			return false
+		}
+		cm, ok := criteria.(map[string]interface{})
+		if !ok {
+			return false
+		}
+		em, ok := existing.(map[string]interface{})
+		if !ok {
+			return false
+		}
+		for k, v := range cm {
+			if !MatchAllFields(v, em[k]) {
+				return false
+			}
+		}
+		return true
+	}
+
+	cJson, _ := json.Marshal(criteria)
+	eJson, _ := json.Marshal(existing)
+
+	return string(cJson) == string(eJson)
 }
 
 func MarshalJsonIndentNoEscape(i interface{}) ([]byte, error) {

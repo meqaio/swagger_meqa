@@ -243,10 +243,10 @@ func (t *Test) CompareGetResult(className string, associations map[string]map[st
 	var dbArray []interface{}
 	if len(t.comparisons[className]) > 0 {
 		for _, comp := range t.comparisons[className] {
-			dbArray = append(dbArray, t.db.Find(className, comp.oldUsed, associations, mqswag.MatchAllFields, -1)...)
+			dbArray = append(dbArray, t.db.Find(className, comp.oldUsed, associations, mqutil.MatchAllFields, -1)...)
 		}
 	} else {
-		dbArray = t.db.Find(className, nil, associations, mqswag.MatchAllFields, -1)
+		dbArray = t.db.Find(className, nil, associations, mqutil.MatchAllFields, -1)
 	}
 	mqutil.Logger.Printf("got %d entries from db", len(dbArray))
 
@@ -264,7 +264,7 @@ func (t *Test) CompareGetResult(className string, associations map[string]map[st
 			compFound := false
 			for _, comp := range t.comparisons[className] {
 				// One of the comparison should match
-				if mqswag.MatchAllFields(comp.oldUsed, entryMap) {
+				if mqutil.MatchAllFields(comp.oldUsed, entryMap) {
 					compFound = true
 					break
 				}
@@ -282,9 +282,7 @@ func (t *Test) CompareGetResult(className string, associations map[string]map[st
 		found := false
 		for _, dbEntry := range dbArray {
 			dbentryMap, _ := dbEntry.(map[string]interface{})
-			b, _ := json.Marshal(dbentryMap)
-			mqutil.Logger.Printf("comparing: %s", string(b))
-			if dbentryMap != nil && mqutil.MapEquals(entryMap, dbentryMap, false) {
+			if dbentryMap != nil && mqutil.MatchAllFields(dbentryMap, entryMap) {
 				found = true
 				break
 			}
@@ -304,11 +302,11 @@ func (t *Test) ProcessOneComparison(className string, method string, comp *Compa
 	associations map[string]map[string]interface{}, collection map[string][]interface{}) error {
 
 	if method == mqswag.MethodDelete {
-		t.db.Delete(className, comp.oldUsed, associations, mqswag.MatchAllFields, -1)
+		t.db.Delete(className, comp.oldUsed, associations, mqutil.MatchAllFields, -1)
 	} else if method == mqswag.MethodPost && comp.new != nil {
 		return t.db.Insert(className, comp.new, associations)
 	} else if (method == mqswag.MethodPatch || method == mqswag.MethodPut) && comp.new != nil {
-		count := t.db.Update(className, comp.oldUsed, associations, mqswag.MatchAllFields, comp.new, 1, method == mqswag.MethodPatch)
+		count := t.db.Update(className, comp.oldUsed, associations, mqutil.MatchAllFields, comp.new, 1, method == mqswag.MethodPatch)
 		if count != 1 {
 			mqutil.Logger.Printf("Failed to find any entry to update")
 		}
@@ -332,6 +330,7 @@ func (t *Test) GetParamFromComparison(name string, where string) interface{} {
 
 // ProcessResult decodes the response from the server into a result array
 func (t *Test) ProcessResult(resp *resty.Response) error {
+	useDefaultSpec := true
 	t.resp = resp
 	status := resp.StatusCode()
 	var respSpec *spec.Response
@@ -339,6 +338,7 @@ func (t *Test) ProcessResult(resp *resty.Response) error {
 		respObject, ok := t.op.Responses.StatusCodeResponses[status]
 		if ok {
 			respSpec = &respObject
+			useDefaultSpec = false
 		} else {
 			respSpec = t.op.Responses.Default
 		}
@@ -355,22 +355,20 @@ func (t *Test) ProcessResult(resp *resty.Response) error {
 		success = false
 	}
 
+	testSuccess := success
 	if t.Expect != nil && t.Expect[ExpectStatus] != nil {
 		expectedStatus := t.Expect[ExpectStatus]
 		if expectedStatus == "fail" {
-			success = !success
+			testSuccess = !success
 		} else if expectedStatusNum, ok := expectedStatus.(int); ok {
-			success = (expectedStatusNum == status)
+			testSuccess = (expectedStatusNum == status)
 		} else {
-			success = false
+			testSuccess = false
 		}
 	}
 
-	if !success {
-		actuallyFailed := true
-		if actuallyFailed {
-			mqutil.Logger.Printf("=== test failed, response code %d ===", status)
-		}
+	if !testSuccess {
+		mqutil.Logger.Printf("=== test failed, response code %d ===", status)
 		return nil
 	}
 
@@ -389,6 +387,12 @@ func (t *Test) ProcessResult(resp *resty.Response) error {
 					// Just log an error. This is actually quite common because people don't specify all the details in the spec.
 					specBytes, _ := json.MarshalIndent(respSpec, "", "    ")
 					mqutil.Logger.Printf("server response doesn't match swagger spec: \n%s", string(specBytes))
+
+					// We ignore this if the response is success, and the spec we used is the default. This is a strong
+					// indicator that the author didn't spec out all the success cases.
+					if !(useDefaultSpec && success) {
+						return err
+					}
 				}
 			} else if !respSchema.Type.Contains(gojsonschema.TYPE_STRING) {
 				specBytes, _ := json.MarshalIndent(respSpec, "", "    ")

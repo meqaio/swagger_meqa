@@ -46,7 +46,7 @@ func CreateSchemaFromSimple(s *spec.SimpleSchema, v *spec.CommonValidations) *Sc
 // into the map indexed by the object class name.
 func (schema *Schema) Parses(name string, object interface{}, collection map[string][]interface{}, swagger *Swagger) error {
 	raiseError := func() error {
-		schemaBytes, _ := json.MarshalIndent(schema, "", "    ")
+		schemaBytes, _ := json.MarshalIndent((*spec.Schema)(schema), "", "    ")
 		objectBytes, _ := json.MarshalIndent(object, "", "    ")
 		return mqutil.NewError(mqutil.ErrInvalid, fmt.Sprintf(
 			"schema and object doesn't match. Schema:\n%s\nObject:\n%s\n",
@@ -237,7 +237,7 @@ type DBEntry struct {
 
 func (entry *DBEntry) Matches(criteria interface{}, associations map[string]map[string]interface{}, matches MatchFunc) bool {
 	for className, classAssociation := range associations {
-		if !MatchAllFields(classAssociation, entry.Associations[className]) {
+		if !mqutil.MatchAllFields(classAssociation, entry.Associations[className]) {
 			return false
 		}
 	}
@@ -256,7 +256,7 @@ type SchemaDB struct {
 // Insert inserts an object into the schema's object list.
 func (db *SchemaDB) Insert(obj interface{}, associations map[string]map[string]interface{}) error {
 	if !db.NoHistory {
-		found := db.Find(obj, associations, MatchAllFields, 1)
+		found := db.Find(obj, associations, mqutil.MatchAllFields, 1)
 		if len(found) == 0 {
 			dbentry := &DBEntry{obj.(map[string]interface{}), associations}
 			db.Objects = append(db.Objects, dbentry)
@@ -267,45 +267,6 @@ func (db *SchemaDB) Insert(obj interface{}, associations map[string]map[string]i
 
 // MatchFunc checks whether the input criteria and an input object matches.
 type MatchFunc func(criteria interface{}, existing interface{}) bool
-
-// An implementation of the MatchFunc that returns true if the existing object matches all the fields in the criteria obj.
-func MatchAllFields(criteria interface{}, existing interface{}) bool {
-	if criteria == nil {
-		return true
-	}
-	cm, ok := criteria.(map[string]interface{})
-	if !ok {
-		return false
-	}
-	em, ok := existing.(map[string]interface{})
-	if !ok {
-		return false
-	}
-	// We only do simple value comparision for now. TODO search into nested maps.
-	for k, v := range cm {
-		if em[k] == nil {
-			if v == nil {
-				continue
-			} else {
-				return false
-			}
-		} else {
-			if v == nil {
-				return false
-			}
-		}
-		if reflect.TypeOf(v) != reflect.TypeOf(em[k]) {
-			return false
-		}
-		if reflect.TypeOf(v).Kind() == reflect.Map {
-			return MatchAllFields(v, em[k])
-		}
-		if reflect.TypeOf(v).Comparable() && em[k] != v {
-			return false
-		}
-	}
-	return true
-}
 
 func MatchAlways(criteria interface{}, existing interface{}) bool {
 	return true
