@@ -256,8 +256,11 @@ type SchemaDB struct {
 // Insert inserts an object into the schema's object list.
 func (db *SchemaDB) Insert(obj interface{}, associations map[string]map[string]interface{}) error {
 	if !db.NoHistory {
-		dbentry := &DBEntry{obj.(map[string]interface{}), associations}
-		db.Objects = append(db.Objects, dbentry)
+		found := db.Find(obj, associations, MatchAllFields, 1)
+		if len(found) == 0 {
+			dbentry := &DBEntry{obj.(map[string]interface{}), associations}
+			db.Objects = append(db.Objects, dbentry)
+		}
 	}
 	return nil
 }
@@ -293,6 +296,9 @@ func MatchAllFields(criteria interface{}, existing interface{}) bool {
 		}
 		if reflect.TypeOf(v) != reflect.TypeOf(em[k]) {
 			return false
+		}
+		if reflect.TypeOf(v).Kind() == reflect.Map {
+			return MatchAllFields(v, em[k])
 		}
 		if reflect.TypeOf(v).Comparable() && em[k] != v {
 			return false
