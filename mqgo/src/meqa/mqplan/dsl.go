@@ -385,13 +385,13 @@ func (t *Test) ProcessResult(resp *resty.Response) error {
 			testSuccess = mqutil.InterfaceEquals(t.Expect[ExpectBody], resultObj)
 			if !testSuccess {
 				ejson, _ := json.Marshal(t.Expect[ExpectBody])
-				mqutil.Logger.Printf("=== test failed, expecting body: \n%s\ngot body:\n%s\n===", string(ejson), respBody)
-				return nil
+				return mqutil.NewError(mqutil.ErrExpect, fmt.Sprintf(
+					"=== test failed, expecting body: \n%s\ngot body:\n%s\n===", string(ejson), respBody))
 			}
-		} else {
-			mqutil.Logger.Printf("=== test failed, response code %d ===", status)
-			return nil
 		}
+	}
+	if !testSuccess {
+		return mqutil.NewError(mqutil.ErrExpect, fmt.Sprintf("=== test failed, response code %d ===", status))
 	}
 
 	// Check if the response obj and respSchema match
@@ -592,7 +592,6 @@ func (t *Test) Run(tc *TestCase) error {
 	if err != nil {
 		return mqutil.NewError(mqutil.ErrHttp, err.Error())
 	}
-	// TODO properly process resp. Check against the current DB to see if they match
 	mqutil.Logger.Print(resp.Status())
 	mqutil.Logger.Println(string(resp.Body()))
 	return t.ProcessResult(resp)

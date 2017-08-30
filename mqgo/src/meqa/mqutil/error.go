@@ -9,6 +9,7 @@ const (
 	ErrOK         = iota // 0
 	ErrInvalid           // invalid parameters
 	ErrNotFound          // resource not found
+	ErrExpect            // the REST result doesn't match the expected value
 	ErrHttp              // Http request failed
 	ErrServerResp        // unexpected server response
 	ErrInternal          // unexpected internal error (meqa error)
