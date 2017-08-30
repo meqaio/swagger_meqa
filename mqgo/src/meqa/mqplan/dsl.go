@@ -126,19 +126,16 @@ func (t *Test) Init(db *mqswag.DB) {
 	}
 	// if BodyParams is map, after unmarshal it is map[interface{}]
 	var err error
-	var i interface{}
 	if t.BodyParams != nil {
 		t.BodyParams, err = mqutil.YamlObjToJsonObj(t.BodyParams)
 		if err != nil {
-			panic(err)
+			mqutil.Logger.Print(err)
 		}
 	}
 	if len(t.Expect) > 0 && t.Expect[ExpectBody] != nil {
-		i, err = mqutil.YamlObjToJsonObj(t.Expect[ExpectBody])
-		ok := false
-		t.Expect[ExpectBody], ok = i.(map[string]interface{})
-		if err != nil || !ok {
-			panic(err)
+		t.Expect[ExpectBody], err = mqutil.YamlObjToJsonObj(t.Expect[ExpectBody])
+		if err != nil {
+			mqutil.Logger.Print(err)
 		}
 	}
 }
@@ -490,6 +487,13 @@ func (t *Test) ProcessResult(resp *resty.Response) error {
 		}
 	}
 
+	// All is well, reset test's Expect value to that of the real result
+	t.Expect = make(map[string]interface{})
+	t.Expect[ExpectStatus] = status
+	if resultObj != nil {
+		t.Expect[ExpectBody] = resultObj
+	}
+
 	return nil
 }
 
@@ -737,11 +741,14 @@ func (t *Test) ResolveParameters(tc *TestCase) error {
 			}
 			if t.BodyParams != nil && !bodyIsMap {
 				// Body is not map, we use it directly.
-				objarray := mqutil.InterfaceToArray(t.BodyParams)
 				paramTag, schema := t.GetSchemaRootType((*mqswag.Schema)(params.Schema), mqswag.GetMeqaTag(params.Description))
 				if schema != nil && paramTag != nil {
+					objarray, _ := t.BodyParams.([]interface{})
 					for _, obj := range objarray {
-						t.AddObjectComparison(paramTag, obj, (*spec.Schema)(schema))
+						objMap, ok := obj.(map[string]interface{})
+						if ok {
+							t.AddObjectComparison(paramTag, objMap, (*spec.Schema)(schema))
+						}
 					}
 				}
 				continue
