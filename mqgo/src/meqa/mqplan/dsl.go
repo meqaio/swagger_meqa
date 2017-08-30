@@ -835,7 +835,7 @@ func GetOperationByMethod(item *spec.PathItem, method string) *spec.Operation {
 func (t *Test) GenerateParameter(paramSpec *spec.Parameter, db *mqswag.DB) (interface{}, error) {
 	tag := mqswag.GetMeqaTag(paramSpec.Description)
 	if paramSpec.Schema != nil {
-		return t.GenerateSchema(paramSpec.Name, tag, paramSpec.Schema, db)
+		return t.GenerateSchema("", tag, paramSpec.Schema, db)
 	}
 	if len(paramSpec.Enum) != 0 {
 		return generateEnum(paramSpec.Enum)
@@ -847,10 +847,10 @@ func (t *Test) GenerateParameter(paramSpec *spec.Parameter, db *mqswag.DB) (inte
 	// construct a full schema from simple ones
 	schema := (*spec.Schema)(mqswag.CreateSchemaFromSimple(&paramSpec.SimpleSchema, &paramSpec.CommonValidations))
 	if paramSpec.Type == gojsonschema.TYPE_OBJECT {
-		return t.generateObject("param_", tag, schema, db)
+		return t.generateObject("", tag, schema, db)
 	}
 	if paramSpec.Type == gojsonschema.TYPE_ARRAY {
-		return t.generateArray("param_", tag, schema, db)
+		return t.generateArray("", tag, schema, db)
 	}
 
 	return t.generateByType(schema, paramSpec.Name+"_", tag, paramSpec)
@@ -1106,6 +1106,15 @@ func (t *Test) GenerateSchema(name string, parentTag *mqswag.MeqaTag, schema *sp
 		return nil, err
 	}
 	if referredSchema != nil {
+		if len(name) > 0 {
+			// This the the field of an object. Instead of generating a new object, we try to get one
+			// from the DB. If we can't find one, we put in null.
+			found := t.db.Find(referenceName, nil, nil, mqswag.MatchAlways, 1)
+			if len(found) > 0 {
+				return found[0], nil
+			}
+			return nil, nil
+		}
 		return t.GenerateSchema(name, &mqswag.MeqaTag{referenceName, "", ""}, (*spec.Schema)(referredSchema), db)
 	}
 
