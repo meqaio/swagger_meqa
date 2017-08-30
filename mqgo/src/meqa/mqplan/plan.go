@@ -107,6 +107,9 @@ type TestPlan struct {
 	// Authentication
 	Username string
 	Password string
+
+	// Run result.
+	resultList []*Test
 }
 
 // Add a new TestCase, returns whether the Case is successfully added.
@@ -193,11 +196,27 @@ func (plan *TestPlan) DumpToFile(path string) error {
 	return nil
 }
 
+func (plan *TestPlan) WriteResultToFile(path string) error {
+	// We create a new test plan that just contain all the tests in one test case.
+	p := &TestPlan{}
+	tc := &TestCase{}
+	// Test case name is the current time.
+	tc.Name = time.Now().Format(time.RFC3339)
+	p.CaseMap = map[string]*TestCase{tc.Name: tc}
+	p.CaseList = append(p.CaseList, tc)
+
+	for _, test := range plan.resultList {
+		tc.Tests = append(tc.Tests, test)
+	}
+	return p.DumpToFile(path)
+}
+
 func (plan *TestPlan) Init(swagger *mqswag.Swagger, db *mqswag.DB) {
 	plan.db = db
 	plan.swagger = swagger
 	plan.CaseMap = make(map[string]*TestCase)
 	plan.CaseList = nil
+	plan.resultList = nil
 }
 
 // Run a named TestCase in the test plan.
@@ -241,6 +260,7 @@ func (plan *TestPlan) Run(name string, parentTest *Test) error {
 			dup.err = err
 			return err
 		}
+		plan.resultList = append(plan.resultList, dup)
 	}
 	return nil
 }

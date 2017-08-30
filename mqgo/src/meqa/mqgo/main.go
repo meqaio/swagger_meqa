@@ -15,6 +15,7 @@ const (
 	meqaDataDir     = "meqa_data"
 	swaggerJSONFile = "swagger.yaml"
 	testPlanFile    = "testplan.yaml"
+	resultFile      = "result.yaml"
 )
 
 func main() {
@@ -23,6 +24,7 @@ func main() {
 	meqaPath := flag.String("meqa", meqaDataDir, "the directory that holds the meqa data and swagger.json files")
 	swaggerFile := flag.String("swagger", swaggerJSONFile, "the swagger.json file name or URL")
 	testPlanFile := flag.String("testplan", testPlanFile, "the test plan file name")
+	resultFile := flag.String("result", resultFile, "the test result file name")
 	testToRun := flag.String("test", "all", "the test to run")
 	username := flag.String("username", "", "the username for basic HTTP authentication")
 	password := flag.String("password", "", "the password for basic HTTP authentication")
@@ -30,6 +32,7 @@ func main() {
 	flag.Parse()
 	swaggerJsonPath := filepath.Join(*meqaPath, *swaggerFile)
 	testPlanPath := filepath.Join(*meqaPath, *testPlanFile)
+	resultPath := filepath.Join(*meqaPath, *resultFile)
 	if _, err := os.Stat(swaggerJsonPath); os.IsNotExist(err) {
 		mqutil.Logger.Printf("can't load swagger file at the following location %s", swaggerJsonPath)
 		return
@@ -69,4 +72,7 @@ func main() {
 		err := mqplan.Current.Run(*testToRun, nil)
 		mqutil.Logger.Printf("err:\n%v", err)
 	}
+
+	os.Remove(resultPath)
+	mqplan.Current.WriteResultToFile(resultPath)
 }
