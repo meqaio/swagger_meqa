@@ -23,15 +23,30 @@ type DAGNode struct {
 }
 
 // AdjustWeight changes the children's weight to be at least this node's weight + 1
-func (node *DAGNode) AdjustChildrenWeight() error {
+func (node *DAGNode) AdjustChildrenWeight(depList []*DAGNode) error {
+	// detect circular dependency
+	for i, n := range depList {
+		if node == n {
+			str := "Circular dependency detected - "
+			for j := i; j < len(depList); j++ {
+				str = str + " " + depList[j].Name
+			}
+			str = str + " " + node.Name
+			return mqutil.NewError(mqutil.ErrInvalid, str)
+		}
+	}
+	// Add this node to the chain
+	depList = append(depList, node)
 	for _, c := range node.Children {
 		if c.Weight <= node.Weight {
-			err := node.dag.AdjustNodeWeight(c, node.Weight+1)
+			err := node.dag.AdjustNodeWeight(c, node.Weight+1, depList)
 			if err != nil {
 				return err
 			}
 		}
 	}
+	// pop this node out of the chain
+	depList = depList[:len(depList)-1]
 	return nil
 }
 
@@ -55,7 +70,7 @@ func (node *DAGNode) AddChild(child *DAGNode) error {
 	}
 	node.Children = append(node.Children, child)
 	if child.Weight <= node.Weight {
-		return node.AdjustChildrenWeight()
+		return node.AdjustChildrenWeight(nil)
 	}
 	return nil
 }
@@ -130,7 +145,7 @@ func (dag *DAG) AddNode(node *DAGNode) error {
 	return nil
 }
 
-func (dag *DAG) AdjustNodeWeight(node *DAGNode, newWeight int) error {
+func (dag *DAG) AdjustNodeWeight(node *DAGNode, newWeight int, depList []*DAGNode) error {
 	if dag.NameMap[node.Name] != node {
 		return mqutil.NewError(mqutil.ErrInvalid, fmt.Sprintf("changing the weight of a node that's not found in dag: %v", node))
 	}
@@ -141,8 +156,7 @@ func (dag *DAG) AdjustNodeWeight(node *DAGNode, newWeight int) error {
 			dag.WeightList[node.Weight] = l[1:]
 			node.Weight = newWeight
 			dag.WeightList[node.Weight] = append(dag.WeightList[node.Weight], node)
-			node.AdjustChildrenWeight()
-			return nil
+			return node.AdjustChildrenWeight(depList)
 		}
 	}
 	return mqutil.NewError(mqutil.ErrInvalid, fmt.Sprintf("changing the weight of a node that's not found in dag: %v", node))

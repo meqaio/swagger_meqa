@@ -26,6 +26,7 @@ import (
 const (
 	ClassSuccess = "success"
 	ClassFail    = "fail"
+	ClassWeak    = "weak"
 )
 
 const (
