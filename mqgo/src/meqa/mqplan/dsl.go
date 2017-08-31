@@ -493,6 +493,27 @@ func (t *Test) ProcessResult(resp *resty.Response) error {
 
 // SetRequestParameters sets the parameters. Returns the new request path.
 func (t *Test) SetRequestParameters(req *resty.Request) string {
+	files := make(map[string]string)
+	for _, p := range t.op.Parameters {
+		if p.Type == "file" && t.FormParams[p.Name] != nil {
+			// for swagger 2 file type can only be in formData
+			if fname, ok := t.FormParams[p.Name].(string); ok {
+				files[p.Name] = fname
+				delete(t.FormParams, p.Name)
+			}
+		}
+	}
+	if len(files) > 0 {
+		req.SetFiles(files)
+	}
+	if len(t.FormParams) > 0 {
+		req.SetFormData(mqutil.MapInterfaceToMapString(t.FormParams))
+		mqutil.InterfacePrint(t.FormParams, "formParams:\n")
+	}
+	for k, v := range files {
+		t.FormParams[k] = v
+	}
+
 	if len(t.QueryParams) > 0 {
 		req.SetQueryParams(mqutil.MapInterfaceToMapString(t.QueryParams))
 		mqutil.InterfacePrint(t.QueryParams, "queryParams:\n")
@@ -504,10 +525,6 @@ func (t *Test) SetRequestParameters(req *resty.Request) string {
 	if len(t.HeaderParams) > 0 {
 		req.SetHeaders(mqutil.MapInterfaceToMapString(t.HeaderParams))
 		mqutil.InterfacePrint(t.HeaderParams, "headerParams:\n")
-	}
-	if len(t.FormParams) > 0 {
-		req.SetFormData(mqutil.MapInterfaceToMapString(t.FormParams))
-		mqutil.InterfacePrint(t.FormParams, "formParams:\n")
 	}
 	path := t.Path
 	if len(t.PathParams) > 0 {
@@ -562,6 +579,7 @@ func (t *Test) Run(tc *TestCase) error {
 	if len(tc.Username) > 0 {
 		req.SetBasicAuth(tc.Username, tc.Password)
 	}
+
 	path := GetBaseURL(t.db.Swagger) + t.SetRequestParameters(req)
 	var resp *resty.Response
 
@@ -892,7 +910,8 @@ func (t *Test) generateByType(s *spec.Schema, prefix string, parentTag *mqswag.M
 		case gojsonschema.TYPE_STRING:
 			result, err = generateString(s, prefix)
 		case "file":
-			result, err = reggen.Generate("[0-9]+", 200)
+			return nil, mqutil.NewError(mqutil.ErrInvalid, fmt.Sprintf(
+				"can not automatically upload a file, parameter of file type must be manually set"))
 		}
 		if result != nil && err == nil {
 			t.AddBasicComparison(tag, paramSpec, result)
@@ -1028,6 +1047,9 @@ func (t *Test) generateArray(name string, parentTag *mqswag.MeqaTag, schema *spe
 		numItems = rand.Intn(int(maxDiff)) + minItems
 	} else {
 		numItems = rand.Intn(10)
+	}
+	if numItems <= 0 {
+		numItems = 1
 	}
 
 	var itemSchema *spec.Schema
