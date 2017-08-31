@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	resty "gopkg.in/resty.v0"
 	"gopkg.in/yaml.v2"
 
 	"meqa/mqswag"
@@ -295,4 +296,5 @@ var History TestHistory
 
 func init() {
 	rand.Seed(int64(time.Now().Second()))
+	resty.SetRedirectPolicy(resty.FlexibleRedirectPolicy(15))
 }
