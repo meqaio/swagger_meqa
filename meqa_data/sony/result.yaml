@@ -1,0 +1,14 @@
+
+---
+2017-08-31T16:18:38-07:00:
+- name: Model Suggestions_1
+  path: /api/content/support/{locale}/suggest
+  method: get
+  expect:
+    body:
+      suggestions: []
+    status: 200
+  queryParams:
+    query: query_1465283322
+  pathParams:
+    locale: fr_FR
