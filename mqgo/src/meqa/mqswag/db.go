@@ -168,7 +168,7 @@ func (schema *Schema) Contains(name string, swagger *Swagger) bool {
 		return nil
 	}
 
-	err := schema.Iterate(iterFunc, nil, swagger)
+	err := schema.Iterate(iterFunc, nil, swagger, true)
 	if err != nil && err.Error() == "found" {
 		return true
 	}
@@ -178,8 +178,14 @@ func (schema *Schema) Contains(name string, swagger *Swagger) bool {
 type SchemaIterator func(swagger *Swagger, schemaName string, schema *Schema, context interface{}) error
 
 // IterateSchema descends down the starting schema and call the iterator function for all the child schemas.
-// The iteration order is parent first then children. It will abort on error.
-func (schema *Schema) Iterate(iterFunc SchemaIterator, context interface{}, swagger *Swagger) error {
+// The iteration order is parent first then children. It will abort on error. The followWeak flag indicates whether
+// we should follow weak references when iterating.
+func (schema *Schema) Iterate(iterFunc SchemaIterator, context interface{}, swagger *Swagger, followWeak bool) error {
+	tag := GetMeqaTag(schema.Description)
+	if tag != nil && tag.Class == ClassWeak && !followWeak {
+		return nil
+	}
+
 	err := iterFunc(swagger, "", schema, context)
 	if err != nil {
 		return err
@@ -187,7 +193,7 @@ func (schema *Schema) Iterate(iterFunc SchemaIterator, context interface{}, swag
 
 	if len(schema.AllOf) > 0 {
 		for _, s := range schema.AllOf {
-			err = ((*Schema)(&s)).Iterate(iterFunc, context, swagger)
+			err = ((*Schema)(&s)).Iterate(iterFunc, context, swagger, followWeak)
 			if err != nil {
 				return err
 			}
@@ -201,6 +207,10 @@ func (schema *Schema) Iterate(iterFunc SchemaIterator, context interface{}, swag
 		return err
 	}
 	if referredSchema != nil {
+		tag := GetMeqaTag(referredSchema.Description)
+		if tag != nil && tag.Class == ClassWeak && !followWeak {
+			return nil
+		}
 		// We don't want to go down nested schemas.
 		// XXX
 		return iterFunc(swagger, referenceName, referredSchema, context)
@@ -209,7 +219,7 @@ func (schema *Schema) Iterate(iterFunc SchemaIterator, context interface{}, swag
 
 	if schema.Type.Contains(gojsonschema.TYPE_OBJECT) {
 		for _, v := range schema.Properties {
-			err = (*Schema)(&v).Iterate(iterFunc, context, swagger)
+			err = (*Schema)(&v).Iterate(iterFunc, context, swagger, followWeak)
 			if err != nil {
 				return err
 			}
@@ -222,7 +232,7 @@ func (schema *Schema) Iterate(iterFunc SchemaIterator, context interface{}, swag
 		} else {
 			itemSchema = schema.Items.Schema
 		}
-		err = (*Schema)(itemSchema).Iterate(iterFunc, context, swagger)
+		err = (*Schema)(itemSchema).Iterate(iterFunc, context, swagger, followWeak)
 		if err != nil {
 			return err
 		}

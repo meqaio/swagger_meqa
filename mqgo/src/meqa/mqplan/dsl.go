@@ -22,13 +22,6 @@ import (
 	"github.com/xeipuuv/gojsonschema"
 )
 
-// The class code in <meqa class> for responses.
-const (
-	ClassSuccess = "success"
-	ClassFail    = "fail"
-	ClassWeak    = "weak"
-)
-
 const (
 	ExpectStatus = "status"
 	ExpectBody   = "body"
@@ -368,7 +361,7 @@ func (t *Test) ProcessResult(resp *resty.Response) error {
 	// success based on return status
 	success := (status >= 200 && status < 300)
 	tag := mqswag.GetMeqaTag(respSpec.Description)
-	if tag != nil && tag.Class == ClassFail {
+	if tag != nil && tag.Class == mqswag.ClassFail {
 		success = false
 	}
 
@@ -1058,6 +1051,9 @@ func (t *Test) generateArray(name string, parentTag *mqswag.MeqaTag, schema *spe
 		entry, err := t.GenerateSchema(name, tag, itemSchema, db)
 		if err != nil {
 			return nil, err
+		}
+		if entry == nil {
+			continue
 		}
 		if hash != nil && hash[entry] != nil {
 			continue

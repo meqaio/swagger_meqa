@@ -16,21 +16,6 @@ import (
 	"github.com/go-openapi/spec"
 )
 
-// string fields in OpenAPI doc
-/*
-const SWAGGER = "swagger"
-const SCHEMES = "schemes"
-const CONSUMES = "consumes"
-const PRODUCES = "produces"
-const INFO = "info"
-const HOST = "host"
-const BASEPATH = "basePath"
-const TAGS = "tags"
-const PATHS = "paths"
-const SECURITY_DEFINITIONS = "securityDefinitions"
-const DEFINITIONS = "definitions"
-*/
-
 // The type code we use in DAGNode's name. e.g. a node that represents definitions/User
 // will have the name of "d:User"
 const (
@@ -50,6 +35,13 @@ const (
 )
 
 var MethodAll []string = []string{MethodGet, MethodPut, MethodPost, MethodDelete, MethodHead, MethodPatch, MethodOptions}
+
+// The class code in <meqa class> for responses.
+const (
+	ClassSuccess = "success"
+	ClassFail    = "fail"
+	ClassWeak    = "weak"
+)
 
 type MeqaTag struct {
 	Class     string
@@ -240,19 +232,6 @@ func (dep *Dependencies) CollectFromTag(tag *MeqaTag) bool {
 	return false
 }
 
-// FindRefs finds all the schemas referred by the given schema, but not their children.
-// The found schema names are put into collection.
-func FindRefs(schema *Schema, swagger *Swagger, collection map[string]interface{}) error {
-	iterFunc := func(swagger *Swagger, schemaName string, s *Schema, context interface{}) error {
-		if len(schemaName) > 0 {
-			collection[schemaName] = 1
-		}
-		return nil
-	}
-
-	return schema.Iterate(iterFunc, nil, swagger)
-}
-
 // collects all the objects referred to by the schema. All the object names are put into
 // the specified map.
 func CollectSchemaDependencies(schema *Schema, swagger *Swagger, dag *DAG, dep *Dependencies) error {
@@ -265,7 +244,7 @@ func CollectSchemaDependencies(schema *Schema, swagger *Swagger, dag *DAG, dep *
 		return nil
 	}
 
-	return schema.Iterate(iterFunc, dep, swagger)
+	return schema.Iterate(iterFunc, dep, swagger, false)
 }
 
 func CollectParamDependencies(params []spec.Parameter, swagger *Swagger, dag *DAG, dep *Dependencies) error {
@@ -435,7 +414,7 @@ func (swagger *Swagger) AddToDAG(dag *DAG) error {
 			}
 			return nil
 		}
-		((*Schema)(&schema)).Iterate(collectInner, nil, swagger)
+		((*Schema)(&schema)).Iterate(collectInner, nil, swagger, false)
 		// The inner fields are the parents. The child depends on parents.
 		node.AddDependencies(dag, collections, false)
 	}

@@ -81,8 +81,9 @@ func (node *DAGNode) AddDependencies(dag *DAG, tags map[string]interface{}, asCh
 	for className, _ := range tags {
 		pNode := dag.NameMap[GetDAGName(TypeDef, className, "")]
 		if pNode == nil {
-			return mqutil.NewError(mqutil.ErrInvalid, fmt.Sprintf("tag doesn't point to a definition: %s",
-				className))
+			continue
+			//return mqutil.NewError(mqutil.ErrInvalid, fmt.Sprintf("tag doesn't point to a definition: %s",
+			//	className))
 		}
 		if asChild {
 			err = node.AddChild(pNode)
