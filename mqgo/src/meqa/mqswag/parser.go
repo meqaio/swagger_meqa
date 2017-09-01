@@ -388,6 +388,8 @@ func AddOperation(pathName string, pathItem *spec.PathItem, method string, swagg
 				node.Priority = paramNode.Weight
 			}
 		}
+		// Node's priority is the highest weight * 100 + the number of parameters
+		node.Priority = node.Priority*100 + len(pathItem.Parameters) + len(op.Parameters)
 		return nil
 	}
 
