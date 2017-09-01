@@ -229,11 +229,7 @@ func MarshalJsonIndentNoEscape(i interface{}) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	result := buf.String()
-	result = strings.Replace(result, "\\u003c", "<", -1)
-	result = strings.Replace(result, "\\u003e", ">", -1)
-
-	return []byte(result), nil
+	return buf.Bytes(), nil
 }
 
 // Given a yaml stream, output a json stream.

@@ -14,19 +14,19 @@ crud:
   - name: read
     ref: get user auto
     pathParams:
-      username: <create.username>
+      username: '{{create.bodyParams.username}}'
   - name: update
     ref: update user auto
     pathParams:
-      username: <create.username>
+      username: "{{read.output.username}}"
   - name: delete
     ref: delete user auto
     pathParams:
-      username: <update.username>
+      username: '{{ update.bodyParams.username }}'
   - name: read
     ref: get user auto
     pathParams:
-      username: <delete.username>
+      username: '{{delete.pathParams.username}}'
     expect:
       status: fail
 

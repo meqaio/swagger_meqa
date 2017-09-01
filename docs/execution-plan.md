@@ -91,7 +91,7 @@ With imperfect swagger.json, we need to iterate several times. Guide line - no c
     * Sometimes foreign keys are not returned when querying the server later. For instance, the Pet may not contain the store id, but when querying pets for a specific store we should only get the pets that are really in that store. On the client side we need to be able to store this kind of association. What we can do is to have a list of object associations on the client side. This list stores all the objects that are part of the parameter when creating the object.
     * We need to be more systematic when constructing test cases. In this case, for PUTs, we need to change one parameter at a time, then validate the change. When changing a foreign key, we need to verify against the foreign table. Similarly during random tests we need to validate against foreign tables too.
 * Parameters that mean meta-data within the swagger object structure
-    * For instance, /cards/{id}/{field} - the field is the property name for the card. This will return just one property of the card rather than the whole object. We need to have a special tag `<meqa Card.any>`. where any means any field. What if the field can be some but not the others? Later we can enhance it so "any" can be a regexp.
+    * For instance, /cards/{id}/{field} - the field is the property name for the card. This will return just one property of the card rather than the whole object. We need to have a special tag `<meqa Card.any>`. where any means any field. What if the field can be some but not the others? Later we can enhance it so "any" can be a regexp. This can be done by using JSON ENUM. Punt.
 * Object hierarchy
     * Objects can be created and queried based on the hierarchical relationship.
     * POST - boards/{id}/card - create a card that belongs to the specified board.
@@ -153,7 +153,7 @@ Algorithm
 
 ### Expand DSL
 
-* Add support for curl -F files=@hello.txt type of syntax to allow uploading files. Allow specify files in the meqa_init section.
+* 
 
 ### NLP
 
@@ -166,3 +166,12 @@ Algorithm
     * The parameters required has strong relationship to the data returned. For instance, when there is an argument called id, and the call returns an User object, most likely the id is for the user.
     * The first step is to create a tool, which will scan a document and apply the same meqa tag to all the variables that's named the same.
     * This can also be done in mqgo. We just need to create a hash table of variable_name->meqa_tag mapping.
+
+### Other resources
+
+* https://pypi.python.org/pypi/ruamel.yaml - for yaml processing while preserving order and comments.
+* Template engines - handlebar, golang template package.
+
+### Things to work on right now
+
+* 

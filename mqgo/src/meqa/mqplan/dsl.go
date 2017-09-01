@@ -317,18 +317,37 @@ func (t *Test) ProcessOneComparison(className string, method string, comp *Compa
 	return nil
 }
 
-func (t *Test) GetParamFromComparison(name string, where string) interface{} {
-	for _, compList := range t.comparisons {
-		for _, comp := range compList {
-			if v := comp.new[name]; v != nil && (where == "any" || where == "new") {
-				return v
-			}
-			if v := comp.old[name]; v != nil && (where == "any" || where == "old") {
-				return v
-			}
-		}
+func (t *Test) GetParam(path []string) interface{} {
+	if len(path) == 0 {
+		return nil
 	}
-	return nil
+	var section interface{}
+	if path[0] == "pathParams" {
+		section = t.PathParams
+	} else if path[0] == "queryParams" {
+		section = t.QueryParams
+	} else if path[0] == "headerParams" {
+		section = t.HeaderParams
+	} else if path[0] == "formParams" {
+		section = t.FormParams
+	} else if path[0] == "bodyParams" {
+		section = t.BodyParams
+	} else if path[0] == "output" {
+		section = t.Expect[ExpectBody]
+	}
+
+	for _, field := range path[1:] {
+		if section == nil {
+			return nil
+		}
+		paramMap, ok := section.(map[string]interface{})
+		if !ok {
+			return nil
+		}
+		section = paramMap[field]
+	}
+
+	return section
 }
 
 // ProcessResult decodes the response from the server into a result array
@@ -649,17 +668,18 @@ func (t *Test) GetSchemaRootType(schema *mqswag.Schema, parentTag *mqswag.MeqaTa
 }
 
 func StringParamsResolveWithHistory(str string, h *TestHistory) interface{} {
-	begin := strings.Index(str, "<")
-	end := strings.Index(str, ">")
+	begin := strings.Index(str, "{{")
+	end := strings.Index(str, "}}")
 	if end > begin {
-		ar := strings.Split(str[begin+1:end], ".")
-		if len(ar) != 2 {
-			mqutil.Logger.Printf("invalid parameter: %s", str[begin+1:end])
+		ar := strings.Split(strings.Trim(str[begin+2:end], " "), ".")
+		if len(ar) < 3 {
+			mqutil.Logger.Printf("invalid parameter: {{%s}}, the format is {{testName.paramSection.paramName}}, e.g. {{test1.output.id}}",
+				str[begin+2:end])
 			return nil
 		}
 		t := h.GetTest(ar[0])
 		if t != nil {
-			return t.GetParamFromComparison(ar[1], "any")
+			return t.GetParam(ar[1:])
 		}
 	}
 	return nil
