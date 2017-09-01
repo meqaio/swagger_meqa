@@ -182,7 +182,7 @@ type SchemaIterator func(swagger *Swagger, schemaName string, schema *Schema, co
 // we should follow weak references when iterating.
 func (schema *Schema) Iterate(iterFunc SchemaIterator, context interface{}, swagger *Swagger, followWeak bool) error {
 	tag := GetMeqaTag(schema.Description)
-	if tag != nil && tag.Class == ClassWeak && !followWeak {
+	if tag != nil && (tag.Flags&FlagWeak) != 0 && !followWeak {
 		return nil
 	}
 
@@ -208,7 +208,7 @@ func (schema *Schema) Iterate(iterFunc SchemaIterator, context interface{}, swag
 	}
 	if referredSchema != nil {
 		tag := GetMeqaTag(referredSchema.Description)
-		if tag != nil && tag.Class == ClassWeak && !followWeak {
+		if tag != nil && (tag.Flags&FlagWeak) != 0 && !followWeak {
 			return nil
 		}
 		// We don't want to go down nested schemas.

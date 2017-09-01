@@ -36,17 +36,17 @@ const (
 
 var MethodAll []string = []string{MethodGet, MethodPut, MethodPost, MethodDelete, MethodHead, MethodPatch, MethodOptions}
 
-// The class code in <meqa class> for responses.
 const (
-	ClassSuccess = "success"
-	ClassFail    = "fail"
-	ClassWeak    = "weak"
+	FlagSuccess = 1 << iota
+	FlagFail
+	FlagWeak
 )
 
 type MeqaTag struct {
 	Class     string
 	Property  string
 	Operation string
+	Flags     int64
 }
 
 func (t *MeqaTag) Equals(o *MeqaTag) bool {
@@ -71,7 +71,7 @@ func GetMeqaTag(desc string) *MeqaTag {
 	if len(desc) == 0 {
 		return nil
 	}
-	re := regexp.MustCompile("<meqa *[/-~\\-]+\\.?[/-~\\-]*\\.?[a-zA-Z]* *>")
+	re := regexp.MustCompile("<meqa *[/-~\\-]+\\.?[/-~\\-]*\\.?[a-zA-Z]* *[a-zA-Z,]* *>")
 	ar := re.FindAllString(desc, -1)
 
 	// TODO it's possible that we have multiple choices because the server can't be
@@ -87,14 +87,31 @@ func GetMeqaTag(desc string) *MeqaTag {
 		return nil
 	}
 	meqa = strings.Trim(meqa[:right], " ")
-	contents := strings.Split(meqa, ".")
+	tags := strings.Split(meqa, " ")
+	var flags int64
+	var objtags string
+	for _, t := range tags {
+		if len(t) > 0 {
+			if t == "success" {
+				flags |= FlagSuccess
+			} else if t == "fail" {
+				flags |= FlagFail
+			} else if t == "weak" {
+				flags |= FlagWeak
+			} else {
+				objtags = t
+			}
+		}
+	}
+
+	contents := strings.Split(objtags, ".")
 	switch len(contents) {
 	case 1:
-		return &MeqaTag{contents[0], "", ""}
+		return &MeqaTag{contents[0], "", "", flags}
 	case 2:
-		return &MeqaTag{contents[0], contents[1], ""}
+		return &MeqaTag{contents[0], contents[1], "", flags}
 	case 3:
-		return &MeqaTag{contents[0], contents[1], contents[2]}
+		return &MeqaTag{contents[0], contents[1], contents[2], flags}
 	default:
 		mqutil.Logger.Printf("invalid meqa tag in description: %s", desc)
 		return nil

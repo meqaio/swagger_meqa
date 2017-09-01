@@ -361,7 +361,7 @@ func (t *Test) ProcessResult(resp *resty.Response) error {
 	// success based on return status
 	success := (status >= 200 && status < 300)
 	tag := mqswag.GetMeqaTag(respSpec.Description)
-	if tag != nil && tag.Class == mqswag.ClassFail {
+	if tag != nil && tag.Flags&mqswag.FlagFail != 0 {
 		success = false
 	}
 
@@ -624,7 +624,7 @@ func (t *Test) GetSchemaRootType(schema *mqswag.Schema, parentTag *mqswag.MeqaTa
 	}
 	if referredSchema != nil {
 		if tag == nil {
-			tag = &mqswag.MeqaTag{referenceName, "", ""}
+			tag = &mqswag.MeqaTag{referenceName, "", "", 0}
 		}
 		return t.GetSchemaRootType(referredSchema, tag)
 	}
@@ -1134,7 +1134,7 @@ func (t *Test) GenerateSchema(name string, parentTag *mqswag.MeqaTag, schema *sp
 			}
 			return nil, nil
 		}
-		return t.GenerateSchema(name, &mqswag.MeqaTag{referenceName, "", ""}, (*spec.Schema)(referredSchema), db)
+		return t.GenerateSchema(name, &mqswag.MeqaTag{referenceName, "", "", 0}, (*spec.Schema)(referredSchema), db)
 	}
 
 	if len(schema.Enum) != 0 {
