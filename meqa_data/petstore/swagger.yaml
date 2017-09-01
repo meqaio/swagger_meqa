@@ -29,9 +29,9 @@ definitions:
         format: int64
         type: integer
       petId:
+        description: <meqa Pet.id>
         format: int64
         type: integer
-        description: <meqa Pet.id>
       quantity:
         format: int32
         type: integer
