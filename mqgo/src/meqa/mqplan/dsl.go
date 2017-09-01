@@ -595,7 +595,9 @@ func (t *Test) Run(tc *TestCase) error {
 	}
 
 	req := resty.R()
-	if len(tc.Username) > 0 {
+	if len(tc.ApiToken) > 0 {
+		req.SetAuthToken(tc.ApiToken)
+	} else if len(tc.Username) > 0 {
 		req.SetBasicAuth(tc.Username, tc.Password)
 	}
 

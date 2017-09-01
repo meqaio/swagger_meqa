@@ -77,6 +77,7 @@ type TestCase struct {
 	// Authentication
 	Username string
 	Password string
+	ApiToken string
 
 	plan *TestPlan
 }
@@ -90,6 +91,8 @@ func CreateTestCase(name string, tests []*Test, plan *TestPlan) *TestCase {
 
 	c.Username = plan.Username
 	c.Password = plan.Password
+	c.ApiToken = plan.ApiToken
+
 	c.plan = plan
 	return &c
 }
@@ -108,6 +111,7 @@ type TestPlan struct {
 	// Authentication
 	Username string
 	Password string
+	ApiToken string
 
 	// Run result.
 	resultList []*Test

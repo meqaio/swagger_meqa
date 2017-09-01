@@ -28,6 +28,7 @@ func main() {
 	testToRun := flag.String("test", "all", "the test to run")
 	username := flag.String("username", "", "the username for basic HTTP authentication")
 	password := flag.String("password", "", "the password for basic HTTP authentication")
+	apitoken := flag.String("apitoken", "", "the api token for bearer HTTP authentication")
 
 	flag.Parse()
 	swaggerJsonPath := filepath.Join(*meqaPath, *swaggerFile)
@@ -57,6 +58,7 @@ func main() {
 	// Test loading test plan
 	mqplan.Current.Username = *username
 	mqplan.Current.Password = *password
+	mqplan.Current.ApiToken = *apitoken
 	err = mqplan.Current.InitFromFile(testPlanPath, &mqswag.ObjDB)
 	if err != nil {
 		mqutil.Logger.Printf("Error loading test plan: %s", err.Error())
