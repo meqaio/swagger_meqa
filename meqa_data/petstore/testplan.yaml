@@ -1,14 +1,20 @@
 
 ---
-/pet/findByStatus get:
-- name: findPetsByStatus_1
-  path: /pet/findByStatus
-  method: get
-
----
 /store/inventory get:
 - name: getInventory_1
   path: /store/inventory
+  method: get
+
+---
+/user/logout get:
+- name: logoutUser_1
+  path: /user/logout
+  method: get
+
+---
+/pet/findByStatus get:
+- name: findPetsByStatus_1
+  path: /pet/findByStatus
   method: get
 
 ---
@@ -22,17 +28,17 @@
 - name: createUsersWithArrayInput_1
   path: /user/createWithArray
   method: post
-- name: loginUser_2
-  path: /user/login
-  method: get
-- name: deleteUser_3
+- name: deleteUser_2
   path: /user/{username}
   method: delete
-- name: createUsersWithArrayInput_3
+- name: createUsersWithArrayInput_2
   path: /user/createWithArray
   method: post
-- name: getUserByName_4
+- name: getUserByName_3
   path: /user/{username}
+  method: get
+- name: loginUser_4
+  path: /user/login
   method: get
 - name: updateUser_5
   path: /user/{username}
@@ -49,27 +55,21 @@
 - name: createUsersWithListInput_1
   path: /user/createWithList
   method: post
-- name: loginUser_2
-  path: /user/login
-  method: get
-- name: deleteUser_3
+- name: deleteUser_2
   path: /user/{username}
   method: delete
-- name: createUsersWithListInput_3
+- name: createUsersWithListInput_2
   path: /user/createWithList
   method: post
-- name: getUserByName_4
+- name: getUserByName_3
   path: /user/{username}
+  method: get
+- name: loginUser_4
+  path: /user/login
   method: get
 - name: updateUser_5
   path: /user/{username}
   method: put
-
----
-/user/logout get:
-- name: logoutUser_1
-  path: /user/logout
-  method: get
 
 ---
 /user post:
@@ -82,17 +82,17 @@
 - name: createUser_1
   path: /user
   method: post
-- name: loginUser_2
-  path: /user/login
-  method: get
-- name: deleteUser_3
+- name: deleteUser_2
   path: /user/{username}
   method: delete
-- name: createUser_3
+- name: createUser_2
   path: /user
   method: post
-- name: getUserByName_4
+- name: getUserByName_3
   path: /user/{username}
+  method: get
+- name: loginUser_4
+  path: /user/login
   method: get
 - name: updateUser_5
   path: /user/{username}
@@ -112,33 +112,27 @@
 - name: findPetsByTags_2
   path: /pet/findByTags
   method: get
-- name: uploadFile_3
-  path: /pet/{petId}/uploadImage
-  method: post
-- name: deletePet_4
-  path: /pet/{petId}
-  method: delete
-- name: addPet_4
-  path: /pet
-  method: post
-- name: getPetById_5
+- name: getPetById_3
   path: /pet/{petId}
   method: get
-- name: updatePetWithForm_6
-  path: /pet/{petId}
-  method: post
-- name: updatePet_7
+- name: updatePet_4
   path: /pet
   method: put
-- name: placeOrder_8
+- name: placeOrder_5
   path: /store/order
   method: post
-
----
-/user/login get:
-- name: loginUser_1
-  path: /user/login
-  method: get
+- name: deletePet_6
+  path: /pet/{petId}
+  method: delete
+- name: addPet_6
+  path: /pet
+  method: post
+- name: uploadFile_7
+  path: /pet/{petId}/uploadImage
+  method: post
+- name: updatePetWithForm_8
+  path: /pet/{petId}
+  method: post
 
 ---
 /user/{username} delete:
@@ -150,6 +144,12 @@
 /user/{username} get:
 - name: getUserByName_1
   path: /user/{username}
+  method: get
+
+---
+/user/login get:
+- name: loginUser_1
+  path: /user/login
   method: get
 
 ---
@@ -165,28 +165,10 @@
   method: get
 
 ---
-/pet/{petId}/uploadImage post:
-- name: uploadFile_1
-  path: /pet/{petId}/uploadImage
-  method: post
-
----
-/pet/{petId} delete:
-- name: deletePet_1
-  path: /pet/{petId}
-  method: delete
-
----
 /pet/{petId} get:
 - name: getPetById_1
   path: /pet/{petId}
   method: get
-
----
-/pet/{petId} post:
-- name: updatePetWithForm_1
-  path: /pet/{petId}
-  method: post
 
 ---
 /pet put:
@@ -214,6 +196,24 @@
 - name: getOrderById_3
   path: /store/order/{orderId}
   method: get
+
+---
+/pet/{petId} delete:
+- name: deletePet_1
+  path: /pet/{petId}
+  method: delete
+
+---
+/pet/{petId}/uploadImage post:
+- name: uploadFile_1
+  path: /pet/{petId}/uploadImage
+  method: post
+
+---
+/pet/{petId} post:
+- name: updatePetWithForm_1
+  path: /pet/{petId}
+  method: post
 
 ---
 /store/order/{orderId} delete:
