@@ -14,7 +14,10 @@ import (
 
 func InterfaceToJsonString(i interface{}) string {
 	b, _ := json.Marshal(i)
-	return string(b[1 : len(b)-1]) // remove the ""
+	if b[0] == '"' {
+		return string(b[1 : len(b)-1]) // remove the ""
+	}
+	return string(b)
 }
 
 // MapInterfaceToMapString converts the params map (all primitive types with exception of array)
@@ -25,7 +28,7 @@ func MapInterfaceToMapString(src map[string]interface{}) map[string]string {
 		if ar, ok := v.([]interface{}); ok {
 			str := ""
 			for _, entry := range ar {
-				str += fmt.Sprintf("%s,", InterfaceToJsonString(entry))
+				str += fmt.Sprintf("%v,", InterfaceToJsonString(entry))
 			}
 			str = strings.TrimRight(str, ",")
 			dst[k] = str
