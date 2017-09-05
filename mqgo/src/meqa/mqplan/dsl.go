@@ -1031,7 +1031,7 @@ func generateFloat(s *spec.Schema) (float64, error) {
 func generateInt(s *spec.Schema) (int64, error) {
 	// Give a default range if there isn't one
 	if s.Maximum == nil && s.Minimum == nil {
-		maxf := 10000.0
+		maxf := 1000000.0
 		s.Maximum = &maxf
 	}
 	f, err := generateFloat(s)

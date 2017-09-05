@@ -12,6 +12,11 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+func InterfaceToJsonString(i interface{}) string {
+	b, _ := json.Marshal(i)
+	return string(b[1 : len(b)-1]) // remove the ""
+}
+
 // MapInterfaceToMapString converts the params map (all primitive types with exception of array)
 // before passing to resty.
 func MapInterfaceToMapString(src map[string]interface{}) map[string]string {
@@ -20,12 +25,12 @@ func MapInterfaceToMapString(src map[string]interface{}) map[string]string {
 		if ar, ok := v.([]interface{}); ok {
 			str := ""
 			for _, entry := range ar {
-				str += fmt.Sprintf("%v,", entry)
+				str += fmt.Sprintf("%s,", InterfaceToJsonString(entry))
 			}
 			str = strings.TrimRight(str, ",")
 			dst[k] = str
 		} else {
-			dst[k] = fmt.Sprint(v)
+			dst[k] = InterfaceToJsonString(v)
 		}
 	}
 	return dst
