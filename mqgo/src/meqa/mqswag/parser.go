@@ -329,6 +329,16 @@ func CollectResponseDependencies(responses *spec.Responses, swagger *Swagger, da
 	return nil
 }
 
+var methodWeight = map[string]int{
+	MethodPost:    1,
+	MethodGet:     2,
+	MethodHead:    2,
+	MethodOptions: 2,
+	MethodPut:     3,
+	MethodPatch:   3,
+	MethodDelete:  4,
+}
+
 func AddOperation(pathName string, pathItem *spec.PathItem, method string, swagger *Swagger, dag *DAG, setPriority bool) error {
 	opInterface, err := pathItem.JSONLookup(method)
 	if err != nil {
@@ -388,8 +398,21 @@ func AddOperation(pathName string, pathItem *spec.PathItem, method string, swagg
 				node.Priority = paramNode.Weight
 			}
 		}
-		// Node's priority is the highest weight * 100 + the number of parameters
-		node.Priority = node.Priority*100 + len(pathItem.Parameters) + len(op.Parameters)
+		countParams := func(parameters []spec.Parameter) int {
+			numParams := 0
+			for _, p := range parameters {
+				if p.In == "path" {
+					numParams++
+				}
+			}
+			return numParams
+		}
+		// Node's priority is the highest weight * 100 + the number of parameters * 10 + method weight
+		m := method
+		if tag != nil && len(tag.Operation) > 0 {
+			m = tag.Operation
+		}
+		node.Priority = node.Priority*100 + (countParams(pathItem.Parameters)+countParams(op.Parameters))*10 + methodWeight[m]
 		return nil
 	}
 
