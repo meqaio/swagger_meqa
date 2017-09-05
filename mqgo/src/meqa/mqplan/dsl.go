@@ -890,7 +890,7 @@ func (t *Test) GenerateParameter(paramSpec *spec.Parameter, db *mqswag.DB) (inte
 		return t.generateArray("", tag, schema, db)
 	}
 
-	return t.generateByType(schema, paramSpec.Name+"_", tag, paramSpec)
+	return t.generateByType(schema, paramSpec.Name, tag, paramSpec)
 }
 
 // Two ways to get to generateByType
