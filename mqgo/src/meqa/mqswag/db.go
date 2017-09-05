@@ -94,6 +94,9 @@ func (schema *Schema) Parses(name string, object interface{}, collection map[str
 			return raiseError()
 		}
 	} else if k == reflect.String {
+		if reflect.TypeOf(object).String() == "json.Number" && (schema.Type.Contains(gojsonschema.TYPE_INTEGER) || schema.Type.Contains(gojsonschema.TYPE_NUMBER)) {
+			return nil
+		}
 		if !schema.Type.Contains(gojsonschema.TYPE_STRING) {
 			return raiseError()
 		}

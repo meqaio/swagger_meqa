@@ -1,6 +1,7 @@
 package mqplan
 
 import (
+	"bytes"
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
@@ -374,7 +375,9 @@ func (t *Test) ProcessResult(resp *resty.Response) error {
 	respSchema := (*mqswag.Schema)(respSpec.Schema)
 	var resultObj interface{}
 	if len(respBody) > 0 {
-		json.Unmarshal(respBody, &resultObj)
+		d := json.NewDecoder(bytes.NewReader(respBody))
+		d.UseNumber()
+		d.Decode(&resultObj)
 	}
 
 	// success based on return status
