@@ -195,18 +195,6 @@ func (swagger *Swagger) GetReferredSchema(schema *Schema) (string, *Schema, erro
 	return tokens[1], referredSchema, nil
 }
 
-func GetType(dagName string) string {
-	return dagName[0:1]
-}
-
-func GetName(dagName string) string {
-	return strings.Split(dagName, FieldSeparator)[1]
-}
-
-func GetMethod(dagName string) string {
-	return strings.Split(dagName, FieldSeparator)[2]
-}
-
 func GetDAGName(t string, n string, m string) string {
 	return t + FieldSeparator + n + FieldSeparator + m
 }

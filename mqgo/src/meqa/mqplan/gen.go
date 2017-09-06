@@ -3,6 +3,7 @@ package mqplan
 import (
 	"fmt"
 	"meqa/mqswag"
+	"sort"
 
 	"github.com/go-openapi/spec"
 )
@@ -11,8 +12,8 @@ func CreateTestFromOp(opNode *mqswag.DAGNode, testId int) *Test {
 	op := opNode.Data.((*spec.Operation))
 	t := &Test{}
 	t.Name = fmt.Sprintf("%s_%d", op.ID, testId)
-	t.Path = mqswag.GetName(opNode.Name)
-	t.Method = mqswag.GetMethod(opNode.Name)
+	t.Path = opNode.GetName()
+	t.Method = opNode.GetMethod()
 
 	return t
 }
@@ -21,7 +22,7 @@ func OperationIsDelete(node *mqswag.DAGNode) bool {
 	op, ok := node.Data.(*spec.Operation)
 	if ok && op != nil {
 		tag := mqswag.GetMeqaTag(op.Description)
-		if (tag != nil && tag.Operation == mqswag.MethodDelete) || (tag == nil && mqswag.GetMethod(node.Name) == mqswag.MethodDelete) {
+		if (tag != nil && tag.Operation == mqswag.MethodDelete) || (tag == nil && node.GetMethod() == mqswag.MethodDelete) {
 			return true
 		}
 	}
@@ -31,21 +32,21 @@ func OperationIsDelete(node *mqswag.DAGNode) bool {
 // GenerateTestsForObject for the obj that we traversed to from create. Add the test cases
 // generated to plan.
 func GenerateTestsForObject(create *mqswag.DAGNode, obj *mqswag.DAGNode, plan *TestPlan) error {
-	if mqswag.GetType(obj.Name) != mqswag.TypeDef {
+	if obj.GetType() != mqswag.TypeDef {
 		return nil
 	}
-	if mqswag.GetType(create.Name) != mqswag.TypeOp {
+	if create.GetType() != mqswag.TypeOp {
 		return nil
 	}
-	createPath := mqswag.GetName(create.Name)
-	objName := mqswag.GetName(obj.Name)
+	createPath := create.GetName()
+	objName := obj.GetName()
 
 	// A loop where we go through all the child operations
 	testId := 1
 	testCase := CreateTestCase(fmt.Sprintf("%s -- %s -- all", createPath, objName), nil, plan)
 	testCase.Tests = append(testCase.Tests, CreateTestFromOp(create, testId))
 	for _, child := range obj.Children {
-		if mqswag.GetType(child.Name) != mqswag.TypeOp {
+		if child.GetType() != mqswag.TypeOp {
 			continue
 		}
 		testId++
@@ -67,7 +68,7 @@ func GenerateTestsForObject(create *mqswag.DAGNode, obj *mqswag.DAGNode, plan *T
 	for i := 0; i < 2*len(obj.Children); i++ {
 		j := rand.Intn(len(obj.Children))
 		child := obj.Children[j]
-		if mqswag.GetType(child.Name) != mqswag.TypeOp {
+		if child.GetType() != mqswag.TypeOp {
 			mqutil.Logger.Printf("unexpected: (%s) has a child (%s) that's not an operation", obj.Name, child.Name)
 			continue
 		}
@@ -89,12 +90,12 @@ func GenerateTestPlan(swagger *mqswag.Swagger, dag *mqswag.DAG) (*TestPlan, erro
 	testPlan.Init(swagger, nil)
 
 	genFunc := func(previous *mqswag.DAGNode, current *mqswag.DAGNode) error {
-		if mqswag.GetType(current.Name) != mqswag.TypeOp {
+		if current.GetType() != mqswag.TypeOp {
 			return nil
 		}
 
 		// Exercise the function by itself.
-		testCase := CreateTestCase(mqswag.GetName(current.Name)+" "+mqswag.GetMethod(current.Name), nil, testPlan)
+		testCase := CreateTestCase(current.GetName()+" "+current.GetMethod(), nil, testPlan)
 		testCase.Tests = append(testCase.Tests, CreateTestFromOp(current, 1))
 		testPlan.Add(testCase)
 
@@ -111,6 +112,85 @@ func GenerateTestPlan(swagger *mqswag.Swagger, dag *mqswag.DAG) (*TestPlan, erro
 	err := dag.IterateByWeight(genFunc)
 	if err != nil {
 		return nil, err
+	}
+	return testPlan, nil
+}
+
+// All the operations have the same path. We generate one test case, with the
+// tests of ascending weight and priority among the operations
+func GeneratePathTestCase(operations mqswag.NodeList, plan *TestPlan) {
+	if len(operations) == 0 {
+		return
+	}
+
+	pathName := operations[0].GetName()
+	sort.Sort(operations)
+	testId := 0
+	testCase := CreateTestCase(fmt.Sprintf("%s", pathName), nil, plan)
+	for _, o := range operations {
+		testId++
+		testCase.Tests = append(testCase.Tests, CreateTestFromOp(o, testId))
+	}
+	if len(testCase.Tests) > 0 {
+		plan.Add(testCase)
+	}
+}
+
+type PathWeight struct {
+	path   string
+	weight int
+}
+
+type PathWeightList []PathWeight
+
+func (n PathWeightList) Len() int {
+	return len(n)
+}
+
+func (n PathWeightList) Swap(i, j int) {
+	n[i], n[j] = n[j], n[i]
+}
+
+func (n PathWeightList) Less(i, j int) bool {
+	return n[i].weight < n[j].weight || (n[i].weight == n[j].weight && n[i].path < n[j].path)
+}
+
+// Go through all the paths in swagger, and generate the tests for all the operations under
+// the path.
+func GeneratePathTestPlan(swagger *mqswag.Swagger, dag *mqswag.DAG) (*TestPlan, error) {
+	testPlan := &TestPlan{}
+	testPlan.Init(swagger, nil)
+
+	pathMap := make(map[string]mqswag.NodeList)
+	pathWeight := make(map[string]int)
+
+	addFunc := func(previous *mqswag.DAGNode, current *mqswag.DAGNode) error {
+		if current.GetType() != mqswag.TypeOp {
+			return nil
+		}
+		name := current.GetName()
+		pathMap[name] = append(pathMap[name], current)
+
+		currentWeight := current.Weight*mqswag.DAGDepth + current.Priority
+		if pathWeight[name] <= currentWeight {
+			pathWeight[name] = currentWeight
+		}
+
+		return nil
+	}
+
+	dag.IterateByWeight(addFunc)
+
+	var pathWeightList PathWeightList
+	// Sort the path by weight
+	for k, v := range pathWeight {
+		p := PathWeight{k, v}
+		pathWeightList = append(pathWeightList, p)
+	}
+	sort.Sort(pathWeightList)
+
+	for _, p := range pathWeightList {
+		GeneratePathTestCase(pathMap[p.path], testPlan)
 	}
 	return testPlan, nil
 }

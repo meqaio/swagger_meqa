@@ -19,9 +19,10 @@ const (
 func main() {
 	mqutil.Logger = mqutil.NewStdLogger()
 
-	meqaPath := flag.String("meqa", meqaDataDir, "the directory that holds the meqa data and swagger.json files")
-	swaggerFile := flag.String("swagger", swaggerJSONFile, "the swagger.json file name or URL")
-	testPlanFile := flag.String("testplan", testPlanFile, "the test plan file name")
+	meqaPath := flag.String("d", meqaDataDir, "the directory that holds the meqa data and swagger.json files")
+	swaggerFile := flag.String("s", swaggerJSONFile, "the swagger.json file name")
+	testPlanFile := flag.String("t", testPlanFile, "the test plan file name")
+	algorithm := flag.String("a", "object", "the algorithm - object, path")
 
 	flag.Parse()
 	swaggerJsonPath := filepath.Join(*meqaPath, *swaggerFile)
@@ -51,7 +52,12 @@ func main() {
 	dag.Sort()
 	dag.CheckWeight()
 
-	testPlan, err := mqplan.GenerateTestPlan(swagger, dag)
+	var testPlan *mqplan.TestPlan
+	if *algorithm == "path" {
+		testPlan, err = mqplan.GeneratePathTestPlan(swagger, dag)
+	} else {
+		testPlan, err = mqplan.GenerateTestPlan(swagger, dag)
+	}
 	if err != nil {
 		mqutil.Logger.Printf("Error: %s", err.Error())
 		return

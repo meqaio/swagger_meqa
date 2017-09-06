@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"meqa/mqutil"
 	"sort"
+	"strings"
 )
 
 const (
@@ -20,6 +21,18 @@ type DAGNode struct {
 	Children NodeList
 
 	dag *DAG
+}
+
+func (node *DAGNode) GetType() string {
+	return node.Name[0:1]
+}
+
+func (node *DAGNode) GetName() string {
+	return strings.Split(node.Name, FieldSeparator)[1]
+}
+
+func (node *DAGNode) GetMethod() string {
+	return strings.Split(node.Name, FieldSeparator)[2]
 }
 
 // AdjustWeight changes the children's weight to be at least this node's weight + 1
@@ -108,8 +121,8 @@ func (n NodeList) Swap(i, j int) {
 }
 
 func (n NodeList) Less(i, j int) bool {
-	wi := n[i].Weight*DAGDepth*10 + n[i].Priority
-	wj := n[j].Weight*DAGDepth*10 + n[j].Priority
+	wi := n[i].Weight*DAGDepth + n[i].Priority
+	wj := n[j].Weight*DAGDepth + n[j].Priority
 	return wi < wj || (wi == wj && n[i].Name < n[j].Name)
 }
 
