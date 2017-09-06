@@ -22,14 +22,14 @@ const (
 func main() {
 	mqutil.Logger = mqutil.NewStdLogger()
 
-	meqaPath := flag.String("meqa", meqaDataDir, "the directory that holds the meqa data and swagger.yaml files")
-	inputFile := flag.String("input", swaggerFile, "the swagger spec file name")
-	outputFile := flag.String("output", "swagger_tagged", "the new swagger file name, we will generated swagger_tagged.json and swagger_tagged.yaml by default")
+	meqaPath := flag.String("d", meqaDataDir, "the directory that holds the meqa data and swagger.yaml files")
+	inputFile := flag.String("i", swaggerFile, "the input swagger spec file name")
+	outputFile := flag.String("o", "swagger_tagged.yaml", "the output swagger file name")
 	yesToAll := flag.Bool("y", false, "yes to all the replacements")
 
 	flag.Parse()
 	inputPath := filepath.Join(*meqaPath, *inputFile)
-	outputYamlPath := filepath.Join(*meqaPath, *outputFile+".yaml")
+	outputYamlPath := filepath.Join(*meqaPath, *outputFile)
 	if _, err := os.Stat(inputPath); os.IsNotExist(err) {
 		mqutil.Logger.Printf("can't load swagger file at the following location %s", inputPath)
 		return

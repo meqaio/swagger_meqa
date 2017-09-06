@@ -21,14 +21,14 @@ const (
 func main() {
 	mqutil.Logger = mqutil.NewStdLogger()
 
-	meqaPath := flag.String("meqa", meqaDataDir, "the directory that holds the meqa data and swagger.json files")
-	swaggerFile := flag.String("swagger", swaggerJSONFile, "the swagger.json file name or URL")
-	testPlanFile := flag.String("testplan", testPlanFile, "the test plan file name")
-	resultFile := flag.String("result", resultFile, "the test result file name")
-	testToRun := flag.String("test", "all", "the test to run")
-	username := flag.String("username", "", "the username for basic HTTP authentication")
-	password := flag.String("password", "", "the password for basic HTTP authentication")
-	apitoken := flag.String("apitoken", "", "the api token for bearer HTTP authentication")
+	meqaPath := flag.String("d", meqaDataDir, "the directory that holds the meqa data and swagger.json files")
+	swaggerFile := flag.String("s", swaggerJSONFile, "the swagger.json file name or URL")
+	testPlanFile := flag.String("p", testPlanFile, "the test plan file name")
+	resultFile := flag.String("r", resultFile, "the test result file name")
+	testToRun := flag.String("t", "all", "the test to run")
+	username := flag.String("u", "", "the username for basic HTTP authentication")
+	password := flag.String("w", "", "the password for basic HTTP authentication")
+	apitoken := flag.String("a", "", "the api token for bearer HTTP authentication")
 
 	flag.Parse()
 	swaggerJsonPath := filepath.Join(*meqaPath, *swaggerFile)
