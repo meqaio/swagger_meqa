@@ -29,15 +29,15 @@ class Vocabulary(object):
         while i > 0:
             c, k = best_match(i)
             assert c == cost[i]
-            out.append(s[i - k:i])
+            out.insert(0, s[i - k:i])
             i -= k
 
-        return reversed(out)
+        return out
 
     # add a new word, return the properly broken down word
     def add_word(self, new_word):
         # we always treat the new words' cost as zero, since these are the words that exist in our swagger.yaml.
-        individual_words = self.infer_spaces(new_word)
+        individual_words = self.infer_spaces(new_word.lower())
         for w in individual_words:
             self.wordcost[w] = 0
             self.maxword = max(self.maxword, len(w))

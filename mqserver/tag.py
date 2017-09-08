@@ -24,7 +24,7 @@ class Definition(object):
         self.properties = dict()
 
         for orig_prop in orig_properties:
-            norm_prop = swagger.vocab.normalize_name(orig_prop)
+            norm_prop = swagger.normalize_name(orig_prop)
             self.properties[norm_prop] = orig_prop
 
 class SwaggerDoc(object):
@@ -62,7 +62,7 @@ class SwaggerDoc(object):
     def normalize_name(self, name):
         phrase = self.vocab.add_word(name)
         tokens = self.parser(phrase)
-        return " ".join(tokens.lemma_)
+        return " ".join([token.lemma_ for token in tokens])
 
     def gather_words(self):
         # we have to do two passes. First time we add all the words into the vocabulary. The second
@@ -91,6 +91,19 @@ def main():
 
     swagger.gather_words()
 
+    for norm_name, obj in swagger.definitions.items():
+        print("\n======== definition {} -> {} =========\n".format(norm_name, obj.name))
+        print()
+
+        for prop_norm_name, prop_orig_name in obj.properties.items():
+            print("{} -> {}\n".format(prop_norm_name, prop_orig_name))
+    print("done")
+
 if __name__ == '__main__':
-    #pdb.set_trace()
+    pdb.set_trace()
+
+    parser = English()
+    tokens = parser('petid')
+    for t in tokens:
+        print(t.lemma_)
     main()
