@@ -1,36 +1,50 @@
 from math import log
+import spacy
 
 class Vocabulary(object):
     def __init__(self):
-        self.words = open("words.txt").read().split()
-        self.wordcost = dict((k, log((i + 1) * log(len(self.words)))) for i, k in enumerate(self.words))
-        self.maxword = max(len(x) for x in self.words)
+        self.maxword = 30
+        self.parser = spacy.load('en_core_web_md')
+        self.vocab = self.parser.vocab
+        self.low_prob = self.vocab['sjflsjl'].prob
+        self.new_words = set()
 
     def infer_spaces(self, s):
-        """Uses dynamic programming to infer the location of spaces in a string
-        without spaces."""
+        # Find the best match for the n first characters, assuming prob has
+        # been built for the n-1 first characters.
+        # Returns a pair (match_prob, match_length).
+        # prob[0] is set to 0. prob[n] stores the best probability
+        # for the string s[0:n]
+        def best_match(n):
+            max_prob = -1e99
+            best_pos = 0
+            for i in range(max(0, n - self.maxword), n):
+                new_word = s[i:n]
+                new_prob = self.vocab[new_word].prob
+                if new_prob == self.low_prob and new_word in self.new_words:
+                    new_prob = -3.0 # just assume 1000 words equal opportunity
 
-        # Find the best match for the i first characters, assuming cost has
-        # been built for the i-1 first characters.
-        # Returns a pair (match_cost, match_length).
-        def best_match(i):
-            candidates = enumerate(reversed(cost[max(0, i - self.maxword):i]))
-            return min((c + self.wordcost.get(s[i - k - 1:i], 1e99), k + 1) for k, c in candidates)
+                total_prob = prob[i] + new_prob
+                if total_prob > max_prob:
+                    max_prob = total_prob
+                    best_pos = i
+            return max_prob, best_pos
 
-        # Build the cost array.
-        cost = [0]
-        for i in range(1, len(s) + 1):
-            c, k = best_match(i)
-            cost.append(c)
+        # Build the prob array. We start the first entry as 0 to avoid checking for boundary condition.
+        # n passed to best_match is the string len we currently evaluate
+        prob = [0]
+        for n in range(1, len(s)+1):
+            p, i = best_match(n)
+            prob.append(p)
 
-        # Backtrack to recover the minimal-cost string.
+        # Backtrack to recover the max-probability string.
         out = []
         i = len(s)
         while i > 0:
             c, k = best_match(i)
-            assert c == cost[i]
-            out.insert(0, s[i - k:i])
-            i -= k
+            assert c == prob[i]
+            out.insert(0, s[k:i])
+            i = k
 
         return out
 
@@ -39,7 +53,19 @@ class Vocabulary(object):
         # we always treat the new words' cost as zero, since these are the words that exist in our swagger.yaml.
         individual_words = self.infer_spaces(new_word.lower())
         for w in individual_words:
-            self.wordcost[w] = 0
-            self.maxword = max(self.maxword, len(w))
+            if self.vocab[w].prob <= self.low_prob:
+                # it's a new word, add to our side dict
+                self.new_words.add(w)
 
         return " ".join(individual_words)
+
+    # given a norm, returned the normalized form of the name. Note that this step doesn't attempt
+    # add any new words.
+    def normalize_name(self, name):
+        phrase = self.add_word(name)
+        # id by itself will be treated as i would by spacy
+        if phrase == 'id':
+            return phrase
+
+        tokens = self.parser(phrase)
+        return " ".join([token.lemma_ for token in tokens])

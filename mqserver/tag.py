@@ -7,7 +7,6 @@ from vocabulary import Vocabulary
 from ruamel.yaml import YAML
 from pathlib import Path
 from math import log
-from spacy.en import English
 
 def load_yaml(filename):
     yaml = YAML()
@@ -24,7 +23,7 @@ class Definition(object):
         self.properties = dict()
 
         for orig_prop in orig_properties:
-            norm_prop = swagger.normalize_name(orig_prop)
+            norm_prop = swagger.vocab.normalize_name(orig_prop)
             self.properties[norm_prop] = orig_prop
 
 class SwaggerDoc(object):
@@ -32,7 +31,6 @@ class SwaggerDoc(object):
         self.vocab = Vocabulary()
         self.doc = load_yaml(filename)
         self.definitions = dict()  # holds the object definitions.
-        self.parser = English()
         self.logger = logging.getLogger(name='meqa')
 
     # get the properties (set) from the schema
@@ -59,10 +57,6 @@ class SwaggerDoc(object):
                 properties.add(pname)
         return properties
 
-    def normalize_name(self, name):
-        phrase = self.vocab.add_word(name)
-        tokens = self.parser(phrase)
-        return " ".join([token.lemma_ for token in tokens])
 
     def gather_words(self):
         # we have to do two passes. First time we add all the words into the vocabulary. The second
@@ -75,7 +69,7 @@ class SwaggerDoc(object):
 
         # second pass, we lemmarize the unit words and use them as key
         for name in self.doc['definitions']:
-            self.definitions[self.normalize_name(name)] = Definition(name, self)
+            self.definitions[self.vocab.normalize_name(name)] = Definition(name, self)
 
 def main():
     logger = logging.getLogger(name='meqa')
@@ -100,10 +94,7 @@ def main():
     print("done")
 
 if __name__ == '__main__':
-    pdb.set_trace()
-
-    parser = English()
-    tokens = parser('petid')
-    for t in tokens:
-        print(t.lemma_)
+    vocab = Vocabulary()
+    vocab.add_word('uuid')
+    print(vocab.normalize_name('uuid'))
     main()

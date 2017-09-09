@@ -8877,10 +8877,9 @@ paths:
       description: Find account level variables.
       operationId: getPipelineVariablesForTeam
       parameters:
-      - description: The account.
+      - description: The account. <meqa team.username>
         in: path
         name: username
-        description: <meqa team.username>
         required: true
         type: string
       responses:
