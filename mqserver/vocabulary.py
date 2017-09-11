@@ -1,5 +1,6 @@
 from math import log
 import spacy
+import string
 
 class Vocabulary(object):
     def __init__(self):
@@ -48,24 +49,23 @@ class Vocabulary(object):
 
         return out
 
-    # add a new word, return the properly broken down word
-    def add_word(self, new_word):
+    # normalize a word (or phrase). For any new word not in our dictionary we add them.
+    def normalize(self, new_word):
+        norm_word = ''
         # we always treat the new words' cost as zero, since these are the words that exist in our swagger.yaml.
         individual_words = self.infer_spaces(new_word.lower())
         for w in individual_words:
+            if not w.isalpha():
+                continue
+
             if self.vocab[w].prob <= self.low_prob:
                 # it's a new word, add to our side dict
                 self.new_words.add(w)
 
-        return " ".join(individual_words)
-
-    # given a norm, returned the normalized form of the name. Note that this step doesn't attempt
-    # add any new words.
-    def normalize_name(self, name):
-        phrase = self.add_word(name)
-        # id by itself will be treated as i would by spacy
-        if phrase == 'id':
-            return phrase
-
-        tokens = self.parser(phrase)
-        return " ".join([token.lemma_ for token in tokens])
+            if w == 'id':
+                norm_word += 'id '
+            else:
+                tokens = self.parser(w)
+                for t in tokens:
+                    norm_word += t.lemma_ + ' '
+        return norm_word[:-1]

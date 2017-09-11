@@ -23,7 +23,7 @@ class Definition(object):
         self.properties = dict()
 
         for orig_prop in orig_properties:
-            norm_prop = swagger.vocab.normalize_name(orig_prop)
+            norm_prop = swagger.vocab.normalize(orig_prop)
             self.properties[norm_prop] = orig_prop
 
 class SwaggerDoc(object):
@@ -62,14 +62,14 @@ class SwaggerDoc(object):
         # we have to do two passes. First time we add all the words into the vocabulary. The second
         # pass we may use the new vocabulary to break down some words that may not be breakable before.
         for name, obj in self.doc['definitions'].items():
-            self.vocab.add_word(name)
+            self.vocab.normalize(name)
             if 'properties' in obj:
                 for key in obj['properties']:
-                    self.vocab.add_word(key)
+                    self.vocab.normalize(key)
 
         # second pass, we lemmarize the unit words and use them as key
         for name in self.doc['definitions']:
-            self.definitions[self.vocab.normalize_name(name)] = Definition(name, self)
+            self.definitions[self.vocab.normalize(name)] = Definition(name, self)
 
 def main():
     logger = logging.getLogger(name='meqa')
@@ -95,6 +95,6 @@ def main():
 
 if __name__ == '__main__':
     vocab = Vocabulary()
-    vocab.add_word('uuid')
-    print(vocab.normalize_name('uuid'))
+    vocab.normalize('uuid')
+    print(vocab.normalize('target id'))
     main()
