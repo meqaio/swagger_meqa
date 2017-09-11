@@ -51,6 +51,9 @@ class Vocabulary(object):
 
     # normalize a word (or phrase). For any new word not in our dictionary we add them.
     def normalize(self, new_word):
+        if new_word == None:
+            return ''
+
         norm_word = ''
         # we always treat the new words' cost as zero, since these are the words that exist in our swagger.yaml.
         individual_words = self.infer_spaces(new_word.lower())
