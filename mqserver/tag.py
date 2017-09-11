@@ -33,30 +33,37 @@ class SwaggerDoc(object):
         self.definitions = dict()  # holds the object definitions.
         self.logger = logging.getLogger(name='meqa')
 
-    # get the properties (set) from the schema
-    def get_properties(self, schema):
+    # Iterate through the schema. Call the callback for each bottom level schema (object or array) we discover.
+    def iterate_schema(self, schema, callback):
         if 'allOf' in schema:
-            properties = set()
             for s in schema['allOf']:
-                properties = properties.union(self.get_properties(s))
-            return properties
+                self.iterate_schema(s, callback)
+            return
 
         if '$ref' in schema:
             refstr = schema['$ref']
             # we only handle local refs for now
             if refstr[0] != '#':
-                return set()
+                return
 
             reflist = refstr.split('/')
             refschema = self.doc[reflist[1]][reflist[2]]
-            return self.get_properties(refschema)
+            return self.iterate_schema(refschema, callback)
 
+        return callback(schema)
+
+    def get_properties(self, schema):
         properties = set()
-        if 'properties' in schema:
-            for pname in schema['properties']:
-                properties.add(pname)
-        return properties
+        def add_properties(schema):
+            nonlocal properties
+            prop = set()
+            if 'properties' in schema:
+                for pname in schema['properties']:
+                    prop.add(pname)
+            properties = properties.union(prop)
 
+        self.iterate_schema(schema, add_properties)
+        return properties
 
     def gather_words(self):
         # we have to do two passes. First time we add all the words into the vocabulary. The second
