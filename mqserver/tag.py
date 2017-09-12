@@ -134,6 +134,9 @@ class SwaggerDoc(object):
             # a tag exist already, skip
             return
 
+        if param.get('enum') != None:
+            return
+
         # we try to find a class.property pair such that the normalized name of class and property appear
         # in the name of the property. If we can't do this, we try throw in the description field.
         # TODO, the description field can be big, we should do some syntactic analysis to it to trim it down.
@@ -218,7 +221,7 @@ def main():
         logger.error("Failed to load file %s", args.input)
         return
 
-    print("{} loaded", args.input)
+    print("loaded ", args.input)
     swagger.gather_words()
     print("words gathered")
     swagger.add_tags()
