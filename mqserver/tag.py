@@ -74,10 +74,46 @@ def get_meqa_tag(desc):
     else:
         return None
 
+# given a long phrase and a short phrase (both normalized), try to find the best match.
+# returns -1 if not found, 0 if exact match, distance between words if non-exact match.
+def match_phrase(phrase, key):
+    phrase_list = phrase.split(' ')
+    key_list = key.split(' ')
+    if not set(key_list) <= set(phrase_list):
+        return -1
+
+    if phrase.find(key) >= 0:
+        return 0
+
+    key_index_list = []
+    for p in phrase_list:
+        found = False
+        for i, k in enumerate(key_list):
+            if p == k:
+                found = True
+                key_index_list.append(i)
+                break
+        if not found:
+            key_index_list.append(-1)
+
+    # the key_index_list is the length of the phrase with the key's index. Find the smallest substring
+    # that has all the keys. The observation is that the smallest span will always only have one of
+    # each key.
+    min_span = len(key_index_list)
+    last_key = dict() # key index to last key position mapping
+    for i, k in enumerate(key_index_list):
+        if k > 0:
+            last_key[k] = i
+            if len(last_key) < len(key_list):
+                continue
+            # note that only the most recent information matters
+            min_span = min(min_span, max(last_key.values()) - min(last_key.values()))
+    return min_span
 
 class Definition(object):
     def __init__(self, name, swagger):
         self.name = name
+        self.norm_name = swagger.vocab.normalize(name)
         orig_properties = swagger.get_properties(swagger.doc['definitions'][name])
         self.properties = dict()
 
@@ -126,6 +162,48 @@ class SwaggerDoc(object):
 
         return callback(schema)
 
+    # return the object, property name that matches with the phrases
+    def find_obj_property(self, phrase, property_phrase):
+        min_cost = len(phrase)
+        min_obj = None
+        for obj_name, obj in self.definitions.items():
+            cost = match_phrase(phrase, obj_name)
+            if cost < 0:
+                continue
+
+            if cost < min_cost:
+                min_cost = cost
+                min_obj = obj
+                if min_cost == 0:
+                    break
+
+        if min_obj == None:
+            return '', ''
+
+        if property_phrase == '':
+            property_phrase = phrase
+
+        min_cost = len(property_phrase)
+        min_property = None
+        for prop_norm_name, prop_orig_name in min_obj.properties.items():
+            if property_phrase == prop_orig_name or property_phrase == prop_norm_name:
+                cost = 0
+            else:
+                cost = match_phrase(property_phrase, prop_norm_name)
+                if cost < 0:
+                    continue
+
+            if cost < min_cost:
+                min_cost = cost
+                min_property = prop_orig_name
+                if min_cost == 0:
+                    break
+
+        if min_property == None:
+            return '', ''
+
+        return min_obj.name, min_property
+
     # given path string, method string and the parameter dict, try to insert a tag into the param
     def guess_tag(self, path, method, param):
         desc = param.get('description')
@@ -134,39 +212,44 @@ class SwaggerDoc(object):
             # a tag exist already, skip
             return
 
-        if param.get('enum') != None:
+        if param.get('enum') != None or param.get('schema') != None:
             return
+
+        if desc == None:
+            desc = ''
 
         # we try to find a class.property pair such that the normalized name of class and property appear
         # in the name of the property. If we can't do this, we try throw in the description field.
         # TODO, the description field can be big, we should do some syntactic analysis to it to trim it down.
-        def match_to_name(all_words):
-            for obj_name, obj in self.definitions.items():
-                obj_words = set(obj_name.split(' '))
-                if not obj_words < all_words:
-                    continue
-                for prop_norm_name, prop_orig_name in obj.properties.items():
-                    prop_words = set(prop_norm_name.split(' '))
-                    if not prop_words < all_words:
-                        continue
-
-                    # found one, update description and return. TODO try to find the best one
-                    tag = MeqaTag(obj.name, prop_orig_name, '', 0)
-                    param['description'] = desc + ' ' + tag.to_string()
-                    return True
+        def match_to_name(phrase, property_phrase):
+            objname, propname = self.find_obj_property(phrase, property_phrase)
+            if objname != '' and propname != '':
+                param['description'] = desc + ' ' + MeqaTag(objname, propname, '', 0).to_string()
+                return True
             return False
 
-        norm_name = self.vocab.normalize(param.get('name'))
+        param_name = param.get('name')
+        if param.get('in') == 'path':
+            # the word right before the parameter usually is the class name. We prefer this. Note that in this
+            # case the property_name should just be the param_name, not the normalized name.
+            index = path.find(param_name)
+            if index > 0:
+                norm_path = self.vocab.normalize(path[:index - 2])
+                found = match_to_name(norm_path, param_name)
+                if found:
+                    return
+
+        norm_name = self.vocab.normalize(param_name)
+        found = match_to_name(norm_name, '')
+        if found:
+            return
+
         norm_desc = self.vocab.normalize(desc)
-        found = match_to_name(set(norm_name.split(' ')))
+        found = match_to_name(norm_desc, '')
         if found:
             return
 
-        found = match_to_name(set(norm_desc.split(' ')))
-        if found:
-            return
-
-        match_to_name(set(norm_desc.split(' ')) | set(norm_name.split(' ')))
+        match_to_name(norm_name + norm_desc, '')
 
     def add_tags(self):
         # try to create tags and add them to the param's description field
@@ -174,10 +257,11 @@ class SwaggerDoc(object):
             if params == None:
                 return
             for p in params:
-                self.guess_tag(path, method, p)
+                self.guess_tag(pathname, method, p)
 
         paths = self.doc['paths']
         for pathname, path in paths.items():
+            method = ''
             create_tags_for_param(path.get('parameters'))
             for method in SwaggerDoc.MethodAll:
                 if method in path:
@@ -207,7 +291,8 @@ class SwaggerDoc(object):
 
         # second pass, we lemmarize the unit words and use them as key
         for name in self.doc['definitions']:
-            self.definitions[self.vocab.normalize(name)] = Definition(name, self)
+            d = Definition(name, self)
+            self.definitions[d.norm_name] = d
 
 def main():
     logger = logging.getLogger(name='meqa')
