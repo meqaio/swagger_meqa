@@ -307,7 +307,7 @@ paths:
         - name: zip_code
           in: query
           type: string
-          description: Used to search for a city with specific zip code @meqa[City:zip_code]
+          description: Used to search for a city with specific zip code
           required: false
       responses:
         200:
@@ -337,7 +337,6 @@ paths:
           in: path
           type: string
           required: true
-          descriptoin: @meqa[City:id]
       responses:
         200:
           description: Details of city
@@ -396,7 +395,6 @@ paths:
         - name: clocking_record
           in: body
           required: true
-          description: @meqa[ClockingRecord]
           schema:
             type: object
             properties:
@@ -413,7 +411,7 @@ paths:
                 type: string
       responses:
         201:
-          description: Successfully added clocking record  @meqa[ClockingRecord]
+          description: Successfully added clocking record
           schema:
             type: object
             properties:
@@ -425,7 +423,6 @@ paths:
                 properties:
                   id:
                     type: string
-                    description: @meqa[ClockingRecord:id]
                     format: uuid
         422:
           description: Validation error
@@ -466,7 +463,6 @@ paths:
           in: path
           type: string
           required: true
-          description: @meqa[ClockingRecord:id]
       responses:
         200:
           description: Clocking record object
@@ -494,7 +490,6 @@ paths:
           in: path
           type: string
           required: true
-          description: @meqa[ClockingRecord:id]
       responses:
         200:
           description: OK 
@@ -519,7 +514,6 @@ paths:
           in: path
           type: string
           required: true
-          description: @meqa[ClockingRecord:id]
       responses:
         200:
           description: OK 
@@ -547,29 +541,29 @@ paths:
         - name: name
           in: query
           type: string
-          description: Used to search for a contact with a specific name @meqa[Contact:name]
+          description: Used to search for a contact with a specific name
           required: false
         - name: cvr
           in: query
           type: string
-          description: Search for values in CVR field @meqa[Contact:cvr]
+          description: Search for values in CVR field
         - name: ean
           in: query
           type: string
-          description: Search for values in EAN field @meqa[Contact:ean]
+          description: Search for values in EAN field
         - name: erp_id
           in: query
           type: string
-          description: Search for values in ERP id field @meqa[Contact:erp_id]
+          description: Search for values in ERP id field
         - name: contact_type
           in: query
           type: string
           format: uuid
-          description: Used to show only contacts with with one specific `ContactType` @meqa[Contact:contact_type]
+          description: Used to show only contacts with with one specific `ContactType`
         - name: city
           in: query
           type: string
-          description: Used to show only contacts with with one specific `City` @meqa[Contact:city]
+          description: Used to show only contacts with with one specific `City`
       responses:
         200:
           description: List of contacts with city embedded
@@ -595,7 +589,6 @@ paths:
       parameters:
         - name: contact
           in: body
-          description: @meqa[Contact]
           schema:
             type: object
             properties:
@@ -652,7 +645,6 @@ paths:
                   id:
                     type: string
                     format: uuid
-                    description: @meqa[Contact:id]
         422:
           description: Validation error
           schema:
@@ -670,7 +662,6 @@ paths:
           in: path
           type: string
           required: true
-          description: @meqa[Contact:id]
       responses:
         200:
           description: Contact object with city embedded
@@ -698,10 +689,8 @@ paths:
           in: path
           type: string
           required: true
-          description: @meqa[Contact:id]
         - name: contact
           in: body
-          description: @meqa[Contact]
           schema:
             type: object
             properties:
@@ -767,7 +756,6 @@ paths:
           in: path
           type: string
           required: true
-          description: @meqa[Contact:id]
       responses:
         200:
           description: OK 
