@@ -195,13 +195,16 @@ class SwaggerDoc(object):
 
     # return the object, property name that matches with the phrases. If the passed in property_type is None
     # we don't try to match against property.
-    def find_obj_property(self, phrase, property_phrase, property_type):
+    def find_obj_property(self, phrase, property_phrase, property_type, exclude=None):
         if property_phrase == '':
             property_phrase = phrase
         min_cost = len(phrase) + len(property_phrase)
         min_obj = None
 
         for obj_name, obj in self.definitions.items():
+            if obj.name == exclude:
+                continue
+
             cost = match_phrase(phrase, obj_name)
             if cost < 0:
                 continue
@@ -256,8 +259,8 @@ class SwaggerDoc(object):
         param['description'] = desc + MeqaTag(objname, propname, '', 0).to_string()
 
     # find the class.property, and if found, add the meqa tag to param. return found or not
-    def try_add_tag(self, phrase, property_phrase, param, param_type_match):
-        objname, propname, cost = self.find_obj_property(phrase, property_phrase, param_type_match)
+    def try_add_tag(self, phrase, property_phrase, param, param_type_match, exclude=None):
+        objname, propname, cost = self.find_obj_property(phrase, property_phrase, param_type_match, exclude)
         if objname != '' and propname != '':
             self.add_tag(objname, propname, param)
             return True
@@ -355,7 +358,7 @@ class SwaggerDoc(object):
             schema_type = schema.get('type')
             if schema_type == SwaggerDoc.TypeInteger or schema_type == SwaggerDoc.TypeNumber or schema_type == SwaggerDoc.TypeString:
                 norm_name = self.vocab.normalize(path[-1])
-                found = self.try_add_tag(norm_name, '', schema, schema_type)
+                found = self.try_add_tag(norm_name, '', schema, schema_type, exclude=defname)
                 if found:
                     return
 
@@ -363,8 +366,8 @@ class SwaggerDoc(object):
                 # if desc != None:
                 #     self.try_add_tag(self.vocab.normalize(desc), '', schema)
 
-        for name, schema in self.doc['definitions'].items():
-            self.iterate_schema(schema, add_tag_callback, ['definitions', name], follow_array=True, follow_ref=False,
+        for defname, schema in self.doc['definitions'].items():
+            self.iterate_schema(schema, add_tag_callback, ['definitions', defname], follow_array=True, follow_ref=False,
                                 follow_object=True)
 
     def get_properties(self, schema):

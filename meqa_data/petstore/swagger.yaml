@@ -153,7 +153,7 @@ paths:
       - application/xml
       - application/json
       responses:
-        "405":
+        '405':
           description: Invalid input
       security:
       - petstore_auth:
@@ -178,11 +178,11 @@ paths:
       - application/xml
       - application/json
       responses:
-        "400":
+        '400':
           description: Invalid ID supplied
-        "404":
+        '404':
           description: Pet not found
-        "405":
+        '405':
           description: Validation exception
       security:
       - petstore_auth:
@@ -208,9 +208,9 @@ paths:
       - application/xml
       - application/json
       responses:
-        "400":
+        '400':
           description: Invalid ID supplied
-        "404":
+        '404':
           description: Pet not found
       security:
       - petstore_auth:
@@ -233,13 +233,13 @@ paths:
       - application/xml
       - application/json
       responses:
-        "200":
+        '200':
           description: successful operation
           schema:
             $ref: '#/definitions/Pet'
-        "400":
+        '400':
           description: Invalid ID supplied
-        "404":
+        '404':
           description: Pet not found
       security:
       - api_key: []
@@ -269,7 +269,7 @@ paths:
       - application/xml
       - application/json
       responses:
-        "405":
+        '405':
           description: Invalid input
       security:
       - petstore_auth:
@@ -301,7 +301,7 @@ paths:
       produces:
       - application/json
       responses:
-        "200":
+        '200':
           description: successful operation
           schema:
             $ref: '#/definitions/ApiResponse'
@@ -335,13 +335,13 @@ paths:
       - application/xml
       - application/json
       responses:
-        "200":
+        '200':
           description: successful operation
           schema:
             items:
               $ref: '#/definitions/Pet'
             type: array
-        "400":
+        '400':
           description: Invalid status value
       security:
       - petstore_auth:
@@ -369,13 +369,13 @@ paths:
       - application/xml
       - application/json
       responses:
-        "200":
+        '200':
           description: successful operation
           schema:
             items:
               $ref: '#/definitions/Pet'
             type: array
-        "400":
+        '400':
           description: Invalid tag value
       security:
       - petstore_auth:
@@ -391,7 +391,7 @@ paths:
       produces:
       - application/json
       responses:
-        "200":
+        '200':
           description: successful operation
           schema:
             additionalProperties:
@@ -417,11 +417,11 @@ paths:
       - application/xml
       - application/json
       responses:
-        "200":
+        '200':
           description: successful operation
           schema:
             $ref: '#/definitions/Order'
-        "400":
+        '400':
           description: Invalid Order
       summary: Place an order for a pet
       tags:
@@ -443,9 +443,9 @@ paths:
       - application/xml
       - application/json
       responses:
-        "400":
+        '400':
           description: Invalid ID supplied
-        "404":
+        '404':
           description: Order not found
       summary: Delete purchase order by ID
       tags:
@@ -467,13 +467,13 @@ paths:
       - application/xml
       - application/json
       responses:
-        "200":
+        '200':
           description: successful operation
           schema:
             $ref: '#/definitions/Order'
-        "400":
+        '400':
           description: Invalid ID supplied
-        "404":
+        '404':
           description: Order not found
       summary: Find purchase order by ID
       tags:
@@ -512,9 +512,9 @@ paths:
       - application/xml
       - application/json
       responses:
-        "400":
+        '400':
           description: Invalid username supplied
-        "404":
+        '404':
           description: User not found
       summary: Delete user
       tags:
@@ -532,13 +532,13 @@ paths:
       - application/xml
       - application/json
       responses:
-        "200":
+        '200':
           description: successful operation
           schema:
             $ref: '#/definitions/User'
-        "400":
+        '400':
           description: Invalid username supplied
-        "404":
+        '404':
           description: User not found
       summary: Get user by user name
       tags:
@@ -562,9 +562,9 @@ paths:
       - application/xml
       - application/json
       responses:
-        "400":
+        '400':
           description: Invalid user supplied
-        "404":
+        '404':
           description: User not found
       summary: Updated user
       tags:
@@ -629,7 +629,7 @@ paths:
       - application/xml
       - application/json
       responses:
-        "200":
+        '200':
           description: successful operation
           headers:
             X-Expires-After:
@@ -642,7 +642,7 @@ paths:
               type: integer
           schema:
             type: string
-        "400":
+        '400':
           description: Invalid username/password supplied
       summary: Logs user into the system
       tags:
@@ -673,7 +673,7 @@ securityDefinitions:
       read:pets: read your pets
       write:pets: modify pets in your account
     type: oauth2
-swagger: "2.0"
+swagger: '2.0'
 tags:
 - description: Everything about your Pets
   externalDocs:
