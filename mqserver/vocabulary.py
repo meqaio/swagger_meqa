@@ -9,6 +9,7 @@ class Vocabulary(object):
         self.vocab = self.parser.vocab
         self.low_prob = self.vocab['sjflsjl'].prob
         self.new_words = set()
+        self.punctuations = set(string.punctuation)
 
     def infer_spaces(self, s):
         # Find the best match for the n first characters, assuming prob has
@@ -24,6 +25,8 @@ class Vocabulary(object):
                 new_prob = self.vocab[new_word].prob
                 if new_prob == self.low_prob and new_word in self.new_words:
                     new_prob = -3.0 # just assume 1000 words equal opportunity
+                elif len(new_word) == 1 and new_word in self.punctuations:
+                    new_prob = 0 # there is no cost to separate punctuations out
 
                 total_prob = prob[i] + new_prob
                 if total_prob > max_prob:

@@ -144,13 +144,19 @@ class SwaggerDoc(object):
         f.close()
 
     # Iterate through the schema. Call the callback for each bottom level schema (object or array) we discover.
-    def iterate_schema(self, schema, callback):
+    # The path is the list of keys we can use to traverse to the object from the swagger doc root. e.g.
+    # [definitions, Pet, id]
+    def iterate_schema(self, schema, callback, path, follow_array=False, follow_ref=True, follow_object=False):
+        callback(schema, path)
         if 'allOf' in schema:
             for s in schema['allOf']:
-                self.iterate_schema(s, callback)
+                self.iterate_schema(s, callback, path, follow_array, follow_ref, follow_object)
             return
 
         if '$ref' in schema:
+            if not follow_ref:
+                return
+
             refstr = schema['$ref']
             # we only handle local refs for now
             if refstr[0] != '#':
@@ -158,75 +164,108 @@ class SwaggerDoc(object):
 
             reflist = refstr.split('/')
             refschema = self.doc[reflist[1]][reflist[2]]
-            return self.iterate_schema(refschema, callback)
+            self.iterate_schema(refschema, callback, reflist[1:3], follow_array, follow_ref, follow_object)
+            return
 
-        return callback(schema)
+        if schema.get('type') == 'array':
+            if not follow_array:
+                return
+
+            item_schema = schema.get('items')
+            return self.iterate_schema(item_schema, callback, path, follow_array, follow_ref, follow_object)
+
+        if schema.get('type') == 'object':
+            if not follow_object:
+                return
+            properties = schema.get('properties')
+            if properties == None:
+                return
+            for k, v in properties.items():
+                path.append(k)
+                self.iterate_schema(v, callback, path, follow_array, follow_ref, follow_object)
+                path = path[:-1]
 
     # return the object, property name that matches with the phrases
     def find_obj_property(self, phrase, property_phrase):
-        min_cost = len(phrase)
+        if property_phrase == '':
+            property_phrase = phrase
+        min_cost = len(phrase) + len(property_phrase)
         min_obj = None
+
         for obj_name, obj in self.definitions.items():
             cost = match_phrase(phrase, obj_name)
             if cost < 0:
                 continue
 
+            min_property_cost = len(property_phrase)
+            min_property = None
+            for prop_norm_name, prop_orig_name in obj.properties.items():
+                property_cost = 0
+                if property_phrase != prop_orig_name and property_phrase != prop_norm_name:
+                    property_cost = match_phrase(property_phrase, prop_norm_name)
+                    if property_cost < 0:
+                        continue
+
+                if property_cost < min_property_cost:
+                    min_property_cost = property_cost
+                    min_property = prop_orig_name
+                    if min_property_cost == 0:
+                        break
+
+            if min_property == None:
+                continue
+
+            cost += min_property_cost
             if cost < min_cost:
                 min_cost = cost
                 min_obj = obj
                 if min_cost == 0:
                     break
 
-        if min_obj == None:
-            return '', ''
+        if min_obj == None or min_property == None:
+            return '', '', -1
 
-        if property_phrase == '':
-            property_phrase = phrase
+        return min_obj.name, min_property, min_cost
 
-        min_cost = len(property_phrase)
-        min_property = None
-        for prop_norm_name, prop_orig_name in min_obj.properties.items():
-            if property_phrase == prop_orig_name or property_phrase == prop_norm_name:
-                cost = 0
-            else:
-                cost = match_phrase(property_phrase, prop_norm_name)
-                if cost < 0:
-                    continue
+    def add_tag(self, objname, propname, param):
+        desc = param.get('description')
+        if desc == None:
+            desc = ''
+        else:
+            desc += ' '
+        param['description'] = desc + MeqaTag(objname, propname, '', 0).to_string()
 
-            if cost < min_cost:
-                min_cost = cost
-                min_property = prop_orig_name
-                if min_cost == 0:
-                    break
+    # find the class.property, and if found, add the meqa tag to param. return found or not
+    def try_add_tag(self, phrase, property_phrase, param):
+        objname, propname, cost = self.find_obj_property(phrase, property_phrase)
+        if objname != '' and propname != '':
+            self.add_tag(objname, propname, param)
+            return True
+        return False
 
-        if min_property == None:
-            return '', ''
-
-        return min_obj.name, min_property
-
-    # given path string, method string and the parameter dict, try to insert a tag into the param
-    def guess_tag(self, path, method, param):
+    def should_try_tag(self, param):
         desc = param.get('description')
         tag = get_meqa_tag(desc)
         if tag != None:
             # a tag exist already, skip
+            return False
+
+        if param.get('enum') != None or param.get('schema') != None or param.get('allOf') != None:
+            return False
+        return True
+
+    # given path string, method string and the parameter dict, try to insert a tag into the param
+    def guess_tag(self, path, method, param):
+        if not self.should_try_tag(param):
             return
 
-        if param.get('enum') != None or param.get('schema') != None:
-            return
-
+        desc = param.get('description')
         if desc == None:
             desc = ''
 
         # we try to find a class.property pair such that the normalized name of class and property appear
         # in the name of the property. If we can't do this, we try throw in the description field.
         # TODO, the description field can be big, we should do some syntactic analysis to it to trim it down.
-        def match_to_name(phrase, property_phrase):
-            objname, propname = self.find_obj_property(phrase, property_phrase)
-            if objname != '' and propname != '':
-                param['description'] = desc + ' ' + MeqaTag(objname, propname, '', 0).to_string()
-                return True
-            return False
 
         param_name = param.get('name')
         if param.get('in') == 'path':
@@ -235,21 +274,35 @@ class SwaggerDoc(object):
             index = path.find(param_name)
             if index > 0:
                 norm_path = self.vocab.normalize(path[:index - 2])
-                found = match_to_name(norm_path, param_name)
+                found = self.try_add_tag(norm_path, param_name, param)
                 if found:
                     return
 
         norm_name = self.vocab.normalize(param_name)
-        found = match_to_name(norm_name, '')
+        found = self.try_add_tag(norm_name, '', param)
         if found:
             return
 
-        norm_desc = self.vocab.normalize(desc)
-        found = match_to_name(norm_desc, '')
-        if found:
+        # One sentence at a time.
+        sentences = desc.split('.')
+        min_cost = 1e99
+        for sentence in sentences:
+            norm_desc = self.vocab.normalize(sentence)
+            objname, propname, cost = self.find_obj_property(norm_desc, '')
+            if cost < 0:
+                continue
+
+            if cost < min_cost:
+                min_cost = cost
+                min_obj = objname
+                min_prop = propname
+
+        if min_cost != 1e99:
+            self.add_tag(min_obj, min_prop, param)
             return
 
-        match_to_name(norm_name + norm_desc, '')
+        # a desparate last effort. Maybe we shouldn't do this.
+        self.try_add_tag(norm_name + norm_desc, '', param)
 
     def add_tags(self):
         # try to create tags and add them to the param's description field
@@ -267,17 +320,35 @@ class SwaggerDoc(object):
                 if method in path:
                     create_tags_for_param(path.get(method).get('parameters'))
 
+        # go through the object properties and try to add tags. We have to be more careful about this
+        # one since mistakes will lead to cycles in the dependency graph.
+        def add_tag_callback(schema, path):
+            if not self.should_try_tag(schema):
+                return
+
+            schema_type = schema.get('type')
+            if schema_type == 'integer' or schema_type == 'number' or schema_type == 'string':
+                norm_name = self.vocab.normalize(path[-1])
+                found = self.try_add_tag(norm_name, '', schema)
+                if found:
+                    return
+
+                # desc = schema.get('description')
+                # if desc != None:
+                #     self.try_add_tag(self.vocab.normalize(desc), '', schema)
+
+        for name, schema in self.doc['definitions'].items():
+            self.iterate_schema(schema, add_tag_callback, ['definitions', name], follow_array=True, follow_ref=False,
+                                follow_object=True)
+
     def get_properties(self, schema):
         properties = set()
-        def add_properties(schema):
-            nonlocal properties
-            prop = set()
+        def add_properties(schema, path):
             if 'properties' in schema:
                 for pname in schema['properties']:
-                    prop.add(pname)
-            properties = properties.union(prop)
+                    properties.add(pname)
 
-        self.iterate_schema(schema, add_properties)
+        self.iterate_schema(schema, add_properties, [], follow_array=False, follow_ref=True, follow_object=False)
         return properties
 
     def gather_words(self):
