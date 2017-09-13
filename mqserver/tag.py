@@ -110,16 +110,17 @@ def match_phrase(phrase, key):
             min_span = min(min_span, max(last_key.values()) - min(last_key.values()))
     return min_span
 
+class Property(object):
+    def __init__(self, name, type, swagger):
+        self.name = name
+        self.norm_name = swagger.vocab.normalize(name)
+        self.type = type
+
 class Definition(object):
     def __init__(self, name, swagger):
         self.name = name
         self.norm_name = swagger.vocab.normalize(name)
-        orig_properties = swagger.get_properties(swagger.doc['definitions'][name])
-        self.properties = dict()
-
-        for orig_prop in orig_properties:
-            norm_prop = swagger.vocab.normalize(orig_prop)
-            self.properties[norm_prop] = orig_prop
+        self.properties = swagger.get_properties(swagger.doc['definitions'][name])
 
 class SwaggerDoc(object):
     MethodGet = "get"
@@ -130,6 +131,13 @@ class SwaggerDoc(object):
     MethodPatch = "patch"
     MethodOptions = "options"
     MethodAll = [MethodGet, MethodPut, MethodPost, MethodDelete, MethodHead, MethodPatch, MethodOptions]
+
+    TypeBoolean = 'boolean'
+    TypeInteger = 'integer'
+    TypeNumber = 'number'
+    TypeObject = 'object'
+    TypeArray = 'array'
+    TypeString = 'string'
 
     def __init__(self, filename):
         self.vocab = Vocabulary()
@@ -185,8 +193,9 @@ class SwaggerDoc(object):
                 self.iterate_schema(v, callback, path, follow_array, follow_ref, follow_object)
                 path = path[:-1]
 
-    # return the object, property name that matches with the phrases
-    def find_obj_property(self, phrase, property_phrase):
+    # return the object, property name that matches with the phrases. If the passed in property_type is None
+    # we don't try to match against property.
+    def find_obj_property(self, phrase, property_phrase, property_type):
         if property_phrase == '':
             property_phrase = phrase
         min_cost = len(phrase) + len(property_phrase)
@@ -199,16 +208,27 @@ class SwaggerDoc(object):
 
             min_property_cost = len(property_phrase)
             min_property = None
-            for prop_norm_name, prop_orig_name in obj.properties.items():
+            for prop in obj.properties:
+                if property_type == None:
+                    # we are ok except for object type. We only allow matching against object type
+                    # if the caller specifies it.
+                    if prop.type == SwaggerDoc.TypeObject:
+                        continue
+                elif property_type != prop.type:
+                    # type doesn't match. We still allow matching integer and number types.
+                    if property_type != SwaggerDoc.TypeInteger and property_type != SwaggerDoc.TypeNumber or \
+                        prop.type != SwaggerDoc.TypeInteger and prop.type != SwaggerDoc.TypeNumber:
+                        continue
+
                 property_cost = 0
-                if property_phrase != prop_orig_name and property_phrase != prop_norm_name:
-                    property_cost = match_phrase(property_phrase, prop_norm_name)
+                if property_phrase != prop.name and property_phrase != prop.norm_name:
+                    property_cost = match_phrase(property_phrase, prop.norm_name)
                     if property_cost < 0:
                         continue
 
                 if property_cost < min_property_cost:
                     min_property_cost = property_cost
-                    min_property = prop_orig_name
+                    min_property = prop.name
                     if min_property_cost == 0:
                         break
 
@@ -236,8 +256,8 @@ class SwaggerDoc(object):
         param['description'] = desc + MeqaTag(objname, propname, '', 0).to_string()
 
     # find the class.property, and if found, add the meqa tag to param. return found or not
-    def try_add_tag(self, phrase, property_phrase, param):
-        objname, propname, cost = self.find_obj_property(phrase, property_phrase)
+    def try_add_tag(self, phrase, property_phrase, param, param_type_match):
+        objname, propname, cost = self.find_obj_property(phrase, property_phrase, param_type_match)
         if objname != '' and propname != '':
             self.add_tag(objname, propname, param)
             return True
@@ -268,18 +288,24 @@ class SwaggerDoc(object):
         # TODO, the description field can be big, we should do some syntactic analysis to it to trim it down.
 
         param_name = param.get('name')
-        if param.get('in') == 'path':
+        param_in = param.get('in')
+        if param_in == 'path':
+            param_type_match = None
+        else:
+            param_type_match = param['type']
+
+        if param_in == 'path':
             # the word right before the parameter usually is the class name. We prefer this. Note that in this
             # case the property_name should just be the param_name, not the normalized name.
             index = path.find(param_name)
             if index > 0:
                 norm_path = self.vocab.normalize(path[:index - 2])
-                found = self.try_add_tag(norm_path, param_name, param)
+                found = self.try_add_tag(norm_path, param_name, param, param_type_match)
                 if found:
                     return
 
         norm_name = self.vocab.normalize(param_name)
-        found = self.try_add_tag(norm_name, '', param)
+        found = self.try_add_tag(norm_name, '', param, param_type_match)
         if found:
             return
 
@@ -288,7 +314,7 @@ class SwaggerDoc(object):
         min_cost = 1e99
         for sentence in sentences:
             norm_desc = self.vocab.normalize(sentence)
-            objname, propname, cost = self.find_obj_property(norm_desc, '')
+            objname, propname, cost = self.find_obj_property(norm_desc, '', param_type_match)
             if cost < 0:
                 continue
 
@@ -302,7 +328,7 @@ class SwaggerDoc(object):
             return
 
         # a desparate last effort. Maybe we shouldn't do this.
-        self.try_add_tag(norm_name + norm_desc, '', param)
+        self.try_add_tag(norm_name + norm_desc, '', param, param_type_match)
 
     def add_tags(self):
         # try to create tags and add them to the param's description field
@@ -327,9 +353,9 @@ class SwaggerDoc(object):
                 return
 
             schema_type = schema.get('type')
-            if schema_type == 'integer' or schema_type == 'number' or schema_type == 'string':
+            if schema_type == SwaggerDoc.TypeInteger or schema_type == SwaggerDoc.TypeNumber or schema_type == SwaggerDoc.TypeString:
                 norm_name = self.vocab.normalize(path[-1])
-                found = self.try_add_tag(norm_name, '', schema)
+                found = self.try_add_tag(norm_name, '', schema, schema_type)
                 if found:
                     return
 
@@ -342,11 +368,11 @@ class SwaggerDoc(object):
                                 follow_object=True)
 
     def get_properties(self, schema):
-        properties = set()
+        properties = []
         def add_properties(schema, path):
             if 'properties' in schema:
-                for pname in schema['properties']:
-                    properties.add(pname)
+                for pname, prop in schema['properties'].items():
+                    properties.append(Property(pname, prop.get('type'), self))
 
         self.iterate_schema(schema, add_properties, [], follow_array=False, follow_ref=True, follow_object=False)
         return properties
@@ -388,8 +414,8 @@ def main():
         print("\n======== {} -> {} =========\n".format(norm_name, obj.name))
         print()
 
-        for prop_norm_name, prop_orig_name in obj.properties.items():
-            print("{} -> {}\n".format(prop_norm_name, prop_orig_name))
+        for prop in obj.properties:
+            print("{} -> {}\n".format(prop.norm_name, prop.name))
 
 if __name__ == '__main__':
     main()
