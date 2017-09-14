@@ -273,12 +273,12 @@ class SwaggerDoc(object):
             # a tag exist already, skip
             return False
 
-        if param.get('enum') != None or param.get('schema') != None or param.get('allOf') != None:
+        if param.get('enum') != None:
             return False
         return True
 
     # given path string, method string and the parameter dict, try to insert a tag into the param
-    def guess_tag(self, path, method, param):
+    def guess_tag_for_param(self, path, method, param):
         if not self.should_try_tag(param):
             return
 
@@ -295,7 +295,7 @@ class SwaggerDoc(object):
         if param_in == 'path':
             param_type_match = None
         else:
-            param_type_match = param['type']
+            param_type_match = param.get('type')
 
         if param_in == 'path':
             # the word right before the parameter usually is the class name. We prefer this. Note that in this
@@ -306,6 +306,12 @@ class SwaggerDoc(object):
                 found = self.try_add_tag(norm_path, param_name, param, param_type_match)
                 if found:
                     return
+
+        # if body has schema, we should iterate down into the schema, instead of just look at
+        # the param object.
+        param_schema = param.get('schema')
+        if param_schema != None:
+            return self.guess_tag_for_schema(param_schema, [param_name], None)
 
         norm_name = self.vocab.normalize(param_name)
         found = self.try_add_tag(norm_name, '', param, param_type_match)
@@ -333,13 +339,35 @@ class SwaggerDoc(object):
         # a desparate last effort. Maybe we shouldn't do this.
         self.try_add_tag(norm_name + norm_desc, '', param, param_type_match)
 
+    # the path is the
+    def guess_tag_for_schema(self, schema, path, exclude):
+        # go through the object properties and try to add tags. We have to be more careful about this
+        # one since mistakes will lead to cycles in the dependency graph.
+        def add_tag_callback(s, path):
+            if not self.should_try_tag(s):
+                return
+
+            schema_type = s.get('type')
+            if schema_type == SwaggerDoc.TypeInteger or schema_type == SwaggerDoc.TypeNumber or schema_type == SwaggerDoc.TypeString:
+                norm_name = self.vocab.normalize(path[-1])
+                found = self.try_add_tag(norm_name, '', s, schema_type, exclude)
+                if found:
+                    return
+
+                # desc = schema.get('description')
+                # if desc != None:
+                #     self.try_add_tag(self.vocab.normalize(desc), '', schema)
+
+        self.iterate_schema(schema, add_tag_callback, path, follow_array=True, follow_ref=False,
+                            follow_object=True)
+
     def add_tags(self):
         # try to create tags and add them to the param's description field
         def create_tags_for_param(params):
             if params == None:
                 return
             for p in params:
-                self.guess_tag(pathname, method, p)
+                self.guess_tag_for_param(pathname, method, p)
 
         paths = self.doc['paths']
         for pathname, path in paths.items():
@@ -349,26 +377,8 @@ class SwaggerDoc(object):
                 if method in path:
                     create_tags_for_param(path.get(method).get('parameters'))
 
-        # go through the object properties and try to add tags. We have to be more careful about this
-        # one since mistakes will lead to cycles in the dependency graph.
-        def add_tag_callback(schema, path):
-            if not self.should_try_tag(schema):
-                return
-
-            schema_type = schema.get('type')
-            if schema_type == SwaggerDoc.TypeInteger or schema_type == SwaggerDoc.TypeNumber or schema_type == SwaggerDoc.TypeString:
-                norm_name = self.vocab.normalize(path[-1])
-                found = self.try_add_tag(norm_name, '', schema, schema_type, exclude=defname)
-                if found:
-                    return
-
-                # desc = schema.get('description')
-                # if desc != None:
-                #     self.try_add_tag(self.vocab.normalize(desc), '', schema)
-
         for defname, schema in self.doc['definitions'].items():
-            self.iterate_schema(schema, add_tag_callback, ['definitions', defname], follow_array=True, follow_ref=False,
-                                follow_object=True)
+            self.guess_tag_for_schema(schema, ['definitions', defname], defname)
 
     def get_properties(self, schema):
         properties = []
