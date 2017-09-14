@@ -114,7 +114,8 @@ def match_phrase(phrase, key):
                 continue
             # note that only the most recent information matters
             min_span = min(min_span, max(last_key.values()) - min(last_key.values()))
-    return min_span + overhead
+
+    return min_span + 1 - len(key_list) + overhead
 
 class Property(object):
     def __init__(self, name, type, swagger):
@@ -206,6 +207,7 @@ class SwaggerDoc(object):
             property_phrase = phrase
         min_cost = len(phrase) + len(property_phrase)
         min_obj = None
+        min_property = None
 
         for obj_name, obj in self.definitions.items():
             if obj.name == exclude:
@@ -216,7 +218,7 @@ class SwaggerDoc(object):
                 continue
 
             min_property_cost = len(property_phrase)
-            min_property = None
+            obj_min_property = None
             for prop in obj.properties:
                 if property_type == None:
                     # we are ok except for object type. We only allow matching against object type
@@ -237,17 +239,18 @@ class SwaggerDoc(object):
 
                 if property_cost < min_property_cost:
                     min_property_cost = property_cost
-                    min_property = prop.name
+                    obj_min_property = prop.name
                     if min_property_cost == 0:
                         break
 
-            if min_property == None:
+            if obj_min_property == None:
                 continue
 
             cost += min_property_cost
             if cost < min_cost:
                 min_cost = cost
                 min_obj = obj
+                min_property = obj_min_property
                 if min_cost == 0:
                     break
 
