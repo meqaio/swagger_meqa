@@ -203,8 +203,11 @@ class SwaggerDoc(object):
     # return the object, property name that matches with the phrases. If the passed in property_type is None
     # we don't try to match against property.
     def find_obj_property(self, phrase, property_phrase, property_type, exclude=None):
+        # when shareing object name and property in the same phrase, we try to limit the word reuse between the two
+        property_word_set = None
         if property_phrase == '':
             property_phrase = phrase
+            property_word_set = set(property_phrase.split(' '))
         min_cost = len(phrase) + len(property_phrase)
         min_obj = None
         min_property = None
@@ -217,6 +220,8 @@ class SwaggerDoc(object):
             if cost < 0:
                 continue
 
+            if property_word_set != None:
+                obj_prop_set = property_word_set & set(obj_name.split(' '))
             min_property_cost = len(property_phrase)
             obj_min_property = None
             for prop in obj.properties:
@@ -232,6 +237,10 @@ class SwaggerDoc(object):
                         continue
 
                 property_cost = 0
+                if property_word_set != None:
+                    if not set(prop.norm_name.split(' ')) < obj_prop_set:
+                        property_cost = 1
+
                 if property_phrase != prop.name and property_phrase != prop.norm_name:
                     property_cost = match_phrase(property_phrase, prop.norm_name)
                     if property_cost < 0:
