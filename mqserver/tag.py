@@ -79,13 +79,20 @@ def get_meqa_tag(desc):
 def match_phrase(phrase, key):
     phrase_list = phrase.split(' ')
     key_list = key.split(' ')
-    if not set(key_list) <= set(phrase_list):
+    phrase_set = set(phrase_list)
+    key_set = set(key_list)
+    if not key_set <= phrase_set:
         return -1
 
-    if phrase.find(key) >= 0:
+    if phrase == key:
         return 0
 
-    key_index_list = []
+    overhead = (len(phrase_set) - len(key_set)) / len(phrase_set)
+
+    if phrase.find(key) >= 0:
+        return overhead
+
+    key_index_list = [] # for every position in phrase_list, record the key index if it matches a key entry
     for p in phrase_list:
         found = False
         for i, k in enumerate(key_list):
@@ -97,8 +104,7 @@ def match_phrase(phrase, key):
             key_index_list.append(-1)
 
     # the key_index_list is the length of the phrase with the key's index. Find the smallest substring
-    # that has all the keys. The observation is that the smallest span will always only have one of
-    # each key.
+    # that has all the keys.
     min_span = len(key_index_list)
     last_key = dict() # key index to last key position mapping
     for i, k in enumerate(key_index_list):
@@ -108,7 +114,7 @@ def match_phrase(phrase, key):
                 continue
             # note that only the most recent information matters
             min_span = min(min_span, max(last_key.values()) - min(last_key.values()))
-    return min_span
+    return min_span + overhead
 
 class Property(object):
     def __init__(self, name, type, swagger):
