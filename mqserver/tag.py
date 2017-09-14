@@ -158,6 +158,24 @@ class SwaggerDoc(object):
         yaml.dump(self.doc, f)
         f.close()
 
+    # given a object schema, try to find a object definition that matches the schema.
+    def find_definition(self, schema):
+        min_match_properties = 1e99
+        found = None
+        properties = self.get_properties(schema)
+        if len(properties) <= 2:
+            # we only match when there are 3 or more fields
+            return None
+
+        property_set = set(p.name for p in properties)
+        for name, obj in self.definitions.items():
+            obj_prop_set = set(p.name for p in obj.properties)
+            if obj_prop_set >= property_set and len(obj_prop_set) < min_match_properties:
+                found = obj.name
+                min_match_properties = len(obj_prop_set)
+
+        return found
+
     # Iterate through the schema. Call the callback for each bottom level schema (object or array) we discover.
     # The path is the list of keys we can use to traverse to the object from the swagger doc root. e.g.
     # [definitions, Pet, id]
@@ -329,7 +347,11 @@ class SwaggerDoc(object):
         # the param object.
         param_schema = param.get('schema')
         if param_schema != None:
-            return self.guess_tag_for_schema(param_schema, [param_name], None)
+            found = self.find_definition(param_schema)
+            if found:
+                param_schema['description'] = param_schema.get('description', '') + ' ' + '<meqa ' + found + '>'
+            else:
+                return self.guess_tag_for_schema(param_schema, [param_name], None)
 
         norm_name = self.vocab.normalize(param_name)
         found = self.try_add_tag(norm_name, '', param, param_type_match)
@@ -357,17 +379,17 @@ class SwaggerDoc(object):
         # a desparate last effort. Maybe we shouldn't do this.
         self.try_add_tag(norm_name + norm_desc, '', param, param_type_match)
 
-    # the path is the
+    # the path is the path from swagger root leading to the current schema
     def guess_tag_for_schema(self, schema, path, exclude):
         # go through the object properties and try to add tags. We have to be more careful about this
         # one since mistakes will lead to cycles in the dependency graph.
-        def add_tag_callback(s, path):
+        def add_tag_callback(s, p):
             if not self.should_try_tag(s):
                 return
 
             schema_type = s.get('type')
             if schema_type == SwaggerDoc.TypeInteger or schema_type == SwaggerDoc.TypeNumber or schema_type == SwaggerDoc.TypeString:
-                norm_name = self.vocab.normalize(path[-1])
+                norm_name = self.vocab.normalize(p[-1])
                 found = self.try_add_tag(norm_name, '', s, schema_type, exclude)
                 if found:
                     return
