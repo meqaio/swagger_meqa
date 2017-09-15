@@ -160,6 +160,11 @@ class SwaggerDoc(object):
 
     # given a object schema, try to find a object definition that matches the schema.
     def find_definition(self, schema):
+        refstr = schema.get('$ref')
+        # we only handle local refs for now
+        if refstr != None and refstr[0] == '#':
+            return refstr.split('/')[-1]
+
         min_match_properties = 1e99
         found = None
         properties = self.get_properties(schema)
