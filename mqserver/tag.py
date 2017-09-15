@@ -349,9 +349,8 @@ class SwaggerDoc(object):
         if param_schema != None:
             found = self.find_definition(param_schema)
             if found:
-                param_schema['description'] = param_schema.get('description', '') + ' ' + '<meqa ' + found + '>'
-            else:
-                return self.guess_tag_for_schema(param_schema, [param_name], None)
+                param['description'] = param.get('description', '') + ' ' + '<meqa ' + found + '>'
+            return self.guess_tag_for_schema(param_schema, [param_name], None)
 
         norm_name = self.vocab.normalize(param_name)
         found = self.try_add_tag(norm_name, '', param, param_type_match)
@@ -415,7 +414,31 @@ class SwaggerDoc(object):
             create_tags_for_param(path.get('parameters'))
             for method in SwaggerDoc.MethodAll:
                 if method in path:
-                    create_tags_for_param(path.get(method).get('parameters'))
+                    op = path.get(method)
+                    params = op.get('parameters')
+                    create_tags_for_param(params)
+
+                    if method != SwaggerDoc.MethodPost:
+                        continue
+                    # some special handling for posts. If we didn't resolve any parameter to objects, we
+                    # check whether the last path element matches any definitions. If yes, there is a high
+                    # likelihood that we care creating an object for such definition.
+                    if params == None:
+                        params = []
+                    found = False
+                    for p in params:
+                        t = get_meqa_tag(p.get('description'))
+                        if t != None and t.property == '':
+                            found = True
+                            break
+                    if not found:
+                        patharray = pathname.split('/')
+                        last = patharray[-1]
+                        if last == '':
+                            last = patharray[-2]
+                        definition = self.definitions.get(self.vocab.normalize(last))
+                        if definition != None:
+                            op['description'] = op.get('description', '') + ' ' + '<meqa ' + definition.name + '>'
 
         for defname, schema in self.doc['definitions'].items():
             self.guess_tag_for_schema(schema, ['definitions', defname], defname)
