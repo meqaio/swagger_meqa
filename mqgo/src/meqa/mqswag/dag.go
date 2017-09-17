@@ -23,6 +23,10 @@ type DAGNode struct {
 	dag *DAG
 }
 
+func (node *DAGNode) ToString() string {
+	return node.GetName() + " " + node.GetMethod()
+}
+
 func (node *DAGNode) GetType() string {
 	return node.Name[0:1]
 }
@@ -40,11 +44,11 @@ func (node *DAGNode) AdjustChildrenWeight(depList []*DAGNode) error {
 	// detect circular dependency
 	for i, n := range depList {
 		if node == n {
-			str := "Circular dependency detected - "
+			str := "Circular dependency detected (top depends on bottom):"
 			for j := i; j < len(depList); j++ {
-				str = str + " " + depList[j].Name
+				str = str + "\n\t" + depList[j].ToString()
 			}
-			str = str + " " + node.Name
+			str = str + "\n\t" + node.ToString() + "\n"
 			return mqutil.NewError(mqutil.ErrInvalid, str)
 		}
 	}

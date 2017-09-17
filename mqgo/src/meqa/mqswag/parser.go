@@ -14,6 +14,7 @@ import (
 	"github.com/go-openapi/loads"
 	"github.com/go-openapi/loads/fmts"
 	"github.com/go-openapi/spec"
+	"github.com/xeipuuv/gojsonschema"
 )
 
 // The type code we use in DAGNode's name. e.g. a node that represents definitions/User
@@ -195,6 +196,45 @@ func (swagger *Swagger) GetReferredSchema(schema *Schema) (string, *Schema, erro
 	return tokens[1], referredSchema, nil
 }
 
+// GetSchemaRootType gets the real object type fo the specified schema. It only returns meaningful
+// data for object and array of object type of parameters. If the parameter is a basic type it returns
+// nil
+func (swagger *Swagger) GetSchemaRootType(schema *Schema, parentTag *MeqaTag) (*MeqaTag, *Schema) {
+	tag := GetMeqaTag(schema.Description)
+	if tag == nil {
+		tag = parentTag
+	}
+	referenceName, referredSchema, err := swagger.GetReferredSchema((*Schema)(schema))
+	if err != nil {
+		mqutil.Logger.Print(err)
+		return nil, nil
+	}
+	if referredSchema != nil {
+		if tag == nil {
+			tag = &MeqaTag{referenceName, "", "", 0}
+		}
+		return swagger.GetSchemaRootType(referredSchema, tag)
+	}
+	if len(schema.Enum) != 0 {
+		return nil, nil
+	}
+	if len(schema.Type) == 0 {
+		return nil, nil
+	}
+	if schema.Type.Contains(gojsonschema.TYPE_ARRAY) {
+		var itemSchema *spec.Schema
+		if len(schema.Items.Schemas) != 0 {
+			itemSchema = &(schema.Items.Schemas[0])
+		} else {
+			itemSchema = schema.Items.Schema
+		}
+		return swagger.GetSchemaRootType((*Schema)(itemSchema), tag)
+	} else if schema.Type.Contains(gojsonschema.TYPE_OBJECT) {
+		return tag, schema
+	}
+	return nil, nil
+}
+
 func GetDAGName(t string, n string, m string) string {
 	return t + FieldSeparator + n + FieldSeparator + m
 }
@@ -218,8 +258,8 @@ type Dependencies struct {
 	IsPost   bool
 }
 
-// CollectFromTag collects from the tag. It returns true if successful, false if not.
-func (dep *Dependencies) CollectFromTag(tag *MeqaTag) bool {
+// CollectFromTag collects from the tag. It returns the classname being collected.
+func (dep *Dependencies) CollectFromTag(tag *MeqaTag) string {
 	if tag != nil && len(tag.Class) > 0 {
 		// If there is a tag, and the tag's operation (which is always correct)
 		// doesn't match what we want to collect, then skip.
@@ -232,9 +272,9 @@ func (dep *Dependencies) CollectFromTag(tag *MeqaTag) bool {
 		} else {
 			dep.Default[tag.Class] = 1
 		}
-		return true
+		return tag.Class
 	}
-	return false
+	return ""
 }
 
 // collects all the objects referred to by the schema. All the object names are put into
@@ -242,7 +282,7 @@ func (dep *Dependencies) CollectFromTag(tag *MeqaTag) bool {
 func CollectSchemaDependencies(schema *Schema, swagger *Swagger, dag *DAG, dep *Dependencies) error {
 	iterFunc := func(swagger *Swagger, schemaName string, schema *Schema, context interface{}) error {
 		collected := dep.CollectFromTag(GetMeqaTag(schema.Description))
-		if !collected && len(schemaName) > 0 {
+		if len(collected) == 0 && len(schemaName) > 0 {
 			dep.Default[schemaName] = 1
 		}
 
@@ -254,6 +294,10 @@ func CollectSchemaDependencies(schema *Schema, swagger *Swagger, dag *DAG, dep *
 
 func CollectParamDependencies(params []spec.Parameter, swagger *Swagger, dag *DAG, dep *Dependencies) error {
 	defer func() { dep.Default = nil }()
+
+	// the list of objects this method is producing that are specified through refs. We need to go through
+	// them to find what objects they depend on - those objects will be out inputs (consumes)
+	var inputsNeeded []string
 	for _, param := range params {
 		if dep.IsPost && (param.In == "body" || param.In == "formData") {
 			dep.Default = dep.Produces
@@ -261,20 +305,36 @@ func CollectParamDependencies(params []spec.Parameter, swagger *Swagger, dag *DA
 			dep.Default = dep.Consumes
 		}
 
-		tag := GetMeqaTag(param.Description)
-		collected := dep.CollectFromTag(tag)
-		if collected {
-			continue
-		}
-
 		var schema *Schema
 		if param.Schema != nil {
 			schema = (*Schema)(param.Schema)
+			collected := dep.CollectFromTag(GetMeqaTag(param.Description))
+			if len(collected) == 0 {
+				collected = dep.CollectFromTag(GetMeqaTag(schema.Description))
+			}
+			if len(collected) > 0 {
+				// Only try to collect addition info from the object schema if the object is not
+				// inlined in the request. If it's inlined the we should continue to collect the
+				// the input parameters from the schema itself.
+				if !schema.Type.Contains(gojsonschema.TYPE_OBJECT) {
+					inputsNeeded = append(inputsNeeded, collected)
+					continue
+				}
+			} else {
+				// Getting root type covers refs and arrays
+				t, _ := swagger.GetSchemaRootType(schema, nil)
+				if t != nil && len(t.Class) > 0 {
+					dep.Default[t.Class] = 1
+					inputsNeeded = append(inputsNeeded, t.Class)
+					continue
+				}
+			}
 		} else {
 			// construct a full schema from simple ones
 			schema = CreateSchemaFromSimple(&param.SimpleSchema, &param.CommonValidations)
 		}
 
+		dep.Default = dep.Consumes
 		err := CollectSchemaDependencies(schema, swagger, dag, dep)
 		if err != nil {
 			return err
@@ -283,10 +343,9 @@ func CollectParamDependencies(params []spec.Parameter, swagger *Swagger, dag *DA
 
 	// This heuristics is for the common case. When posting an object, the fields referred by it are input
 	// parameters needed to create this object. More complicated cases are to be handled by tags.
-	for name := range dep.Produces {
+	for _, name := range inputsNeeded {
 		schema := swagger.FindSchemaByName(name)
 		dep.Default = dep.Consumes
-
 		err := CollectSchemaDependencies(schema, swagger, dag, dep)
 		if err != nil {
 			return err
@@ -304,7 +363,7 @@ func CollectResponseDependencies(responses *spec.Responses, swagger *Swagger, da
 	defer func() { dep.Default = nil }()
 	for respCode, respSpec := range responses.StatusCodeResponses {
 		collected := dep.CollectFromTag(GetMeqaTag(respSpec.Description))
-		if collected {
+		if len(collected) > 0 {
 			continue
 		}
 		if respSpec.Schema != nil && respCode >= 200 && respCode < 300 {
@@ -355,8 +414,11 @@ func AddOperation(pathName string, pathItem *spec.PathItem, method string, swagg
 	dep.Produces = make(map[string]interface{})
 	dep.Consumes = make(map[string]interface{})
 
-	if (tag != nil && tag.Operation == MethodPost) || (tag == nil && method == MethodPost) {
+	if (tag != nil && tag.Operation == MethodPost) || ((tag == nil || len(tag.Operation) == 0) && method == MethodPost) {
 		dep.IsPost = true
+		if tag != nil && len(tag.Class) > 0 {
+			dep.Produces[tag.Class] = 1
+		}
 	} else {
 		dep.IsPost = false
 	}

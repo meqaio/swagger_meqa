@@ -633,45 +633,6 @@ func (t *Test) Run(tc *TestCase) error {
 	return t.ProcessResult(resp)
 }
 
-// GetSchemaRootType gets the real object type fo the specified schema. It only returns meaningful
-// data for object and array of object type of parameters. If the parameter is a basic type it returns
-// nil
-func (t *Test) GetSchemaRootType(schema *mqswag.Schema, parentTag *mqswag.MeqaTag) (*mqswag.MeqaTag, *mqswag.Schema) {
-	tag := mqswag.GetMeqaTag(schema.Description)
-	if tag == nil {
-		tag = parentTag
-	}
-	referenceName, referredSchema, err := t.db.Swagger.GetReferredSchema((*mqswag.Schema)(schema))
-	if err != nil {
-		mqutil.Logger.Print(err)
-		return nil, nil
-	}
-	if referredSchema != nil {
-		if tag == nil {
-			tag = &mqswag.MeqaTag{referenceName, "", "", 0}
-		}
-		return t.GetSchemaRootType(referredSchema, tag)
-	}
-	if len(schema.Enum) != 0 {
-		return nil, nil
-	}
-	if len(schema.Type) == 0 {
-		return nil, nil
-	}
-	if schema.Type.Contains(gojsonschema.TYPE_ARRAY) {
-		var itemSchema *spec.Schema
-		if len(schema.Items.Schemas) != 0 {
-			itemSchema = &(schema.Items.Schemas[0])
-		} else {
-			itemSchema = schema.Items.Schema
-		}
-		return t.GetSchemaRootType((*mqswag.Schema)(itemSchema), tag)
-	} else if schema.Type.Contains(gojsonschema.TYPE_OBJECT) {
-		return tag, schema
-	}
-	return nil, nil
-}
-
 func StringParamsResolveWithHistory(str string, h *TestHistory) interface{} {
 	begin := strings.Index(str, "{{")
 	end := strings.Index(str, "}}")
@@ -777,7 +738,7 @@ func (t *Test) ResolveParameters(tc *TestCase) error {
 			}
 			if t.BodyParams != nil && !bodyIsMap {
 				// Body is not map, we use it directly.
-				paramTag, schema := t.GetSchemaRootType((*mqswag.Schema)(params.Schema), mqswag.GetMeqaTag(params.Description))
+				paramTag, schema := t.db.Swagger.GetSchemaRootType((*mqswag.Schema)(params.Schema), mqswag.GetMeqaTag(params.Description))
 				if schema != nil && paramTag != nil {
 					objarray, _ := t.BodyParams.([]interface{})
 					for _, obj := range objarray {
