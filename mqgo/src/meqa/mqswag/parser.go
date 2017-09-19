@@ -304,11 +304,11 @@ func CollectParamDependencies(params []spec.Parameter, swagger *Swagger, dag *DA
 		} else {
 			dep.Default = dep.Consumes
 		}
+		collected := dep.CollectFromTag(GetMeqaTag(param.Description))
 
-		var schema *Schema
 		if param.Schema != nil {
+			var schema *Schema
 			schema = (*Schema)(param.Schema)
-			collected := dep.CollectFromTag(GetMeqaTag(param.Description))
 			if len(collected) == 0 {
 				collected = dep.CollectFromTag(GetMeqaTag(schema.Description))
 			}
@@ -329,15 +329,11 @@ func CollectParamDependencies(params []spec.Parameter, swagger *Swagger, dag *DA
 					continue
 				}
 			}
-		} else {
-			// construct a full schema from simple ones
-			schema = CreateSchemaFromSimple(&param.SimpleSchema, &param.CommonValidations)
-		}
-
-		dep.Default = dep.Consumes
-		err := CollectSchemaDependencies(schema, swagger, dag, dep)
-		if err != nil {
-			return err
+			dep.Default = dep.Consumes
+			err := CollectSchemaDependencies(schema, swagger, dag, dep)
+			if err != nil {
+				return err
+			}
 		}
 	}
 
