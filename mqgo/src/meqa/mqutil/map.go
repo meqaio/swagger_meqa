@@ -271,3 +271,36 @@ func YamlObjToJsonObj(in interface{}) (interface{}, error) {
 	}
 	return out, nil
 }
+
+type InterfaceIterFunc func(key string, value interface{}) error
+
+// Iterate all the leaf level fields. For maps iterate all the fields. For arrays we will go through all the entries and
+// see if any of them is a map. The iteration will be done in a width first order, so deeply buried fields will be iterated last.
+// The maps should be map[string]interface{}.
+func IterateInterface(in interface{}, callback InterfaceIterFunc) error {
+	if inMap, _ := in.(map[string]interface{}); inMap != nil {
+		for k, v := range inMap {
+			err := callback(k, v)
+			if err != nil {
+				return err
+			}
+		}
+		for _, v := range inMap {
+			err := IterateInterface(v, callback)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	if inArray, _ := in.([]interface{}); inArray != nil {
+		for _, v := range inArray {
+			err := IterateInterface(v, callback)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	return nil
+}

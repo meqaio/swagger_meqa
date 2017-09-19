@@ -183,7 +183,6 @@ func GeneratePathTestPlan(swagger *mqswag.Swagger, dag *mqswag.DAG) (*TestPlan, 
 			}
 		}
 		name = strings.Join(nameArray, "/")
-		fmt.Printf("%s\n", name)
 
 		pathMap[name] = append(pathMap[name], current)
 

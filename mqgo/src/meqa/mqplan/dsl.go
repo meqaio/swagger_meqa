@@ -319,7 +319,7 @@ func (t *Test) ProcessOneComparison(className string, method string, comp *Compa
 }
 
 func (t *Test) GetParam(path []string) interface{} {
-	if len(path) == 0 {
+	if len(path) < 2 {
 		return nil
 	}
 	var section interface{}
@@ -337,18 +337,40 @@ func (t *Test) GetParam(path []string) interface{} {
 		section = t.Expect[ExpectBody]
 	}
 
+	topSection := section
+	// First try the exact search. This only works if there is no
+	// array on the search path.
 	for _, field := range path[1:] {
 		if section == nil {
-			return nil
+			break
 		}
 		paramMap, ok := section.(map[string]interface{})
 		if !ok {
-			return nil
+			section = nil
+			break
 		}
 		section = paramMap[field]
 	}
+	if section != nil {
+		return section
+	}
 
-	return section
+	// Search by iterate through all the maps. This only applies if we only one
+	// entry after the params section.
+	if len(path[1:]) == 1 {
+		var found interface{}
+		callback := func(key string, value interface{}) error {
+			if key == path[1] {
+				found = value
+				return mqutil.NewError(mqutil.ErrOK, "")
+			}
+			return nil
+		}
+
+		mqutil.IterateInterface(topSection, callback)
+		return found
+	}
+	return nil
 }
 
 // ProcessResult decodes the response from the server into a result array
