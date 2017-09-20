@@ -185,6 +185,9 @@ class SwaggerDoc(object):
     # The path is the list of keys we can use to traverse to the object from the swagger doc root. e.g.
     # [definitions, Pet, id]
     def iterate_schema(self, schema, callback, path, follow_array=False, follow_ref=True, follow_object=False):
+        if schema == None:
+            return
+
         callback(schema, path)
         if 'allOf' in schema:
             for s in schema['allOf']:
@@ -195,12 +198,15 @@ class SwaggerDoc(object):
             if not follow_ref:
                 return
 
-            refstr = schema['$ref']
+            refstr = schema.get('$ref')
             # we only handle local refs for now
-            if refstr[0] != '#':
+            if refstr == None or refstr[0] != '#':
                 return
 
             reflist = refstr.split('/')
+            if len(reflist) != 3:
+                return
+
             refschema = self.doc[reflist[1]][reflist[2]]
             self.iterate_schema(refschema, callback, reflist[1:3], follow_array, follow_ref, follow_object)
             return
@@ -405,6 +411,28 @@ class SwaggerDoc(object):
         self.iterate_schema(schema, add_tag_callback, path, follow_array=True, follow_ref=False,
                             follow_object=True)
 
+    def guess_tag_for_response(self, resp, path):
+        # Try to tag the individual fields. This handles the case where the response contains fields for many
+        # different objects.
+        self.guess_tag_for_schema(resp.get('schema'), path, None)
+
+        respObjects = set()
+        def add_tag_callback(s, p):
+            refstr = s.get('$ref')
+            # we only handle local refs for now
+            if refstr == None or refstr[0] != '#':
+                return
+
+            reflist = refstr.split('/')
+            if len(reflist) != 3:
+                return
+
+            respObjects.add(reflist[2])
+
+        self.iterate_schema(resp.get('schema'), add_tag_callback, path, follow_array=True, follow_ref=False,
+                            follow_object=False)
+        return respObjects
+
     def add_tags(self):
         # try to create tags and add them to the param's description field
         def create_tags_for_param(params):
@@ -418,32 +446,44 @@ class SwaggerDoc(object):
             method = ''
             create_tags_for_param(path.get('parameters'))
             for method in SwaggerDoc.MethodAll:
-                if method in path:
-                    op = path.get(method)
-                    params = op.get('parameters')
-                    create_tags_for_param(params)
+                op = path.get(method)
+                if op == None:
+                    continue
 
-                    if method != SwaggerDoc.MethodPost:
-                        continue
-                    # some special handling for posts. If we didn't resolve any parameter to objects, we
-                    # check whether the last path element matches any definitions. If yes, there is a high
-                    # likelihood that we care creating an object for such definition.
-                    if params == None:
-                        params = []
-                    found = False
-                    for p in params:
-                        t = get_meqa_tag(p.get('description'))
-                        if t != None and t.property == '':
-                            found = True
-                            break
-                    if not found:
-                        patharray = pathname.split('/')
-                        last = patharray[-1]
-                        if last == '':
-                            last = patharray[-2]
-                        definition = self.definitions.get(self.vocab.normalize(last))
-                        if definition != None:
-                            op['description'] = op.get('description', '') + ' ' + '<meqa ' + definition.name + '>'
+                params = op.get('parameters')
+                create_tags_for_param(params)
+
+                responses = op.get('responses')
+                respPath = pathname.split('/')
+                respPath.append('responses')
+                successResp = None
+                if responses != None:
+                    for code, resp in responses.items():
+                        respPath.append(code)
+                        respObjs = self.guess_tag_for_response(resp, respPath)
+                        respPath = respPath[:-1]
+
+                        if code != 'default':
+                            code = int(code)
+                            if code >= 200 and code < 300:
+                                successResp = resp
+
+                # We make a guess at what the operation is about, and put the tag in the operation's description.
+                # This tag will only be used as one of the last resort by mqgo.
+                last = None
+                for pathentry in reversed(pathname.split('/')):
+                    if pathentry != '' and pathentry[0] != '{':
+                        last = pathentry
+                        break
+
+                definition = self.definitions.get(self.vocab.normalize(last))
+                if definition != None:
+                    op['description'] = op.get('description', '') + ' ' + '<meqa ' + definition.name + '>'
+                    continue
+
+                # Can't guess from the last path element. Try to guess it from the combination of successful
+                # response and the description. If the description/summary and the response agree, we tag it as such.
+                # TODO, is there any benefit?
 
         for defname, schema in self.doc['definitions'].items():
             self.guess_tag_for_schema(schema, ['definitions', defname], defname)
