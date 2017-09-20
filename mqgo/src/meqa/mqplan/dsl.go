@@ -367,7 +367,7 @@ func (t *Test) GetParam(path []string) interface{} {
 			return nil
 		}
 
-		mqutil.IterateInterface(topSection, callback)
+		mqutil.IterateFieldsInInterface(topSection, callback)
 		return found
 	}
 	return nil
@@ -444,6 +444,23 @@ func (t *Test) ProcessResult(resp *resty.Response) error {
 			// indicator that the author didn't spec out all the success cases.
 			if !(useDefaultSpec && success) {
 				return err
+			}
+		}
+	}
+	if resultObj != nil && len(collection) == 0 && t.tag != nil && len(t.tag.Class) > 0 {
+		// try to resolve collection from the hint on the operation's description field.
+		classSchema := t.db.GetSchema(t.tag.Class)
+		if classSchema != nil {
+			if classSchema.Matches(resultObj, t.db.Swagger) {
+				collection[t.tag.Class] = append(collection[t.tag.Class], resultObj)
+			} else {
+				callback := func(value map[string]interface{}) error {
+					if classSchema.Matches(value, t.db.Swagger) {
+						collection[t.tag.Class] = append(collection[t.tag.Class], value)
+					}
+					return nil
+				}
+				mqutil.IterateMapsInInterface(resultObj, callback)
 			}
 		}
 	}

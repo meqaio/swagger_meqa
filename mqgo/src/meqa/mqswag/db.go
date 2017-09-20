@@ -41,6 +41,33 @@ func CreateSchemaFromSimple(s *spec.SimpleSchema, v *spec.CommonValidations) *Sc
 	return (*Schema)(&schema)
 }
 
+// Returns all the first level property names for this schema. We will follow the $refs until
+// we hit a map.
+func (schema *Schema) GetProperties(swagger *Swagger) map[string]spec.Schema {
+	if len(schema.Properties) > 0 {
+		return schema.Properties
+	}
+	_, referredSchema, err := swagger.GetReferredSchema(schema)
+	if err != nil {
+		return nil
+	}
+	if referredSchema != nil {
+		return referredSchema.GetProperties(swagger)
+	}
+	if len(schema.AllOf) > 0 {
+		properties := make(map[string]spec.Schema)
+		for _, s := range schema.AllOf {
+			p := ((*Schema)(&s)).GetProperties(swagger)
+			for k, v := range p {
+				properties[k] = v
+			}
+		}
+
+		return properties
+	}
+	return nil
+}
+
 // Prases the object against this schema. If the obj and schema doesn't match
 // return an error. Otherwise parse all the objects identified by the schema
 // into the map indexed by the object class name.
@@ -64,15 +91,40 @@ func (schema *Schema) Parses(name string, object interface{}, collection map[str
 	}
 
 	if len(schema.AllOf) > 0 {
+		// AllOf can only be combining several objects.
+		objMap, objIsMap := object.(map[string]interface{})
+		if !objIsMap || objMap == nil {
+			// We don't consider null a valid match
+			return raiseError()
+		}
+		count := 0 // keep track of how many of object's properties are accounted for.
 		for _, s := range schema.AllOf {
+			p := ((*Schema)(&s)).GetProperties(swagger)
+			if len(p) == 0 {
+				continue
+			}
+			m := make(map[string]interface{})
+			for k := range p {
+				if v, ok := objMap[k]; ok {
+					m[k] = v
+					count++
+				}
+			}
 			// The name doesn't get passed down. The name is handled at the current level.
-			err = ((*Schema)(&s)).Parses("", object, collection, swagger)
+			err = ((*Schema)(&s)).Parses("", m, collection, swagger)
 			if err != nil {
 				return err
 			}
 		}
+		if count*4 < len(objMap)*3 {
+			// This is a bit fuzzy. Sometimes it's ok for the object to have a few more fields than
+			// the schema. On the other hand, the schema frequently doesn't have the "required" field.
+			// So we allow a bit margin here but the object's fields can't have too many fields that
+			// aren't in the schema.
+			return raiseError()
+		}
 
-		// AllOf is satisfied. We can add the object to our collection
+		// AllOf is satisfied. We can add the whole object to our collection
 		if len(name) > 0 {
 			collection[name] = append(collection[name], object)
 		}
@@ -111,18 +163,22 @@ func (schema *Schema) Parses(name string, object interface{}, collection map[str
 				return raiseError()
 			}
 		}
-		// descend into the object's properties. If all checks out we can add the object
-		// to the collection under the current name.
-		for propertyName, propertySchema := range schema.Properties {
-			objProperty, exist := objMap[propertyName]
-			if !exist {
-				continue // we have checked for required fields already, so this is ok
-			}
-			err = ((*Schema)(&propertySchema)).Parses("", objProperty, collection, swagger)
-			if err != nil {
-				return err
+		// Check all the properties of the object and make sure that they can be found on the schema.
+		count := 0
+		for propertyName, objProperty := range objMap {
+			propertySchema, exist := schema.Properties[propertyName]
+			if exist {
+				count++
+				err = ((*Schema)(&propertySchema)).Parses("", objProperty, collection, swagger)
+				if err != nil {
+					return err
+				}
 			}
 		}
+		if count*4 < len(objMap)*3 {
+			return raiseError()
+		}
+
 		// all the properties are OK.
 		if len(name) > 0 {
 			collection[name] = append(collection[name], object)

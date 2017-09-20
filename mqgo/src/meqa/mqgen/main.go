@@ -22,7 +22,7 @@ func main() {
 	meqaPath := flag.String("d", meqaDataDir, "the directory that holds the meqa data and swagger.json files")
 	swaggerFile := flag.String("s", swaggerJSONFile, "the swagger.json file name")
 	testPlanFile := flag.String("p", testPlanFile, "the test plan file name")
-	algorithm := flag.String("a", "object", "the algorithm - object, path")
+	algorithm := flag.String("a", "path", "the algorithm - object, path")
 
 	flag.Parse()
 	swaggerJsonPath := filepath.Join(*meqaPath, *swaggerFile)
