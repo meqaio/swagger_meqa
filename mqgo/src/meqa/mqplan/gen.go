@@ -9,12 +9,27 @@ import (
 	"github.com/go-openapi/spec"
 )
 
+// Given a path name, retrieve the last entry that is not a path param.
+func GetLastPathElement(name string) string {
+	nameArray := strings.Split(name, "/")
+	for i := len(nameArray) - 1; i >= 0; i-- {
+		if len(nameArray[i]) > 0 && nameArray[i][0] != '{' {
+			return nameArray[i]
+		}
+	}
+	return ""
+}
+
 func CreateTestFromOp(opNode *mqswag.DAGNode, testId int) *Test {
 	op := opNode.Data.((*spec.Operation))
 	t := &Test{}
-	t.Name = fmt.Sprintf("%s_%d", op.ID, testId)
 	t.Path = opNode.GetName()
 	t.Method = opNode.GetMethod()
+	opId := op.ID
+	if len(opId) == 0 {
+		opId = GetLastPathElement(t.Path)
+	}
+	t.Name = fmt.Sprintf("%s_%s_%d", t.Method, opId, testId)
 
 	return t
 }
