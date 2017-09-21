@@ -324,6 +324,27 @@ class SwaggerDoc(object):
             return False
         return True
 
+    def guess_tag_for_description(self, desc, param_type_match):
+        if desc == None or len(desc) == 0:
+            return '', '', -1
+
+        sentences = desc.split('.')
+        min_cost = 1e99
+        for sentence in sentences:
+            norm_desc = self.vocab.normalize(sentence)
+            objname, propname, cost = self.find_obj_property(norm_desc, '', param_type_match)
+            if cost < 0:
+                continue
+
+            if cost < min_cost:
+                min_cost = cost
+                min_obj = objname
+                min_prop = propname
+
+        if min_cost != 1e99:
+            return min_obj, min_prop, min_cost
+        return '', '', -1
+
     # given path string, method string and the parameter dict, try to insert a tag into the param
     def guess_tag_for_param(self, path, method, param):
         if not self.should_try_tag(param):
@@ -361,36 +382,22 @@ class SwaggerDoc(object):
             found = self.find_definition(param_schema)
             if found:
                 param['description'] = param.get('description', '') + ' ' + '<meqa ' + found + '>'
-            return self.guess_tag_for_schema(param_schema, [param_name], None)
+            return self.guess_tag_for_schema_properties(param_schema, [param_name], None, None)
 
         norm_name = self.vocab.normalize(param_name)
         found = self.try_add_tag(norm_name, '', param, param_type_match)
         if found:
             return
 
-        # One sentence at a time.
-        sentences = desc.split('.')
-        min_cost = 1e99
-        for sentence in sentences:
-            norm_desc = self.vocab.normalize(sentence)
-            objname, propname, cost = self.find_obj_property(norm_desc, '', param_type_match)
-            if cost < 0:
-                continue
-
-            if cost < min_cost:
-                min_cost = cost
-                min_obj = objname
-                min_prop = propname
-
-        if min_cost != 1e99:
+        min_obj, min_prop, min_cost = self.guess_tag_for_description(desc, param_type_match)
+        if min_cost > 0:
             self.add_tag(min_obj, min_prop, param)
             return
 
-        # a desparate last effort. Maybe we shouldn't do this.
-        self.try_add_tag(norm_name + norm_desc, '', param, param_type_match)
-
-    # the path is the path from swagger root leading to the current schema
-    def guess_tag_for_schema(self, schema, path, exclude):
+    # the path is the path from swagger root leading to the current schema. For a object property, the last
+    # entry on the path would be the property's name. Basically we are trying to use the property's name to
+    # guess what the property reference to.
+    def guess_tag_for_schema_properties(self, schema, path, possible_class_name, exclude):
         # go through the object properties and try to add tags. We have to be more careful about this
         # one since mistakes will lead to cycles in the dependency graph.
         def add_tag_callback(s, p):
@@ -404,18 +411,20 @@ class SwaggerDoc(object):
                 if found:
                     return
 
-                # desc = schema.get('description')
-                # if desc != None:
-                #     self.try_add_tag(self.vocab.normalize(desc), '', schema)
+                if possible_class_name != None and len(possible_class_name) > 0:
+                    found = self.try_add_tag(possible_class_name, norm_name, s, schema_type, exclude)
+                    if found:
+                        return
+
+                min_obj, min_prop, min_cost = self.guess_tag_for_description(schema.get('description'), schema_type)
+                if min_cost > 0:
+                    self.add_tag(min_obj, min_prop, s)
+                    return
 
         self.iterate_schema(schema, add_tag_callback, path, follow_array=True, follow_ref=False,
                             follow_object=True)
 
-    def guess_tag_for_response(self, resp, path):
-        # Try to tag the individual fields. This handles the case where the response contains fields for many
-        # different objects.
-        self.guess_tag_for_schema(resp.get('schema'), path, None)
-
+    def get_response_object_set(self, resp):
         respObjects = set()
         def add_tag_callback(s, p):
             refstr = s.get('$ref')
@@ -429,13 +438,13 @@ class SwaggerDoc(object):
 
             respObjects.add(reflist[2])
 
-        self.iterate_schema(resp.get('schema'), add_tag_callback, path, follow_array=True, follow_ref=False,
+        self.iterate_schema(resp.get('schema'), add_tag_callback, [], follow_array=True, follow_ref=False,
                             follow_object=False)
         return respObjects
 
     def add_tags(self):
         # try to create tags and add them to the param's description field
-        def create_tags_for_param(params):
+        def create_tags_for_params(params):
             if params == None:
                 return
             for p in params:
@@ -443,50 +452,48 @@ class SwaggerDoc(object):
 
         paths = self.doc['paths']
         for pathname, path in paths.items():
+            # We make a guess at what the operation is about, and put the tag in the operation's description.
+            # This tag will only be used as one of the last resort by mqgo.
+            lastPathEntry = None
+            pathArray = pathname.split('/')
+            for pathentry in reversed(pathArray):
+                if pathentry != '' and pathentry[0] != '{':
+                    lastPathEntry = pathentry
+                    break
+
+            path_class = self.definitions.get(self.vocab.normalize(lastPathEntry))
+            # TODO if the above can't find a class, we should try to make a guess using the descriptions on the
+            # operations and their responses
             method = ''
-            create_tags_for_param(path.get('parameters'))
+            create_tags_for_params(path.get('parameters'))
             for method in SwaggerDoc.MethodAll:
                 op = path.get(method)
                 if op == None:
                     continue
 
                 params = op.get('parameters')
-                create_tags_for_param(params)
+                create_tags_for_params(params)
 
                 responses = op.get('responses')
-                respPath = pathname.split('/')
+                respPath = list(pathArray)
                 respPath.append('responses')
                 successResp = None
                 if responses != None:
                     for code, resp in responses.items():
-                        respPath.append(code)
-                        respObjs = self.guess_tag_for_response(resp, respPath)
-                        respPath = respPath[:-1]
-
+                        guess_class_name = None
                         if code != 'default':
-                            code = int(code)
-                            if code >= 200 and code < 300:
+                            if int(code) >= 200 and int(code) < 300:
                                 successResp = resp
+                                if path_class != None:
+                                    guess_class_name = path_class.norm_name
+                        self.guess_tag_for_schema_properties(resp.get('schema'), [code], guess_class_name, None)
 
-                # We make a guess at what the operation is about, and put the tag in the operation's description.
-                # This tag will only be used as one of the last resort by mqgo.
-                last = None
-                for pathentry in reversed(pathname.split('/')):
-                    if pathentry != '' and pathentry[0] != '{':
-                        last = pathentry
-                        break
-
-                definition = self.definitions.get(self.vocab.normalize(last))
-                if definition != None:
-                    op['description'] = op.get('description', '') + ' ' + '<meqa ' + definition.name + '>'
+                if path_class != None:
+                    op['description'] = op.get('description', '') + ' ' + '<meqa ' + path_class.name + '>'
                     continue
 
-                # Can't guess from the last path element. Try to guess it from the combination of successful
-                # response and the description. If the description/summary and the response agree, we tag it as such.
-                # TODO, is there any benefit?
-
         for defname, schema in self.doc['definitions'].items():
-            self.guess_tag_for_schema(schema, ['definitions', defname], defname)
+            self.guess_tag_for_schema_properties(schema, ['definitions', defname], None, defname)
 
     def get_properties(self, schema):
         properties = []
