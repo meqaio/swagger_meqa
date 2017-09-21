@@ -442,6 +442,32 @@ class SwaggerDoc(object):
                             follow_object=False)
         return respObjects
 
+    def guess_method_from_description(self, desc):
+        if desc == None or len(desc) == 0:
+            return None
+
+        vocab = self.vocab.vocab
+        method_dict = {
+            SwaggerDoc.MethodPost:vocab['create'],
+            SwaggerDoc.MethodPut:vocab['update'],
+            SwaggerDoc.MethodDelete:vocab['delete'],
+            SwaggerDoc.MethodGet:vocab['retrieve']
+        }
+        norm_desc = self.vocab.normalize(desc)
+        norm_list = norm_desc.split(' ')
+        max_similarity = 0
+        max_method = None
+        for w in norm_list:
+            for method_name, method_vocab in method_dict.items():
+                similarity = vocab[w].similarity(method_vocab)
+                if similarity > max_similarity:
+                    max_similarity = similarity
+                    max_method = method_name
+
+        if max_similarity > 0.33:
+            return max_method
+        return None
+
     def add_tags(self):
         # try to create tags and add them to the param's description field
         def create_tags_for_params(params):
@@ -489,6 +515,12 @@ class SwaggerDoc(object):
                         self.guess_tag_for_schema_properties(resp.get('schema'), [code], guess_class_name, None)
 
                 if path_class != None:
+                    if method == SwaggerDoc.MethodPost:
+                        method_guessed = self.guess_method_from_description(op.get('description', '') + ' ' + op.get('summary', ''))
+                        if method_guessed != None and method_guessed != method:
+                            op['description'] = op.get('description', '') + ' ' + '<meqa ' + path_class.name + '..' + method_guessed +  '>'
+                            continue
+
                     op['description'] = op.get('description', '') + ' ' + '<meqa ' + path_class.name + '>'
                     continue
 
