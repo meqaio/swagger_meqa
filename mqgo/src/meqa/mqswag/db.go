@@ -71,7 +71,7 @@ func (schema *Schema) GetProperties(swagger *Swagger) map[string]spec.Schema {
 // Prases the object against this schema. If the obj and schema doesn't match
 // return an error. Otherwise parse all the objects identified by the schema
 // into the map indexed by the object class name.
-func (schema *Schema) Parses(name string, object interface{}, collection map[string][]interface{}, swagger *Swagger) error {
+func (schema *Schema) Parses(name string, object interface{}, collection map[string][]interface{}, followRef bool, swagger *Swagger) error {
 	raiseError := func() error {
 		schemaBytes, _ := json.MarshalIndent((*spec.Schema)(schema), "", "    ")
 		objectBytes, _ := json.MarshalIndent(object, "", "    ")
@@ -87,7 +87,10 @@ func (schema *Schema) Parses(name string, object interface{}, collection map[str
 		return err
 	}
 	if referredSchema != nil {
-		return referredSchema.Parses(refName, object, collection, swagger)
+		if !followRef {
+			return nil
+		}
+		return referredSchema.Parses(refName, object, collection, followRef, swagger)
 	}
 
 	if len(schema.AllOf) > 0 {
@@ -111,7 +114,7 @@ func (schema *Schema) Parses(name string, object interface{}, collection map[str
 				}
 			}
 			// The name doesn't get passed down. The name is handled at the current level.
-			err = ((*Schema)(&s)).Parses("", m, collection, swagger)
+			err = ((*Schema)(&s)).Parses("", m, collection, followRef, swagger)
 			if err != nil {
 				return err
 			}
@@ -131,6 +134,7 @@ func (schema *Schema) Parses(name string, object interface{}, collection map[str
 		return nil
 	}
 
+	isProperty := true
 	k := reflect.TypeOf(object).Kind()
 	if k == reflect.Bool {
 		if !schema.Type.Contains(gojsonschema.TYPE_BOOLEAN) {
@@ -146,13 +150,12 @@ func (schema *Schema) Parses(name string, object interface{}, collection map[str
 			return raiseError()
 		}
 	} else if k == reflect.String {
-		if reflect.TypeOf(object).String() == "json.Number" && (schema.Type.Contains(gojsonschema.TYPE_INTEGER) || schema.Type.Contains(gojsonschema.TYPE_NUMBER)) {
-			return nil
-		}
-		if !schema.Type.Contains(gojsonschema.TYPE_STRING) {
+		bothAreNumbers := reflect.TypeOf(object).String() == "json.Number" && (schema.Type.Contains(gojsonschema.TYPE_INTEGER) || schema.Type.Contains(gojsonschema.TYPE_NUMBER))
+		if !schema.Type.Contains(gojsonschema.TYPE_STRING) && !bothAreNumbers {
 			return raiseError()
 		}
 	} else if k == reflect.Map {
+		isProperty = false
 		objMap, objIsMap := object.(map[string]interface{})
 		if !objIsMap || !schema.Type.Contains(gojsonschema.TYPE_OBJECT) {
 			return raiseError()
@@ -169,7 +172,7 @@ func (schema *Schema) Parses(name string, object interface{}, collection map[str
 			propertySchema, exist := schema.Properties[propertyName]
 			if exist {
 				count++
-				err = ((*Schema)(&propertySchema)).Parses("", objProperty, collection, swagger)
+				err = ((*Schema)(&propertySchema)).Parses("", objProperty, collection, followRef, swagger)
 				if err != nil {
 					return err
 				}
@@ -184,6 +187,7 @@ func (schema *Schema) Parses(name string, object interface{}, collection map[str
 			collection[name] = append(collection[name], object)
 		}
 	} else if k == reflect.Array || k == reflect.Slice {
+		isProperty = false
 		if !schema.Type.Contains(gojsonschema.TYPE_ARRAY) {
 			return raiseError()
 		}
@@ -198,7 +202,7 @@ func (schema *Schema) Parses(name string, object interface{}, collection map[str
 		}
 		ar := object.([]interface{})
 		for _, item := range ar {
-			err = itemsSchema.Parses("", item, collection, swagger)
+			err = itemsSchema.Parses("", item, collection, followRef, swagger)
 			if err != nil {
 				return err
 			}
@@ -207,6 +211,13 @@ func (schema *Schema) Parses(name string, object interface{}, collection map[str
 		mqutil.Logger.Printf("unknown type: %v", k)
 		return raiseError()
 	}
+	if isProperty && !followRef {
+		tag := GetMeqaTag(schema.Description)
+		if tag != nil && len(tag.Class) > 0 && len(tag.Property) > 0 {
+			key := fmt.Sprintf("%s.%s", tag.Class, tag.Property)
+			collection[key] = append(collection[key], object)
+		}
+	}
 	return nil
 }
 
@@ -214,7 +225,7 @@ func (schema *Schema) Parses(name string, object interface{}, collection map[str
 // Enums should have types as well. So we don't check for untyped enums.
 // TODO check format, handle AllOf, AnyOf, OneOf
 func (schema *Schema) Matches(object interface{}, swagger *Swagger) bool {
-	err := schema.Parses("", object, make(map[string][]interface{}), swagger)
+	err := schema.Parses("", object, make(map[string][]interface{}), true, swagger)
 	return err == nil
 }
 

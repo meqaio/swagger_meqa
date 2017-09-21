@@ -435,9 +435,11 @@ func (t *Test) ProcessResult(resp *resty.Response) error {
 
 	// Check if the response obj and respSchema match
 	collection := make(map[string][]interface{})
+	objMatchesSchema := false
 	if resultObj != nil && respSchema != nil {
-		err := respSchema.Parses("", resultObj, collection, t.db.Swagger)
+		err := respSchema.Parses("", resultObj, collection, true, t.db.Swagger)
 		if err != nil {
+			objMatchesSchema = true
 			specBytes, _ := json.MarshalIndent(respSpec, "", "    ")
 			mqutil.Logger.Printf("server response doesn't match swagger spec: \n%s", string(specBytes))
 
@@ -493,16 +495,34 @@ func (t *Test) ProcessResult(resp *resty.Response) error {
 	// For posts, it's possible that the server has replaced certain fields (such as uuid). We should just
 	// use the server's result.
 	if method == mqswag.MethodPost {
-		for className, classList := range collection {
-			if compList := t.comparisons[className]; len(compList) > 0 && compList[0].new != nil {
-				// replace what we posted with what the server returned
-				var newcompList []*Comparison
-				for _, entry := range classList {
-					c := Comparison{nil, nil, entry.(map[string]interface{}), nil}
-					newcompList = append(newcompList, &c)
+		var propertyCollection map[string][]interface{}
+		if objMatchesSchema {
+			propertyCollection = make(map[string][]interface{})
+			respSchema.Parses("", resultObj, propertyCollection, false, t.db.Swagger)
+		}
+
+		for className, compList := range t.comparisons {
+			if len(compList) > 0 && compList[0].new != nil {
+				classList := collection[className]
+				if len(classList) > 0 {
+					// replace what we posted with what the server returned
+					var newcompList []*Comparison
+					for _, entry := range classList {
+						c := Comparison{nil, nil, entry.(map[string]interface{}), nil}
+						newcompList = append(newcompList, &c)
+					}
+					collection[className] = nil
+					t.comparisons[className] = newcompList
+				} else if len(compList) == 1 {
+					// When posting a single item, and the server returned fields that belong to the object,
+					// replace that field with what the server returned.
+					for k, v := range propertyCollection {
+						keyAr := strings.Split(k, ".")
+						if len(keyAr) == 2 && keyAr[0] == className && len(v) == 1 {
+							compList[0].new[keyAr[1]] = v[0]
+						}
+					}
 				}
-				collection[className] = nil
-				t.comparisons[className] = newcompList
 			}
 		}
 	}
