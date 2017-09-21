@@ -20,6 +20,7 @@ import (
 
 	"github.com/go-openapi/spec"
 	"github.com/lucasjones/reggen"
+	"github.com/satori/go.uuid"
 	"github.com/xeipuuv/gojsonschema"
 )
 
@@ -963,6 +964,9 @@ func generateString(s *spec.Schema, prefix string) (string, error) {
 	if s.Format == "date" {
 		t := RandomTime(time.Now(), time.Hour*24*30)
 		return t.Format("2006-01-02"), nil
+	}
+	if s.Format == "uuid" {
+		return uuid.NewV4().String(), nil
 	}
 
 	// If no pattern is specified, we use the field name + some numbers as pattern
