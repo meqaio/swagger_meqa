@@ -20,6 +20,22 @@ func GetLastPathElement(name string) string {
 	return ""
 }
 
+// If the last entry on path is a parameter, return it. Otherwise return ""
+func GetLastPathParam(name string) string {
+	nameArray := strings.Split(name, "/")
+	var last string
+	for i := len(nameArray) - 1; i >= 0; i-- {
+		if len(nameArray[i]) > 0 {
+			last = nameArray[i]
+			break
+		}
+	}
+	if last[0] == '{' && last[len(last)-1] == '}' {
+		return last[1 : len(last)-1]
+	}
+	return ""
+}
+
 func CreateTestFromOp(opNode *mqswag.DAGNode, testId int) *Test {
 	op := opNode.Data.((*spec.Operation))
 	t := &Test{}
@@ -34,11 +50,11 @@ func CreateTestFromOp(opNode *mqswag.DAGNode, testId int) *Test {
 	return t
 }
 
-func OperationIsDelete(node *mqswag.DAGNode) bool {
+func OperationMatches(node *mqswag.DAGNode, method string) bool {
 	op, ok := node.Data.(*spec.Operation)
 	if ok && op != nil {
 		tag := mqswag.GetMeqaTag(op.Description)
-		if (tag != nil && tag.Operation == mqswag.MethodDelete) || (tag == nil && node.GetMethod() == mqswag.MethodDelete) {
+		if (tag != nil && tag.Operation == method) || ((tag == nil || len(tag.Operation) == 0) && node.GetMethod() == method) {
 			return true
 		}
 	}
@@ -67,7 +83,7 @@ func GenerateTestsForObject(create *mqswag.DAGNode, obj *mqswag.DAGNode, plan *T
 		}
 		testId++
 		testCase.Tests = append(testCase.Tests, CreateTestFromOp(child, testId))
-		if OperationIsDelete(child) {
+		if OperationMatches(child, mqswag.MethodDelete) {
 			testId++
 			testCase.Tests = append(testCase.Tests, CreateTestFromOp(create, testId))
 		}
@@ -146,6 +162,26 @@ func GeneratePathTestCase(operations mqswag.NodeList, plan *TestPlan) {
 	for _, o := range operations {
 		testId++
 		testCase.Tests = append(testCase.Tests, CreateTestFromOp(o, testId))
+
+		if OperationMatches(o, mqswag.MethodDelete) {
+			lastTest := testCase.Tests[len(testCase.Tests)-1]
+			// Find an operation that takes the same last path param.
+			lastParam := GetLastPathParam(o.GetName())
+			if len(lastParam) > 0 {
+				for _, repeatOp := range operations {
+					if lastParam == GetLastPathParam(repeatOp.GetName()) && !OperationMatches(repeatOp, mqswag.MethodDelete) {
+						testId++
+						repeatTest := CreateTestFromOp(repeatOp, testId)
+						repeatTest.PathParams = make(map[string]interface{})
+						repeatTest.Expect = make(map[string]interface{})
+						repeatTest.PathParams[lastParam] = fmt.Sprintf("{{%s.pathParams.%s}}", lastTest.Name, lastParam)
+						repeatTest.Expect["status"] = "fail"
+						testCase.Tests = append(testCase.Tests, repeatTest)
+						break
+					}
+				}
+			}
+		}
 	}
 	if len(testCase.Tests) > 0 {
 		plan.Add(testCase)
