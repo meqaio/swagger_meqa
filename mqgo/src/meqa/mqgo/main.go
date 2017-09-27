@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"os"
 
 	"meqa/mqplan"
@@ -19,8 +18,6 @@ const (
 )
 
 func main() {
-	mqutil.Logger = mqutil.NewStdLogger()
-
 	meqaPath := flag.String("d", meqaDataDir, "the directory that holds the meqa data and swagger.json files")
 	swaggerFile := flag.String("s", swaggerJSONFile, "the swagger.json file name or URL")
 	testPlanFile := flag.String("p", testPlanFile, "the test plan file name")
@@ -29,8 +26,13 @@ func main() {
 	username := flag.String("u", "", "the username for basic HTTP authentication")
 	password := flag.String("w", "", "the password for basic HTTP authentication")
 	apitoken := flag.String("a", "", "the api token for bearer HTTP authentication")
+	// verbose := flag.Bool("v", false, "turn on verbose mode")
 
 	flag.Parse()
+
+	mqutil.Logger = mqutil.NewFileLogger(filepath.Join(*meqaPath, "mqgo.log"))
+	mqutil.Logger.Println("starting mqgo")
+
 	swaggerJsonPath := filepath.Join(*meqaPath, *swaggerFile)
 	testPlanPath := filepath.Join(*meqaPath, *testPlanFile)
 	resultPath := filepath.Join(*meqaPath, *resultFile)
@@ -48,11 +50,6 @@ func main() {
 	if err != nil {
 		mqutil.Logger.Printf("Error: %s", err.Error())
 	}
-	for pathName, pathItem := range swagger.Paths.Paths {
-		fmt.Printf("%v:%v\n", pathName, pathItem)
-	}
-	fmt.Printf("%v", swagger.Paths.Paths["/pet"].Post)
-
 	mqswag.ObjDB.Init(swagger)
 
 	// Test loading test plan
