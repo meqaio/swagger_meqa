@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"meqa/mqplan"
 	"os"
 
@@ -23,16 +24,17 @@ func main() {
 	swaggerFile := flag.String("s", swaggerJSONFile, "the swagger.json file name")
 	testPlanFile := flag.String("p", testPlanFile, "the test plan file name")
 	algorithm := flag.String("a", "path", "the algorithm - object, path")
+	verbose := flag.Bool("v", false, "turn on verbose mode")
 
 	flag.Parse()
 	swaggerJsonPath := filepath.Join(*meqaPath, *swaggerFile)
 	testPlanPath := filepath.Join(*meqaPath, *testPlanFile)
 	if _, err := os.Stat(swaggerJsonPath); os.IsNotExist(err) {
-		mqutil.Logger.Printf("can't load swagger file at the following location %s", swaggerJsonPath)
+		fmt.Printf("Can't load swagger file at the following location %s", swaggerJsonPath)
 		return
 	}
 	if _, err := os.Stat(testPlanPath); !os.IsNotExist(err) {
-		mqutil.Logger.Printf("test plan file exists at the following location %s", testPlanPath)
+		fmt.Printf("Test plan file exists: %s. Please remove old test plan files and try again.", testPlanPath)
 		return
 	}
 
@@ -50,7 +52,7 @@ func main() {
 	}
 
 	dag.Sort()
-	dag.CheckWeight()
+	dag.CheckWeight(*verbose)
 
 	var testPlan *mqplan.TestPlan
 	if *algorithm == "path" {
@@ -68,4 +70,6 @@ func main() {
 		mqutil.Logger.Printf("Error: %s", err.Error())
 		return
 	}
+
+	fmt.Println("Test plans generated in directory:", *meqaPath)
 }

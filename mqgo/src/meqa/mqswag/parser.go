@@ -4,7 +4,6 @@ package mqswag
 import (
 	"fmt"
 	"io/ioutil"
-	"log"
 	"meqa/mqutil"
 	"os"
 	"path/filepath"
@@ -163,7 +162,7 @@ func CreateSwaggerFromURL(path string, meqaPath string) (*Swagger, error) {
 		return nil, err
 	}
 
-	log.Println("Would be serving:", specDoc.Spec().Info.Title)
+	// log.Println("Would be serving:", specDoc.Spec().Info.Title)
 
 	return (*Swagger)(specDoc.Spec()), nil
 }
