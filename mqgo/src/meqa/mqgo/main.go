@@ -26,9 +26,10 @@ func main() {
 	username := flag.String("u", "", "the username for basic HTTP authentication")
 	password := flag.String("w", "", "the password for basic HTTP authentication")
 	apitoken := flag.String("a", "", "the api token for bearer HTTP authentication")
-	// verbose := flag.Bool("v", false, "turn on verbose mode")
+	verbose := flag.Bool("v", false, "turn on verbose mode")
 
 	flag.Parse()
+	mqutil.Verbose = *verbose
 
 	mqutil.Logger = mqutil.NewFileLogger(filepath.Join(*meqaPath, "mqgo.log"))
 	mqutil.Logger.Println("starting mqgo")

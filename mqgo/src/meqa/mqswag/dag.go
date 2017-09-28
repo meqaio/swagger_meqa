@@ -67,12 +67,12 @@ func (node *DAGNode) AdjustChildrenWeight(depList []*DAGNode) error {
 	return nil
 }
 
-func (node *DAGNode) CheckChildrenWeight(verbose bool) bool {
+func (node *DAGNode) CheckChildrenWeight() bool {
 	for _, c := range node.Children {
 		if c.Weight <= node.Weight {
 			return false
 		}
-		if verbose {
+		if mqutil.Verbose {
 			fmt.Printf("       -  %s, weight: %d priority: %d\n", c.Name, c.Weight, c.Priority)
 		}
 	}
@@ -221,12 +221,12 @@ func (dag *DAG) Sort() {
 	dag.IterateByWeight(sortChildren)
 }
 
-func (dag *DAG) CheckWeight(verbose bool) {
+func (dag *DAG) CheckWeight() {
 	checkChildren := func(previous *DAGNode, current *DAGNode) error {
-		if verbose {
+		if mqutil.Verbose {
 			fmt.Printf("\nname: %s weight: %d priority: %d, children: \n", current.Name, current.Weight, current.Priority)
 		}
-		ok := current.CheckChildrenWeight(verbose)
+		ok := current.CheckChildrenWeight()
 		if !ok {
 			panic("bad weight detected")
 		}

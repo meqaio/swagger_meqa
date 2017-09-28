@@ -27,6 +27,7 @@ func main() {
 	verbose := flag.Bool("v", false, "turn on verbose mode")
 
 	flag.Parse()
+	mqutil.Verbose = *verbose
 	swaggerJsonPath := filepath.Join(*meqaPath, *swaggerFile)
 	testPlanPath := filepath.Join(*meqaPath, *testPlanFile)
 	if _, err := os.Stat(swaggerJsonPath); os.IsNotExist(err) {
@@ -52,7 +53,7 @@ func main() {
 	}
 
 	dag.Sort()
-	dag.CheckWeight(*verbose)
+	dag.CheckWeight()
 
 	var testPlan *mqplan.TestPlan
 	if *algorithm == "path" {

@@ -26,3 +26,6 @@ func NewFileLogger(path string) *log.Logger {
 
 // There is only one logger per process.
 var Logger *log.Logger
+
+// Whether verbose mose is on
+var Verbose bool
