@@ -66,11 +66,11 @@ func (dst *TestParams) Add(src *TestParams) {
 	}
 }
 
-type TestCase struct {
+type TestSuite struct {
 	Tests []*Test
 	Name  string
 
-	// test case parameters
+	// test suite parameters
 	TestParams `yaml:",inline,omitempty" json:",inline,omitempty"`
 	Strict     bool
 
@@ -82,8 +82,8 @@ type TestCase struct {
 	plan *TestPlan
 }
 
-func CreateTestCase(name string, tests []*Test, plan *TestPlan) *TestCase {
-	c := TestCase{}
+func CreateTestSuite(name string, tests []*Test, plan *TestPlan) *TestSuite {
+	c := TestSuite{}
 	c.Name = name
 	c.Tests = tests
 	(&c.TestParams).Copy(&plan.TestParams)
@@ -97,12 +97,12 @@ func CreateTestCase(name string, tests []*Test, plan *TestPlan) *TestCase {
 	return &c
 }
 
-// Represents all the test cases in the DSL.
+// Represents all the test suites in the DSL.
 type TestPlan struct {
-	CaseMap  map[string](*TestCase)
-	CaseList [](*TestCase)
-	db       *mqswag.DB
-	swagger  *mqswag.Swagger
+	SuiteMap  map[string](*TestSuite)
+	SuiteList [](*TestSuite)
+	db        *mqswag.DB
+	swagger   *mqswag.Swagger
 
 	// global parameters
 	TestParams `yaml:",inline,omitempty" json:",inline,omitempty"`
@@ -117,15 +117,15 @@ type TestPlan struct {
 	resultList []*Test
 }
 
-// Add a new TestCase, returns whether the Case is successfully added.
-func (plan *TestPlan) Add(testCase *TestCase) error {
-	if _, exist := plan.CaseMap[testCase.Name]; exist {
-		str := fmt.Sprintf("Duplicate name %s found in test plan", testCase.Name)
+// Add a new TestSuite, returns whether the Case is successfully added.
+func (plan *TestPlan) Add(testSuite *TestSuite) error {
+	if _, exist := plan.SuiteMap[testSuite.Name]; exist {
+		str := fmt.Sprintf("Duplicate name %s found in test plan", testSuite.Name)
 		mqutil.Logger.Println(str)
 		return errors.New(str)
 	}
-	plan.CaseMap[testCase.Name] = testCase
-	plan.CaseList = append(plan.CaseList, testCase)
+	plan.SuiteMap[testSuite.Name] = testSuite
+	plan.SuiteList = append(plan.SuiteList, testSuite)
 	return nil
 }
 
@@ -133,7 +133,7 @@ func (plan *TestPlan) AddFromString(data string) error {
 	var caseMap map[string]([]*Test)
 	err := yaml.Unmarshal([]byte(data), &caseMap)
 	if err != nil {
-		mqutil.Logger.Printf("The following is not a valud TestCase:\n%s", data)
+		mqutil.Logger.Printf("The following is not a valud TestSuite:\n%s", data)
 		return err
 	}
 
@@ -151,8 +151,8 @@ func (plan *TestPlan) AddFromString(data string) error {
 		for _, t := range testList {
 			t.Init(plan.db)
 		}
-		testCase := CreateTestCase(caseName, testList, plan)
-		err = plan.Add(testCase)
+		testSuite := CreateTestSuite(caseName, testList, plan)
+		err = plan.Add(testSuite)
 		if err != nil {
 			return err
 		}
@@ -183,32 +183,32 @@ func (plan *TestPlan) DumpToFile(path string) error {
 	}
 	defer f.Close()
 
-	for _, testCase := range plan.CaseList {
+	for _, testSuite := range plan.SuiteList {
 		count, err := f.WriteString("\n---\n")
 		if err != nil {
 			return err
 		}
-		testMap := map[string]interface{}{testCase.Name: testCase.Tests}
+		testMap := map[string]interface{}{testSuite.Name: testSuite.Tests}
 		caseBytes, err := yaml.Marshal(testMap)
 		if err != nil {
 			return err
 		}
 		count, err = f.Write(caseBytes)
 		if count != len(caseBytes) || err != nil {
-			panic("writing test case failed")
+			panic("writing test suite failed")
 		}
 	}
 	return nil
 }
 
 func (plan *TestPlan) WriteResultToFile(path string) error {
-	// We create a new test plan that just contain all the tests in one test case.
+	// We create a new test plan that just contain all the tests in one test suite.
 	p := &TestPlan{}
-	tc := &TestCase{}
+	tc := &TestSuite{}
 	// Test case name is the current time.
 	tc.Name = time.Now().Format(time.RFC3339)
-	p.CaseMap = map[string]*TestCase{tc.Name: tc}
-	p.CaseList = append(p.CaseList, tc)
+	p.SuiteMap = map[string]*TestSuite{tc.Name: tc}
+	p.SuiteList = append(p.SuiteList, tc)
 
 	for _, test := range plan.resultList {
 		tc.Tests = append(tc.Tests, test)
@@ -219,16 +219,16 @@ func (plan *TestPlan) WriteResultToFile(path string) error {
 func (plan *TestPlan) Init(swagger *mqswag.Swagger, db *mqswag.DB) {
 	plan.db = db
 	plan.swagger = swagger
-	plan.CaseMap = make(map[string]*TestCase)
-	plan.CaseList = nil
+	plan.SuiteMap = make(map[string]*TestSuite)
+	plan.SuiteList = nil
 	plan.resultList = nil
 }
 
-// Run a named TestCase in the test plan.
+// Run a named TestSuite in the test plan.
 func (plan *TestPlan) Run(name string, parentTest *Test) error {
-	tc, ok := plan.CaseMap[name]
+	tc, ok := plan.SuiteMap[name]
 	if !ok || len(tc.Tests) == 0 {
-		str := fmt.Sprintf("The following test case is not found: %s", name)
+		str := fmt.Sprintf("The following test suite is not found: %s", name)
 		mqutil.Logger.Println(str)
 		return errors.New(str)
 	}
@@ -244,7 +244,7 @@ func (plan *TestPlan) Run(name string, parentTest *Test) error {
 		}
 
 		if test.Name == MeqaInit {
-			// Apply the parameters to the test case.
+			// Apply the parameters to the test suite.
 			(&tc.TestParams).Copy(&test.TestParams)
 			tc.Strict = test.Strict
 			continue

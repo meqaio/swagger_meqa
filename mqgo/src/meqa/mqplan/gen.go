@@ -61,7 +61,7 @@ func OperationMatches(node *mqswag.DAGNode, method string) bool {
 	return false
 }
 
-// GenerateTestsForObject for the obj that we traversed to from create. Add the test cases
+// GenerateTestsForObject for the obj that we traversed to from create. Add the test suites
 // generated to plan.
 func GenerateTestsForObject(create *mqswag.DAGNode, obj *mqswag.DAGNode, plan *TestPlan) error {
 	if obj.GetType() != mqswag.TypeDef {
@@ -75,28 +75,28 @@ func GenerateTestsForObject(create *mqswag.DAGNode, obj *mqswag.DAGNode, plan *T
 
 	// A loop where we go through all the child operations
 	testId := 1
-	testCase := CreateTestCase(fmt.Sprintf("%s -- %s -- all", createPath, objName), nil, plan)
-	testCase.Tests = append(testCase.Tests, CreateTestFromOp(create, testId))
+	testSuite := CreateTestSuite(fmt.Sprintf("%s -- %s -- all", createPath, objName), nil, plan)
+	testSuite.Tests = append(testSuite.Tests, CreateTestFromOp(create, testId))
 	for _, child := range obj.Children {
 		if child.GetType() != mqswag.TypeOp {
 			continue
 		}
 		testId++
-		testCase.Tests = append(testCase.Tests, CreateTestFromOp(child, testId))
+		testSuite.Tests = append(testSuite.Tests, CreateTestFromOp(child, testId))
 		if OperationMatches(child, mqswag.MethodDelete) {
 			testId++
-			testCase.Tests = append(testCase.Tests, CreateTestFromOp(create, testId))
+			testSuite.Tests = append(testSuite.Tests, CreateTestFromOp(create, testId))
 		}
 	}
-	if len(testCase.Tests) > 0 {
-		plan.Add(testCase)
+	if len(testSuite.Tests) > 0 {
+		plan.Add(testSuite)
 	}
 
 	// a loop where we pick random operations and pair it with the create operation.
 	// This would generate a few objects.
 	/* disable random stuff during development
 	testId = 0
-	testCase = &TestCase{nil, fmt.Sprintf("%s -- %s -- random", createPath, objName)}
+	testSuite = &TestSuite{nil, fmt.Sprintf("%s -- %s -- random", createPath, objName)}
 	for i := 0; i < 2*len(obj.Children); i++ {
 		j := rand.Intn(len(obj.Children))
 		child := obj.Children[j]
@@ -105,12 +105,12 @@ func GenerateTestsForObject(create *mqswag.DAGNode, obj *mqswag.DAGNode, plan *T
 			continue
 		}
 		testId++
-		testCase.Tests = append(testCase.Tests, CreateTestFromOp(create, testId))
+		testSuite.Tests = append(testSuite.Tests, CreateTestFromOp(create, testId))
 		testId++
-		testCase.Tests = append(testCase.Tests, CreateTestFromOp(child, testId))
+		testSuite.Tests = append(testSuite.Tests, CreateTestFromOp(child, testId))
 	}
-	if len(testCase.Tests) > 0 {
-		plan.Add(testCase)
+	if len(testSuite.Tests) > 0 {
+		plan.Add(testSuite)
 	}
 	*/
 
@@ -127,9 +127,9 @@ func GenerateTestPlan(swagger *mqswag.Swagger, dag *mqswag.DAG) (*TestPlan, erro
 		}
 
 		// Exercise the function by itself.
-		testCase := CreateTestCase(current.GetName()+" "+current.GetMethod(), nil, testPlan)
-		testCase.Tests = append(testCase.Tests, CreateTestFromOp(current, 1))
-		testPlan.Add(testCase)
+		testSuite := CreateTestSuite(current.GetName()+" "+current.GetMethod(), nil, testPlan)
+		testSuite.Tests = append(testSuite.Tests, CreateTestFromOp(current, 1))
+		testPlan.Add(testSuite)
 
 		// When iterating by weight previous is always nil.
 		for _, c := range current.Children {
@@ -148,9 +148,9 @@ func GenerateTestPlan(swagger *mqswag.Swagger, dag *mqswag.DAG) (*TestPlan, erro
 	return testPlan, nil
 }
 
-// All the operations have the same path. We generate one test case, with the
+// All the operations have the same path. We generate one test suite, with the
 // tests of ascending weight and priority among the operations
-func GeneratePathTestCase(operations mqswag.NodeList, plan *TestPlan) {
+func GeneratePathTestSuite(operations mqswag.NodeList, plan *TestPlan) {
 	if len(operations) == 0 {
 		return
 	}
@@ -158,13 +158,13 @@ func GeneratePathTestCase(operations mqswag.NodeList, plan *TestPlan) {
 	pathName := operations[0].GetName()
 	sort.Sort(operations)
 	testId := 0
-	testCase := CreateTestCase(fmt.Sprintf("%s", pathName), nil, plan)
+	testSuite := CreateTestSuite(fmt.Sprintf("%s", pathName), nil, plan)
 	for _, o := range operations {
 		testId++
-		testCase.Tests = append(testCase.Tests, CreateTestFromOp(o, testId))
+		testSuite.Tests = append(testSuite.Tests, CreateTestFromOp(o, testId))
 
 		if OperationMatches(o, mqswag.MethodDelete) {
-			lastTest := testCase.Tests[len(testCase.Tests)-1]
+			lastTest := testSuite.Tests[len(testSuite.Tests)-1]
 			// Find an operation that takes the same last path param.
 			lastParam := GetLastPathParam(o.GetName())
 			if len(lastParam) > 0 {
@@ -176,15 +176,15 @@ func GeneratePathTestCase(operations mqswag.NodeList, plan *TestPlan) {
 						repeatTest.Expect = make(map[string]interface{})
 						repeatTest.PathParams[lastParam] = fmt.Sprintf("{{%s.pathParams.%s}}", lastTest.Name, lastParam)
 						repeatTest.Expect["status"] = "fail"
-						testCase.Tests = append(testCase.Tests, repeatTest)
+						testSuite.Tests = append(testSuite.Tests, repeatTest)
 						break
 					}
 				}
 			}
 		}
 	}
-	if len(testCase.Tests) > 0 {
-		plan.Add(testCase)
+	if len(testSuite.Tests) > 0 {
+		plan.Add(testSuite)
 	}
 }
 
@@ -256,7 +256,7 @@ func GeneratePathTestPlan(swagger *mqswag.Swagger, dag *mqswag.DAG) (*TestPlan, 
 	sort.Sort(pathWeightList)
 
 	for _, p := range pathWeightList {
-		GeneratePathTestCase(pathMap[p.path], testPlan)
+		GeneratePathTestSuite(pathMap[p.path], testPlan)
 	}
 	return testPlan, nil
 }

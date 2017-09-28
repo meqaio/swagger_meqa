@@ -649,7 +649,7 @@ func (t *Test) CopyParent(parentTest *Test) {
 }
 
 // Run runs the test. Returns the test result.
-func (t *Test) Run(tc *TestCase) error {
+func (t *Test) Run(tc *TestSuite) error {
 
 	mqutil.Logger.Print("\n--- " + t.Name)
 	err := t.ResolveParameters(tc)
@@ -773,7 +773,7 @@ func ParamsAdd(dst []spec.Parameter, src []spec.Parameter) []spec.Parameter {
 
 // ResolveParameters fullfills the parameters for the specified request using the in-mem DB.
 // The resolved parameters will be added to test.Parameters map.
-func (t *Test) ResolveParameters(tc *TestCase) error {
+func (t *Test) ResolveParameters(tc *TestSuite) error {
 	pathItem := t.db.Swagger.Paths.Paths[t.Path]
 	t.op = GetOperationByMethod(&pathItem, t.Method)
 	if t.op == nil {
