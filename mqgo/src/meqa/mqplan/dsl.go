@@ -685,7 +685,7 @@ func (t *Test) CopyParent(parentTest *Test) {
 func (t *Test) Run(tc *TestSuite) error {
 
 	mqutil.Logger.Print("\n--- " + t.Name)
-	fmt.Printf("\n---- Running test case: %s ----\n", t.Name)
+	fmt.Printf("\n-- Running test case: %s --\n", t.Name)
 	err := t.ResolveParameters(tc)
 	if err != nil {
 		return err
@@ -727,7 +727,9 @@ func (t *Test) Run(tc *TestSuite) error {
 		mqutil.Logger.Print(resp.Status())
 		mqutil.Logger.Println(string(resp.Body()))
 	}
-	return t.ProcessResult(resp)
+	err = t.ProcessResult(resp)
+	fmt.Printf("-- Duration: %f seconds --\n", t.stopTime.Sub(t.startTime).Seconds())
+	return err
 }
 
 func StringParamsResolveWithHistory(str string, h *TestHistory) interface{} {

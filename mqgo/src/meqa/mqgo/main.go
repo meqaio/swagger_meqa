@@ -65,14 +65,14 @@ func main() {
 
 	if *testToRun == "all" {
 		for _, testSuite := range mqplan.Current.SuiteList {
-			mqutil.Logger.Printf("\n\n==== Running test suite: %s ====\n", testSuite.Name)
-			fmt.Printf("\n\n==== Running test suite: %s ====\n", testSuite.Name)
+			mqutil.Logger.Printf("\n\n== Running test suite: %s ==\n", testSuite.Name)
+			fmt.Printf("\n\n== Running test suite: %s ==\n", testSuite.Name)
 			err := mqplan.Current.Run(testSuite.Name, nil)
 			mqutil.Logger.Printf("err:\n%v", err)
 		}
 	} else {
-		mqutil.Logger.Printf("\n\n==== Running test suite: %s ====\n", *testToRun)
-		fmt.Printf("\n\n==== Running test suite: %s ====\n", *testToRun)
+		mqutil.Logger.Printf("\n\n== Running test suite: %s ==\n", *testToRun)
+		fmt.Printf("\n\n== Running test suite: %s ==\n", *testToRun)
 		err := mqplan.Current.Run(*testToRun, nil)
 		mqutil.Logger.Printf("err:\n%v", err)
 	}
