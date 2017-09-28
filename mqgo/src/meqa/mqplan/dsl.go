@@ -104,6 +104,9 @@ type Test struct {
 	Strict     bool                   `yaml:"strict,omitempty"`
 	TestParams `yaml:",inline,omitempty" json:",inline,omitempty"`
 
+	startTime time.Time
+	stopTime  time.Time
+
 	// Map of Object name (matching definitions) to the Comparison object.
 	// This tracks what objects we need to add to DB at the end of test.
 	comparisons map[string]([]*Comparison)
@@ -276,6 +279,7 @@ func (t *Test) CompareGetResult(className string, associations map[string]map[st
 			}
 			if !compFound {
 				b, _ := json.Marshal(entry)
+				fmt.Printf("... checking GET result against client DB. Result doesn't match query. Fail\n")
 				return mqutil.NewError(mqutil.ErrHttp, fmt.Sprintf("result returned doesn't match query parameters:\n%s\n",
 					string(b)))
 			}
@@ -295,10 +299,12 @@ func (t *Test) CompareGetResult(className string, associations map[string]map[st
 
 		if !found {
 			b, _ := json.Marshal(entry)
+			fmt.Printf("... checking GET result against client DB. Result not found on client. Fail\n")
 			return mqutil.NewError(mqutil.ErrHttp, fmt.Sprintf("result returned is not found on client\n%s\n",
 				string(b)))
 		}
 	}
+	fmt.Printf("... checking GET result against client DB. Success\n")
 	return nil
 }
 
@@ -307,10 +313,13 @@ func (t *Test) ProcessOneComparison(className string, method string, comp *Compa
 	associations map[string]map[string]interface{}, collection map[string][]interface{}) error {
 
 	if method == mqswag.MethodDelete {
+		fmt.Printf("... deleting entry from client DB. Success\n")
 		t.db.Delete(className, comp.oldUsed, associations, mqutil.InterfaceEquals, -1)
 	} else if method == mqswag.MethodPost && comp.new != nil {
+		fmt.Printf("... adding entry to client DB. Success\n")
 		return t.db.Insert(className, comp.new, associations)
 	} else if (method == mqswag.MethodPatch || method == mqswag.MethodPut) && comp.new != nil {
+		fmt.Printf("... updating entry in client DB. Success\n")
 		count := t.db.Update(className, comp.oldUsed, associations, mqutil.InterfaceEquals, comp.new, 1, method == mqswag.MethodPatch)
 		if count != 1 {
 			mqutil.Logger.Printf("Failed to find any entry to update")
@@ -376,6 +385,11 @@ func (t *Test) GetParam(path []string) interface{} {
 
 // ProcessResult decodes the response from the server into a result array
 func (t *Test) ProcessResult(resp *resty.Response) error {
+	if t.err != nil {
+		fmt.Printf("REST call hit the following error: %s\n", t.err.Error())
+		return t.err
+	}
+
 	useDefaultSpec := true
 	t.resp = resp
 	status := resp.StatusCode()
@@ -403,6 +417,9 @@ func (t *Test) ProcessResult(resp *resty.Response) error {
 		d.Decode(&resultObj)
 	}
 
+	if mqutil.Verbose {
+		fmt.Println("Verifying REST response")
+	}
 	// success based on return status
 	success := (status >= 200 && status < 300)
 	tag := mqswag.GetMeqaTag(respSpec.Description)
@@ -411,25 +428,33 @@ func (t *Test) ProcessResult(resp *resty.Response) error {
 	}
 
 	testSuccess := success
+	var expectedStatus interface{} = "success"
 	if t.Expect != nil && t.Expect[ExpectStatus] != nil {
-		expectedStatus := t.Expect[ExpectStatus]
+		expectedStatus = t.Expect[ExpectStatus]
 		if expectedStatus == "fail" {
 			testSuccess = !success
 		} else if expectedStatusNum, ok := expectedStatus.(int); ok {
 			testSuccess = (expectedStatusNum == status)
 		}
+	}
 
-		if testSuccess {
-			// result status matches the expected status, now check whether to body matches.
+	if testSuccess {
+		fmt.Printf("... expecting status: %v got status: %d. Success\n", expectedStatus, status)
+		if t.Expect != nil && t.Expect[ExpectBody] != nil {
 			testSuccess = mqutil.InterfaceEquals(t.Expect[ExpectBody], resultObj)
-			if !testSuccess {
+			if testSuccess {
+				fmt.Printf("... checking body against test's expect value. Success\n")
+			} else {
+				mqutil.InterfacePrint(map[string]interface{}{"... expecting body": t.Expect[ExpectBody]}, true)
+				fmt.Printf("... actual response body: %s\n", respBody)
+				fmt.Printf("... checking body against test's expect value. Fail\n")
 				ejson, _ := json.Marshal(t.Expect[ExpectBody])
 				return mqutil.NewError(mqutil.ErrExpect, fmt.Sprintf(
 					"=== test failed, expecting body: \n%s\ngot body:\n%s\n===", string(ejson), respBody))
 			}
 		}
-	}
-	if !testSuccess {
+	} else {
+		fmt.Printf("... expecting status: %v got status: %d. Fail\n", expectedStatus, status)
 		return mqutil.NewError(mqutil.ErrExpect, fmt.Sprintf("=== test failed, response code %d ===", status))
 	}
 
@@ -437,17 +462,25 @@ func (t *Test) ProcessResult(resp *resty.Response) error {
 	collection := make(map[string][]interface{})
 	objMatchesSchema := false
 	if resultObj != nil && respSchema != nil {
+		fmt.Printf("... verifying response against openapi schema. ")
 		err := respSchema.Parses("", resultObj, collection, true, t.db.Swagger)
 		if err != nil {
+			fmt.Print("Fail\n")
 			objMatchesSchema = true
 			specBytes, _ := json.MarshalIndent(respSpec, "", "    ")
 			mqutil.Logger.Printf("server response doesn't match swagger spec: \n%s", string(specBytes))
+			if mqutil.Verbose {
+				fmt.Printf("... openapi response schema: %s\n", string(specBytes))
+				fmt.Printf("... response body: %s\n", string(respBody))
+			}
 
 			// We ignore this if the response is success, and the spec we used is the default. This is a strong
 			// indicator that the author didn't spec out all the success cases.
 			if !(useDefaultSpec && success) {
 				return err
 			}
+		} else {
+			fmt.Print("Success\n")
 		}
 	}
 	if resultObj != nil && len(collection) == 0 && t.tag != nil && len(t.tag.Class) > 0 {
@@ -590,7 +623,7 @@ func (t *Test) SetRequestParameters(req *resty.Request) string {
 	}
 	if len(t.FormParams) > 0 {
 		req.SetFormData(mqutil.MapInterfaceToMapString(t.FormParams))
-		mqutil.InterfacePrint(t.FormParams, "formParams:\n")
+		mqutil.InterfacePrint(map[string]interface{}{"formParams": t.FormParams}, mqutil.Verbose)
 	}
 	for k, v := range files {
 		t.FormParams[k] = v
@@ -598,15 +631,15 @@ func (t *Test) SetRequestParameters(req *resty.Request) string {
 
 	if len(t.QueryParams) > 0 {
 		req.SetQueryParams(mqutil.MapInterfaceToMapString(t.QueryParams))
-		mqutil.InterfacePrint(t.QueryParams, "queryParams:\n")
+		mqutil.InterfacePrint(map[string]interface{}{"queryParams": t.QueryParams}, mqutil.Verbose)
 	}
 	if t.BodyParams != nil {
 		req.SetBody(t.BodyParams)
-		mqutil.InterfacePrint(t.BodyParams, "bodyParams:\n")
+		mqutil.InterfacePrint(map[string]interface{}{"bodyParams": t.BodyParams}, mqutil.Verbose)
 	}
 	if len(t.HeaderParams) > 0 {
 		req.SetHeaders(mqutil.MapInterfaceToMapString(t.HeaderParams))
-		mqutil.InterfacePrint(t.HeaderParams, "headerParams:\n")
+		mqutil.InterfacePrint(map[string]interface{}{"headerParams": t.HeaderParams}, mqutil.Verbose)
 	}
 	path := t.Path
 	if len(t.PathParams) > 0 {
@@ -614,7 +647,7 @@ func (t *Test) SetRequestParameters(req *resty.Request) string {
 		for k, v := range PathParamsStr {
 			path = strings.Replace(path, "{"+k+"}", v, -1)
 		}
-		mqutil.InterfacePrint(t.PathParams, "pathParams:\n")
+		mqutil.InterfacePrint(map[string]interface{}{"pathParams": t.PathParams}, mqutil.Verbose)
 	}
 	return path
 }
@@ -652,6 +685,7 @@ func (t *Test) CopyParent(parentTest *Test) {
 func (t *Test) Run(tc *TestSuite) error {
 
 	mqutil.Logger.Print("\n--- " + t.Name)
+	fmt.Printf("\n---- Running test case: %s ----\n", t.Name)
 	err := t.ResolveParameters(tc)
 	if err != nil {
 		return err
@@ -667,6 +701,7 @@ func (t *Test) Run(tc *TestSuite) error {
 	path := GetBaseURL(t.db.Swagger) + t.SetRequestParameters(req)
 	var resp *resty.Response
 
+	t.startTime = time.Now()
 	switch t.Method {
 	case mqswag.MethodGet:
 		resp, err = req.Get(path)
@@ -685,11 +720,13 @@ func (t *Test) Run(tc *TestSuite) error {
 	default:
 		return mqutil.NewError(mqutil.ErrInvalid, fmt.Sprintf("Unknown method in test %s: %v", t.Name, t.Method))
 	}
+	t.stopTime = time.Now()
 	if err != nil {
-		return mqutil.NewError(mqutil.ErrHttp, err.Error())
+		t.err = mqutil.NewError(mqutil.ErrHttp, err.Error())
+	} else {
+		mqutil.Logger.Print(resp.Status())
+		mqutil.Logger.Println(string(resp.Body()))
 	}
-	mqutil.Logger.Print(resp.Status())
-	mqutil.Logger.Println(string(resp.Body()))
 	return t.ProcessResult(resp)
 }
 

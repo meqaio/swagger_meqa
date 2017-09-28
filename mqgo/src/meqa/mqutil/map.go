@@ -160,9 +160,12 @@ func ArrayCopy(src []interface{}) (dst []interface{}) {
 	return dst
 }
 
-func InterfacePrint(m interface{}, prefix string) {
-	jsonBytes, _ := json.Marshal(m)
-	Logger.Printf("%s%s", prefix, string(jsonBytes))
+func InterfacePrint(m interface{}, printToConsole bool) {
+	yamlBytes, _ := yaml.Marshal(m)
+	Logger.Print(string(yamlBytes))
+	if printToConsole {
+		fmt.Println(string(yamlBytes))
+	}
 }
 
 // Check if existing matches criteria. When criteria is a map, we check whether
