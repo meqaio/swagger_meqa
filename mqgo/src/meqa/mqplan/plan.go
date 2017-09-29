@@ -131,15 +131,15 @@ func (plan *TestPlan) Add(testSuite *TestSuite) error {
 }
 
 func (plan *TestPlan) AddFromString(data string) error {
-	var caseMap map[string]([]*Test)
-	err := yaml.Unmarshal([]byte(data), &caseMap)
+	var suiteMap map[string]([]*Test)
+	err := yaml.Unmarshal([]byte(data), &suiteMap)
 	if err != nil {
 		mqutil.Logger.Printf("The following is not a valud TestSuite:\n%s", data)
 		return err
 	}
 
-	for caseName, testList := range caseMap {
-		if caseName == MeqaInit {
+	for suiteName, testList := range suiteMap {
+		if suiteName == MeqaInit {
 			// global parameters
 			for _, t := range testList {
 				t.Init(nil)
@@ -149,7 +149,7 @@ func (plan *TestPlan) AddFromString(data string) error {
 
 			continue
 		}
-		testSuite := CreateTestSuite(caseName, testList, plan)
+		testSuite := CreateTestSuite(suiteName, testList, plan)
 		for _, t := range testList {
 			t.Init(testSuite)
 		}
