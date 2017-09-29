@@ -268,8 +268,18 @@ func GenerateSimpleTestPlan(swagger *mqswag.Swagger, dag *mqswag.DAG) (*TestPlan
 	testPlan := &TestPlan{}
 	testPlan.Init(swagger, nil)
 
+	testSuite := CreateTestSuite(MeqaInit, nil, testPlan)
+	initTask := &Test{}
+	initTask.Name = MeqaInit
+	initTask.PathParams = make(map[string]interface{})
+	testSuite.Tests = append(testSuite.Tests, initTask)
+	testSuite.comment = "The meqa_init section initializes parameters (e.g. pathParams) that are applied to all suites"
+	testPlan.Add(testSuite)
+
 	testId := 0
-	testSuite := CreateTestSuite(fmt.Sprintf("simple test suite"), nil, testPlan)
+	testSuite = CreateTestSuite(fmt.Sprintf("simple test suite"), nil, testPlan)
+	testSuite.comment = "The meqa_init task within a test suite initializes parameters that are applied to all tests within this suite"
+	testSuite.Tests = append(testSuite.Tests, initTask)
 	addFunc := func(previous *mqswag.DAGNode, current *mqswag.DAGNode) error {
 		if testId >= 10 {
 			return mqutil.NewError(mqutil.ErrOK, "done")
@@ -287,6 +297,7 @@ func GenerateSimpleTestPlan(swagger *mqswag.Swagger, dag *mqswag.DAG) (*TestPlan
 
 	dag.IterateByWeight(addFunc)
 	testPlan.Add(testSuite)
+	testPlan.comment = "This is a simple and short test plan. We just sampled up to 10 REST calls into one test suite."
 
 	return testPlan, nil
 }

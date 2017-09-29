@@ -121,7 +121,9 @@ type Test struct {
 
 func (t *Test) Init(suite *TestSuite) {
 	t.suite = suite
-	t.db = suite.plan.db
+	if suite != nil {
+		t.db = suite.plan.db
+	}
 	if len(t.Method) != 0 {
 		t.Method = strings.ToLower(t.Method)
 	}

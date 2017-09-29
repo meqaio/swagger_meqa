@@ -81,6 +81,8 @@ type TestSuite struct {
 
 	plan *TestPlan
 	db   *mqswag.DB // objects generated/obtained as part of this suite
+
+	comment string
 }
 
 func CreateTestSuite(name string, tests []*Test, plan *TestPlan) *TestSuite {
@@ -116,6 +118,8 @@ type TestPlan struct {
 
 	// Run result.
 	resultList []*Test
+
+	comment string
 }
 
 // Add a new TestSuite, returns whether the Case is successfully added.
@@ -184,8 +188,16 @@ func (plan *TestPlan) DumpToFile(path string) error {
 	}
 	defer f.Close()
 
+	if len(plan.comment) > 0 {
+		f.WriteString("# " + plan.comment + "\n")
+	}
 	for _, testSuite := range plan.SuiteList {
-		count, err := f.WriteString("\n---\n")
+		if len(testSuite.comment) > 0 {
+			f.WriteString("\n# " + testSuite.comment + "\n")
+		} else {
+			f.WriteString("\n")
+		}
+		count, err := f.WriteString("---\n")
 		if err != nil {
 			return err
 		}
