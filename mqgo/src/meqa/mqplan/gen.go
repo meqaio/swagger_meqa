@@ -3,6 +3,7 @@ package mqplan
 import (
 	"fmt"
 	"meqa/mqswag"
+	"meqa/mqutil"
 	"sort"
 	"strings"
 
@@ -258,5 +259,34 @@ func GeneratePathTestPlan(swagger *mqswag.Swagger, dag *mqswag.DAG) (*TestPlan, 
 	for _, p := range pathWeightList {
 		GeneratePathTestSuite(pathMap[p.path], testPlan)
 	}
+	return testPlan, nil
+}
+
+// Go through all the paths in swagger, and generate the tests for all the operations under
+// the path.
+func GenerateSimpleTestPlan(swagger *mqswag.Swagger, dag *mqswag.DAG) (*TestPlan, error) {
+	testPlan := &TestPlan{}
+	testPlan.Init(swagger, nil)
+
+	testId := 0
+	testSuite := CreateTestSuite(fmt.Sprintf("simple test suite"), nil, testPlan)
+	addFunc := func(previous *mqswag.DAGNode, current *mqswag.DAGNode) error {
+		if testId >= 10 {
+			return mqutil.NewError(mqutil.ErrOK, "done")
+		}
+
+		if current.GetType() != mqswag.TypeOp {
+			return nil
+		}
+
+		testId++
+		testSuite.Tests = append(testSuite.Tests, CreateTestFromOp(current, testId))
+
+		return nil
+	}
+
+	dag.IterateByWeight(addFunc)
+	testPlan.Add(testSuite)
+
 	return testPlan, nil
 }
