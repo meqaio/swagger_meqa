@@ -5,37 +5,48 @@ import (
 	"fmt"
 	"meqa/mqplan"
 	"os"
+	"path/filepath"
 
 	"meqa/mqswag"
 	"meqa/mqutil"
-	"path/filepath"
 )
 
 const (
 	meqaDataDir     = "meqa_data"
-	swaggerJSONFile = "swagger.yaml"
-	testPlanFile    = "testplan.yaml"
+	swaggerJSONFile = "meqa_data/swagger.yaml"
+	algoSimple      = "simple"
+	algoObject      = "object"
+	algoPath        = "path"
+	algoAll         = "all"
 )
+
+var algoList []string = []string{algoSimple, algoObject, algoPath}
 
 func main() {
 	mqutil.Logger = mqutil.NewStdLogger()
 
-	meqaPath := flag.String("d", meqaDataDir, "the directory that holds the meqa data and swagger.json files")
-	swaggerFile := flag.String("s", swaggerJSONFile, "the swagger.json file name")
-	testPlanFile := flag.String("p", testPlanFile, "the test plan file name")
-	algorithm := flag.String("a", "path", "the algorithm - object, path")
+	meqaPath := flag.String("d", meqaDataDir, "the directory where we put the generated files")
+	swaggerFile := flag.String("s", swaggerJSONFile, "the swagger.yaml file name")
+	algorithm := flag.String("a", "path", "the algorithm - simple, object, path, all")
 	verbose := flag.Bool("v", false, "turn on verbose mode")
 
 	flag.Parse()
 	mqutil.Verbose = *verbose
-	swaggerJsonPath := filepath.Join(*meqaPath, *swaggerFile)
-	testPlanPath := filepath.Join(*meqaPath, *testPlanFile)
-	if _, err := os.Stat(swaggerJsonPath); os.IsNotExist(err) {
+
+	swaggerJsonPath := *swaggerFile
+	if fi, err := os.Stat(swaggerJsonPath); os.IsNotExist(err) || fi.Mode().IsDir() {
 		fmt.Printf("Can't load swagger file at the following location %s", swaggerJsonPath)
 		return
 	}
-	if _, err := os.Stat(testPlanPath); !os.IsNotExist(err) {
-		fmt.Printf("Test plan file exists: %s. Please remove old test plan files and try again.", testPlanPath)
+	testPlanPath := *meqaPath
+	if fi, err := os.Stat(testPlanPath); os.IsNotExist(err) {
+		err = os.Mkdir(testPlanPath, 0755)
+		if err != nil {
+			fmt.Printf("Can't create the directory at %s\n", testPlanPath)
+			return
+		}
+	} else if !fi.Mode().IsDir() {
+		fmt.Printf("The specified location is not a directory: %s\n", testPlanPath)
 		return
 	}
 
@@ -55,22 +66,33 @@ func main() {
 	dag.Sort()
 	dag.CheckWeight()
 
-	var testPlan *mqplan.TestPlan
-	if *algorithm == "path" {
-		testPlan, err = mqplan.GeneratePathTestPlan(swagger, dag)
+	var plansToGenerate []string
+	if *algorithm == algoAll {
+		plansToGenerate = algoList
 	} else {
-		testPlan, err = mqplan.GenerateTestPlan(swagger, dag)
-	}
-	if err != nil {
-		mqutil.Logger.Printf("Error: %s", err.Error())
-		return
+		plansToGenerate = append(plansToGenerate, *algorithm)
 	}
 
-	err = testPlan.DumpToFile(testPlanPath)
-	if err != nil {
-		mqutil.Logger.Printf("Error: %s", err.Error())
-		return
+	for _, algo := range plansToGenerate {
+		var testPlan *mqplan.TestPlan
+		switch algo {
+		case algoPath:
+			testPlan, err = mqplan.GeneratePathTestPlan(swagger, dag)
+		case algoObject:
+			testPlan, err = mqplan.GenerateTestPlan(swagger, dag)
+		default:
+			testPlan, err = mqplan.GeneratePathTestPlan(swagger, dag)
+		}
+		if err != nil {
+			mqutil.Logger.Printf("Error: %s", err.Error())
+			return
+		}
+		testPlanFile := filepath.Join(testPlanPath, algo+".yaml")
+		err = testPlan.DumpToFile(testPlanFile)
+		if err != nil {
+			mqutil.Logger.Printf("Error: %s", err.Error())
+			return
+		}
+		fmt.Println("Test plans generated at:", testPlanFile)
 	}
-
-	fmt.Println("Test plans generated in directory:", *meqaPath)
 }
