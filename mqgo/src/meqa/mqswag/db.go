@@ -352,6 +352,11 @@ func MatchAlways(criteria interface{}, existing interface{}) bool {
 	return true
 }
 
+// Clone this one but not the objects.
+func (db *SchemaDB) CloneSchema() *SchemaDB {
+	return &SchemaDB{db.Name, db.Schema, db.NoHistory, nil}
+}
+
 // Find finds the specified number of objects that match the input criteria.
 func (db *SchemaDB) Find(criteria interface{}, associations map[string]map[string]interface{}, matches MatchFunc, desiredCount int) []interface{} {
 	var result []interface{}
@@ -425,6 +430,15 @@ func (db *DB) Init(s *Swagger) {
 		schemaCopy := schema
 		db.schemas[schemaName] = &SchemaDB{schemaName, (*Schema)(&schemaCopy), false, nil}
 	}
+}
+
+// Clone the db but not the objects
+func (db *DB) CloneSchema() *DB {
+	schemas := make(map[string]*SchemaDB)
+	for k, v := range db.schemas {
+		schemas[k] = v.CloneSchema()
+	}
+	return &DB{schemas, db.Swagger, sync.Mutex{}}
 }
 
 func (db *DB) GetSchema(name string) *Schema {

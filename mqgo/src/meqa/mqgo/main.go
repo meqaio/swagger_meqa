@@ -39,11 +39,11 @@ func main() {
 	testPlanPath := filepath.Join(*meqaPath, *testPlanFile)
 	resultPath := filepath.Join(*meqaPath, *resultFile)
 	if _, err := os.Stat(swaggerJsonPath); os.IsNotExist(err) {
-		mqutil.Logger.Printf("can't load swagger file at the following location %s", swaggerJsonPath)
+		fmt.Printf("can't load swagger file at the following location %s", swaggerJsonPath)
 		return
 	}
 	if _, err := os.Stat(testPlanPath); os.IsNotExist(err) {
-		mqutil.Logger.Printf("can't load test plan file at the following location %s", testPlanPath)
+		fmt.Printf("can't load test plan file at the following location %s", testPlanPath)
 		return
 	}
 

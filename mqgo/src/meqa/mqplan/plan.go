@@ -80,6 +80,7 @@ type TestSuite struct {
 	ApiToken string
 
 	plan *TestPlan
+	db   *mqswag.DB // objects generated/obtained as part of this suite
 }
 
 func CreateTestSuite(name string, tests []*Test, plan *TestPlan) *TestSuite {
@@ -148,10 +149,10 @@ func (plan *TestPlan) AddFromString(data string) error {
 
 			continue
 		}
-		for _, t := range testList {
-			t.Init(plan.db)
-		}
 		testSuite := CreateTestSuite(caseName, testList, plan)
+		for _, t := range testList {
+			t.Init(testSuite)
+		}
 		err = plan.Add(testSuite)
 		if err != nil {
 			return err
@@ -232,6 +233,10 @@ func (plan *TestPlan) Run(name string, parentTest *Test) error {
 		mqutil.Logger.Println(str)
 		return errors.New(str)
 	}
+	tc.db = plan.db.CloneSchema()
+	defer func() {
+		tc.db = nil
+	}()
 
 	for _, test := range tc.Tests {
 		if len(test.Ref) != 0 {

@@ -111,15 +111,17 @@ type Test struct {
 	// This tracks what objects we need to add to DB at the end of test.
 	comparisons map[string]([]*Comparison)
 
-	tag  *mqswag.MeqaTag // The tag at the top level that describes the test
-	db   *mqswag.DB
-	op   *spec.Operation
-	resp *resty.Response
-	err  error
+	tag   *mqswag.MeqaTag // The tag at the top level that describes the test
+	db    *mqswag.DB
+	suite *TestSuite
+	op    *spec.Operation
+	resp  *resty.Response
+	err   error
 }
 
-func (t *Test) Init(db *mqswag.DB) {
-	t.db = db
+func (t *Test) Init(suite *TestSuite) {
+	t.suite = suite
+	t.db = suite.plan.db
 	if len(t.Method) != 0 {
 		t.Method = strings.ToLower(t.Method)
 	}
@@ -314,12 +316,15 @@ func (t *Test) ProcessOneComparison(className string, method string, comp *Compa
 
 	if method == mqswag.MethodDelete {
 		fmt.Printf("... deleting entry from client DB. Success\n")
+		t.suite.db.Delete(className, comp.oldUsed, associations, mqutil.InterfaceEquals, -1)
 		t.db.Delete(className, comp.oldUsed, associations, mqutil.InterfaceEquals, -1)
 	} else if method == mqswag.MethodPost && comp.new != nil {
 		fmt.Printf("... adding entry to client DB. Success\n")
+		t.suite.db.Insert(className, comp.new, associations)
 		return t.db.Insert(className, comp.new, associations)
 	} else if (method == mqswag.MethodPatch || method == mqswag.MethodPut) && comp.new != nil {
 		fmt.Printf("... updating entry in client DB. Success\n")
+		t.suite.db.Update(className, comp.oldUsed, associations, mqutil.InterfaceEquals, comp.new, 1, method == mqswag.MethodPatch)
 		count := t.db.Update(className, comp.oldUsed, associations, mqutil.InterfaceEquals, comp.new, 1, method == mqswag.MethodPatch)
 		if count != 1 {
 			mqutil.Logger.Printf("Failed to find any entry to update")
@@ -971,7 +976,10 @@ func (t *Test) generateByType(s *spec.Schema, prefix string, parentTag *mqswag.M
 				}
 			}
 			// Get one from in-mem db and populate the comparison structure.
-			ar := t.db.Find(tag.Class, nil, nil, mqswag.MatchAlways, 5)
+			ar := t.suite.db.Find(tag.Class, nil, nil, mqswag.MatchAlways, 5)
+			if len(ar) == 0 {
+				ar = t.db.Find(tag.Class, nil, nil, mqswag.MatchAlways, 5)
+			}
 			if len(ar) > 0 {
 				obj := ar[rand.Intn(len(ar))].(map[string]interface{})
 				comp := &Comparison{obj, make(map[string]interface{}), nil, (*spec.Schema)(t.db.GetSchema(tag.Class))}
@@ -1216,7 +1224,10 @@ func (t *Test) GenerateSchema(name string, parentTag *mqswag.MeqaTag, schema *sp
 		if len(name) > 0 {
 			// This the the field of an object. Instead of generating a new object, we try to get one
 			// from the DB. If we can't find one, we put in null.
-			found := t.db.Find(referenceName, nil, nil, mqswag.MatchAlways, 1)
+			found := t.suite.db.Find(referenceName, nil, nil, mqswag.MatchAlways, 1)
+			if len(found) == 0 {
+				found = t.db.Find(referenceName, nil, nil, mqswag.MatchAlways, 1)
+			}
 			if len(found) > 0 {
 				return found[0], nil
 			}
