@@ -72,12 +72,12 @@ func (schema *Schema) GetProperties(swagger *Swagger) map[string]spec.Schema {
 // return an error. Otherwise parse all the objects identified by the schema
 // into the map indexed by the object class name.
 func (schema *Schema) Parses(name string, object interface{}, collection map[string][]interface{}, followRef bool, swagger *Swagger) error {
-	raiseError := func() error {
+	raiseError := func(msg string) error {
 		schemaBytes, _ := json.MarshalIndent((*spec.Schema)(schema), "", "    ")
 		objectBytes, _ := json.MarshalIndent(object, "", "    ")
-		return mqutil.NewError(mqutil.ErrInvalid, fmt.Sprintf(
-			"schema and object doesn't match. Schema:\n%s\nObject:\n%s\n",
-			string(schemaBytes), string(objectBytes)))
+		return errors.New(fmt.Sprintf(
+			"schema and object don't match. %s\nSchema:\n%s\nObject:\n%s\n",
+			msg, string(schemaBytes), string(objectBytes)))
 	}
 	if object == nil {
 		return nil
@@ -98,7 +98,7 @@ func (schema *Schema) Parses(name string, object interface{}, collection map[str
 		objMap, objIsMap := object.(map[string]interface{})
 		if !objIsMap || objMap == nil {
 			// We don't consider null a valid match
-			return raiseError()
+			return raiseError("object is not a map")
 		}
 		count := 0 // keep track of how many of object's properties are accounted for.
 		for _, s := range schema.AllOf {
@@ -124,7 +124,7 @@ func (schema *Schema) Parses(name string, object interface{}, collection map[str
 			// the schema. On the other hand, the schema frequently doesn't have the "required" field.
 			// So we allow a bit margin here but the object's fields can't have too many fields that
 			// aren't in the schema.
-			return raiseError()
+			return raiseError("too many mismatched fields")
 		}
 
 		// AllOf is satisfied. We can add the whole object to our collection
@@ -138,32 +138,31 @@ func (schema *Schema) Parses(name string, object interface{}, collection map[str
 	k := reflect.TypeOf(object).Kind()
 	if k == reflect.Bool {
 		if !schema.Type.Contains(gojsonschema.TYPE_BOOLEAN) {
-			return raiseError()
+			return raiseError("schema is not a boolean")
 		}
 	} else if k >= reflect.Int && k <= reflect.Uint64 {
 		if !schema.Type.Contains(gojsonschema.TYPE_INTEGER) && !schema.Type.Contains(gojsonschema.TYPE_NUMBER) {
-			return raiseError()
+			return raiseError("schema is not an integer")
 		}
 	} else if k == reflect.Float32 || k == reflect.Float64 {
 		// After unmarshal, the map only holds floats. It doesn't differentiate int and float.
 		if !schema.Type.Contains(gojsonschema.TYPE_INTEGER) && !schema.Type.Contains(gojsonschema.TYPE_NUMBER) {
-			return raiseError()
+			return raiseError("schema is not a floating point number")
 		}
 	} else if k == reflect.String {
 		bothAreNumbers := reflect.TypeOf(object).String() == "json.Number" && (schema.Type.Contains(gojsonschema.TYPE_INTEGER) || schema.Type.Contains(gojsonschema.TYPE_NUMBER))
 		if !schema.Type.Contains(gojsonschema.TYPE_STRING) && !bothAreNumbers {
-			return raiseError()
+			return raiseError("schema is not a number")
 		}
 	} else if k == reflect.Map {
 		isProperty = false
 		objMap, objIsMap := object.(map[string]interface{})
 		if !objIsMap || !schema.Type.Contains(gojsonschema.TYPE_OBJECT) {
-			return raiseError()
+			return raiseError("schema is not an object")
 		}
 		for _, requiredName := range schema.Required {
 			if _, exist := objMap[requiredName]; !exist {
-				mqutil.Logger.Printf("required field not present: %s", requiredName)
-				return raiseError()
+				return raiseError(fmt.Sprintf("required field not present: %s", requiredName))
 			}
 		}
 		// Check all the properties of the object and make sure that they can be found on the schema.
@@ -179,7 +178,7 @@ func (schema *Schema) Parses(name string, object interface{}, collection map[str
 			}
 		}
 		if count*4 < len(objMap)*3 {
-			return raiseError()
+			return raiseError("too many mis-matched fields")
 		}
 
 		// all the properties are OK.
@@ -189,7 +188,7 @@ func (schema *Schema) Parses(name string, object interface{}, collection map[str
 	} else if k == reflect.Array || k == reflect.Slice {
 		isProperty = false
 		if !schema.Type.Contains(gojsonschema.TYPE_ARRAY) {
-			return raiseError()
+			return raiseError("schema is not an array")
 		}
 		// Check the array elements.
 		itemsSchema := (*Schema)(schema.Items.Schema)
@@ -198,7 +197,7 @@ func (schema *Schema) Parses(name string, object interface{}, collection map[str
 			itemsSchema = &s
 		}
 		if itemsSchema == nil {
-			return raiseError()
+			return raiseError("item schema is null")
 		}
 		ar := object.([]interface{})
 		for _, item := range ar {
@@ -208,8 +207,7 @@ func (schema *Schema) Parses(name string, object interface{}, collection map[str
 			}
 		}
 	} else {
-		mqutil.Logger.Printf("unknown type: %v", k)
-		return raiseError()
+		return raiseError(fmt.Sprintf("unknown type: %v", k))
 	}
 	if isProperty && !followRef {
 		tag := GetMeqaTag(schema.Description)

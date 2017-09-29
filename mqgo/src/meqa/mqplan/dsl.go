@@ -398,7 +398,7 @@ func (t *Test) ProcessResult(resp *resty.Response) error {
 		return t.err
 	}
 
-	useDefaultSpec := true
+	// useDefaultSpec := true
 	t.resp = resp
 	status := resp.StatusCode()
 	var respSpec *spec.Response
@@ -406,7 +406,7 @@ func (t *Test) ProcessResult(resp *resty.Response) error {
 		respObject, ok := t.op.Responses.StatusCodeResponses[status]
 		if ok {
 			respSpec = &respObject
-			useDefaultSpec = false
+			// useDefaultSpec = false
 		} else {
 			respSpec = t.op.Responses.Default
 		}
@@ -478,15 +478,18 @@ func (t *Test) ProcessResult(resp *resty.Response) error {
 			specBytes, _ := json.MarshalIndent(respSpec, "", "    ")
 			mqutil.Logger.Printf("server response doesn't match swagger spec: \n%s", string(specBytes))
 			if mqutil.Verbose {
-				fmt.Printf("... openapi response schema: %s\n", string(specBytes))
-				fmt.Printf("... response body: %s\n", string(respBody))
+				// fmt.Printf("... openapi response schema: %s\n", string(specBytes))
+				// fmt.Printf("... response body: %s\n", string(respBody))
+				fmt.Println(err.Error())
 			}
 
 			// We ignore this if the response is success, and the spec we used is the default. This is a strong
 			// indicator that the author didn't spec out all the success cases.
+			/* Don't treat this as a hard failure for now. Too common.
 			if !(useDefaultSpec && success) {
 				return err
 			}
+			*/
 		} else {
 			fmt.Print("Success\n")
 		}
