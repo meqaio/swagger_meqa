@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"math"
 	"math/rand"
@@ -692,11 +693,13 @@ func (t *Test) CopyParent(parentTest *Test) {
 func (t *Test) Run(tc *TestSuite) error {
 
 	mqutil.Logger.Print("\n--- " + t.Name)
-	fmt.Printf("\n-- Running test case: %s --\n", t.Name)
+	fmt.Printf("\nRunning test case: %s\n", t.Name)
 	err := t.ResolveParameters(tc)
 	if err != nil {
+		fmt.Printf("... generating parameters. Fail\n... %s\n", err.Error())
 		return err
 	}
+	fmt.Printf("... generating parameters. Success\n")
 
 	req := resty.R()
 	if len(tc.ApiToken) > 0 {
@@ -728,6 +731,8 @@ func (t *Test) Run(tc *TestSuite) error {
 		return mqutil.NewError(mqutil.ErrInvalid, fmt.Sprintf("Unknown method in test %s: %v", t.Name, t.Method))
 	}
 	t.stopTime = time.Now()
+	fmt.Printf("... call completed: %f seconds\n", t.stopTime.Sub(t.startTime).Seconds())
+
 	if err != nil {
 		t.err = mqutil.NewError(mqutil.ErrHttp, err.Error())
 	} else {
@@ -735,7 +740,6 @@ func (t *Test) Run(tc *TestSuite) error {
 		mqutil.Logger.Println(string(resp.Body()))
 	}
 	err = t.ProcessResult(resp)
-	fmt.Printf("-- Duration: %f seconds --\n", t.stopTime.Sub(t.startTime).Seconds())
 	return err
 }
 
@@ -1005,8 +1009,7 @@ func (t *Test) generateByType(s *spec.Schema, prefix string, parentTag *mqswag.M
 		case gojsonschema.TYPE_STRING:
 			result, err = generateString(s, prefix)
 		case "file":
-			return nil, mqutil.NewError(mqutil.ErrInvalid, fmt.Sprintf(
-				"can not automatically upload a file, parameter of file type must be manually set"))
+			return nil, errors.New("can not automatically upload a file, parameter of file type must be manually set\n")
 		}
 		if result != nil && err == nil {
 			t.AddBasicComparison(tag, paramSpec, result)

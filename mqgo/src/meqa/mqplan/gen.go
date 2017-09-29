@@ -10,6 +10,19 @@ import (
 	"github.com/go-openapi/spec"
 )
 
+func createInitTask() *Test {
+	initTask := &Test{}
+	initTask.Name = MeqaInit
+	return initTask
+}
+
+func addInitTestSuite(testPlan *TestPlan) {
+	testSuite := CreateTestSuite(MeqaInit, nil, testPlan)
+	testSuite.comment = "The meqa_init section initializes parameters (e.g. pathParams) that are applied to all suites"
+	testSuite.Tests = append(testSuite.Tests, createInitTask())
+	testPlan.Add(testSuite)
+}
+
 // Given a path name, retrieve the last entry that is not a path param.
 func GetLastPathElement(name string) string {
 	nameArray := strings.Split(name, "/")
@@ -121,6 +134,11 @@ func GenerateTestsForObject(create *mqswag.DAGNode, obj *mqswag.DAGNode, plan *T
 func GenerateTestPlan(swagger *mqswag.Swagger, dag *mqswag.DAG) (*TestPlan, error) {
 	testPlan := &TestPlan{}
 	testPlan.Init(swagger, nil)
+	testPlan.comment = `
+This test plan has test suites that are about objects. Each test suite create an object,
+then exercise REST calls that use that object as an input.
+`
+	addInitTestSuite(testPlan)
 
 	genFunc := func(previous *mqswag.DAGNode, current *mqswag.DAGNode) error {
 		if current.GetType() != mqswag.TypeOp {
@@ -128,9 +146,11 @@ func GenerateTestPlan(swagger *mqswag.Swagger, dag *mqswag.DAG) (*TestPlan, erro
 		}
 
 		// Exercise the function by itself.
-		testSuite := CreateTestSuite(current.GetName()+" "+current.GetMethod(), nil, testPlan)
-		testSuite.Tests = append(testSuite.Tests, CreateTestFromOp(current, 1))
-		testPlan.Add(testSuite)
+		/*
+			testSuite := CreateTestSuite(current.GetName()+" "+current.GetMethod(), nil, testPlan)
+			testSuite.Tests = append(testSuite.Tests, CreateTestFromOp(current, 1))
+			testPlan.Add(testSuite)
+		*/
 
 		// When iterating by weight previous is always nil.
 		for _, c := range current.Children {
@@ -213,6 +233,12 @@ func (n PathWeightList) Less(i, j int) bool {
 func GeneratePathTestPlan(swagger *mqswag.Swagger, dag *mqswag.DAG) (*TestPlan, error) {
 	testPlan := &TestPlan{}
 	testPlan.Init(swagger, nil)
+	testPlan.comment = `
+In this test plan, the test suites are the REST paths, and the tests are the different
+operations under the path. The tests under the same suite will share each others'
+parameters by default.
+	`
+	addInitTestSuite(testPlan)
 
 	pathMap := make(map[string]mqswag.NodeList)
 	pathWeight := make(map[string]int)
@@ -267,19 +293,12 @@ func GeneratePathTestPlan(swagger *mqswag.Swagger, dag *mqswag.DAG) (*TestPlan, 
 func GenerateSimpleTestPlan(swagger *mqswag.Swagger, dag *mqswag.DAG) (*TestPlan, error) {
 	testPlan := &TestPlan{}
 	testPlan.Init(swagger, nil)
-
-	testSuite := CreateTestSuite(MeqaInit, nil, testPlan)
-	initTask := &Test{}
-	initTask.Name = MeqaInit
-	initTask.PathParams = make(map[string]interface{})
-	testSuite.Tests = append(testSuite.Tests, initTask)
-	testSuite.comment = "The meqa_init section initializes parameters (e.g. pathParams) that are applied to all suites"
-	testPlan.Add(testSuite)
+	addInitTestSuite(testPlan)
 
 	testId := 0
-	testSuite = CreateTestSuite(fmt.Sprintf("simple test suite"), nil, testPlan)
+	testSuite := CreateTestSuite(fmt.Sprintf("simple test suite"), nil, testPlan)
 	testSuite.comment = "The meqa_init task within a test suite initializes parameters that are applied to all tests within this suite"
-	testSuite.Tests = append(testSuite.Tests, initTask)
+	testSuite.Tests = append(testSuite.Tests, createInitTask())
 	addFunc := func(previous *mqswag.DAGNode, current *mqswag.DAGNode) error {
 		if testId >= 10 {
 			return mqutil.NewError(mqutil.ErrOK, "done")
@@ -297,7 +316,7 @@ func GenerateSimpleTestPlan(swagger *mqswag.Swagger, dag *mqswag.DAG) (*TestPlan
 
 	dag.IterateByWeight(addFunc)
 	testPlan.Add(testSuite)
-	testPlan.comment = "This is a simple and short test plan. We just sampled up to 10 REST calls into one test suite."
+	testPlan.comment = "\nThis is a simple and short test plan. We just sampled up to 10 REST calls into one test suite.\n"
 
 	return testPlan, nil
 }

@@ -181,6 +181,13 @@ func (plan *TestPlan) InitFromFile(path string, db *mqswag.DB) error {
 	return nil
 }
 
+func WriteComment(comment string, f *os.File) {
+	ar := strings.Split(comment, "\n")
+	for _, line := range ar {
+		f.WriteString("# " + line + "\n")
+	}
+}
+
 func (plan *TestPlan) DumpToFile(path string) error {
 	f, err := os.Create(path)
 	if err != nil {
@@ -189,13 +196,12 @@ func (plan *TestPlan) DumpToFile(path string) error {
 	defer f.Close()
 
 	if len(plan.comment) > 0 {
-		f.WriteString("# " + plan.comment + "\n")
+		WriteComment(plan.comment, f)
 	}
 	for _, testSuite := range plan.SuiteList {
+		f.WriteString("\n\n")
 		if len(testSuite.comment) > 0 {
-			f.WriteString("\n# " + testSuite.comment + "\n")
-		} else {
-			f.WriteString("\n")
+			WriteComment(testSuite.comment, f)
 		}
 		count, err := f.WriteString("---\n")
 		if err != nil {
