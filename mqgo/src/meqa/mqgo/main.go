@@ -12,17 +12,20 @@ import (
 )
 
 const (
-	meqaDataDir     = "meqa_data"
-	swaggerJSONFile = "swagger.yaml"
-	testPlanFile    = "testplan.yaml"
-	resultFile      = "result.yaml"
+	meqaDataDir = "meqa_data"
+	swaggerYAML = "swagger.yaml"
+	resultFile  = "result.yaml"
 )
 
 func main() {
-	meqaPath := flag.String("d", meqaDataDir, "the directory that holds the meqa data and swagger.json files")
-	swaggerFile := flag.String("s", swaggerJSONFile, "the swagger.json file name or URL")
-	testPlanFile := flag.String("p", testPlanFile, "the test plan file name")
-	resultFile := flag.String("r", resultFile, "the test result file name")
+	swaggerYAMLPath := filepath.Join(meqaDataDir, swaggerYAML)
+	testPlanPath := filepath.Join(meqaDataDir, "simple.yaml")
+	resultPath := filepath.Join(meqaDataDir, resultFile)
+
+	meqaPath := flag.String("d", meqaDataDir, "the directory where we put meqa temp files and logs")
+	swaggerFile := flag.String("s", swaggerYAMLPath, "the swagger.yaml file name or URL")
+	testPlanFile := flag.String("p", testPlanPath, "the test plan file name")
+	resultFile := flag.String("r", resultPath, "the test result file name")
 	testToRun := flag.String("t", "all", "the test to run")
 	username := flag.String("u", "", "the username for basic HTTP authentication")
 	password := flag.String("w", "", "the password for basic HTTP authentication")
@@ -35,20 +38,17 @@ func main() {
 	mqutil.Logger = mqutil.NewFileLogger(filepath.Join(*meqaPath, "mqgo.log"))
 	mqutil.Logger.Println("starting mqgo")
 
-	swaggerJsonPath := filepath.Join(*meqaPath, *swaggerFile)
-	testPlanPath := filepath.Join(*meqaPath, *testPlanFile)
-	resultPath := filepath.Join(*meqaPath, *resultFile)
-	if _, err := os.Stat(swaggerJsonPath); os.IsNotExist(err) {
-		fmt.Printf("can't load swagger file at the following location %s", swaggerJsonPath)
+	if _, err := os.Stat(*swaggerFile); os.IsNotExist(err) {
+		fmt.Printf("can't load swagger file at the following location %s", *swaggerFile)
 		return
 	}
-	if _, err := os.Stat(testPlanPath); os.IsNotExist(err) {
-		fmt.Printf("can't load test plan file at the following location %s", testPlanPath)
+	if _, err := os.Stat(*testPlanFile); os.IsNotExist(err) {
+		fmt.Printf("can't load test plan file at the following location %s", *testPlanFile)
 		return
 	}
 
 	// Test loading swagger.json
-	swagger, err := mqswag.CreateSwaggerFromURL(swaggerJsonPath, *meqaPath)
+	swagger, err := mqswag.CreateSwaggerFromURL(*swaggerFile, *meqaPath)
 	if err != nil {
 		mqutil.Logger.Printf("Error: %s", err.Error())
 	}
@@ -58,7 +58,7 @@ func main() {
 	mqplan.Current.Username = *username
 	mqplan.Current.Password = *password
 	mqplan.Current.ApiToken = *apitoken
-	err = mqplan.Current.InitFromFile(testPlanPath, &mqswag.ObjDB)
+	err = mqplan.Current.InitFromFile(*testPlanFile, &mqswag.ObjDB)
 	if err != nil {
 		mqutil.Logger.Printf("Error loading test plan: %s", err.Error())
 	}
@@ -77,6 +77,6 @@ func main() {
 		mqutil.Logger.Printf("err:\n%v", err)
 	}
 
-	os.Remove(resultPath)
-	mqplan.Current.WriteResultToFile(resultPath)
+	os.Remove(*resultFile)
+	mqplan.Current.WriteResultToFile(*resultFile)
 }
