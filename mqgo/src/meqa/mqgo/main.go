@@ -19,12 +19,11 @@ const (
 
 func main() {
 	swaggerYAMLPath := filepath.Join(meqaDataDir, swaggerYAML)
-	testPlanPath := filepath.Join(meqaDataDir, "simple.yaml")
 	resultPath := filepath.Join(meqaDataDir, resultFile)
 
 	meqaPath := flag.String("d", meqaDataDir, "the directory where we put meqa temp files and logs")
 	swaggerFile := flag.String("s", swaggerYAMLPath, "the swagger.yaml file name or URL")
-	testPlanFile := flag.String("p", testPlanPath, "the test plan file name")
+	testPlanFile := flag.String("p", "", "the test plan file name")
 	resultFile := flag.String("r", resultPath, "the test result file name")
 	testToRun := flag.String("t", "all", "the test to run")
 	username := flag.String("u", "", "the username for basic HTTP authentication")
@@ -34,6 +33,11 @@ func main() {
 
 	flag.Parse()
 	mqutil.Verbose = *verbose
+
+	if len(*testPlanFile) == 0 {
+		fmt.Println("You must use -p to specify a test plan file. Use -h to see more options.")
+		return
+	}
 
 	mqutil.Logger = mqutil.NewFileLogger(filepath.Join(*meqaPath, "mqgo.log"))
 	mqutil.Logger.Println("starting mqgo")
