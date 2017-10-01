@@ -699,10 +699,9 @@ func (t *Test) Run(tc *TestSuite) error {
 	fmt.Printf("\nRunning test case: %s\n", t.Name)
 	err := t.ResolveParameters(tc)
 	if err != nil {
-		fmt.Printf("... generating parameters. Fail\n... %s\n", err.Error())
+		fmt.Printf("... Fail\n... %s\n", err.Error())
 		return err
 	}
-	fmt.Printf("... generating parameters. Success\n")
 
 	req := resty.R()
 	if len(tc.ApiToken) > 0 {
@@ -832,6 +831,7 @@ func (t *Test) ResolveParameters(tc *TestSuite) error {
 	if t.op == nil {
 		return mqutil.NewError(mqutil.ErrNotFound, fmt.Sprintf("Path %s not found in swagger file", t.Path))
 	}
+	fmt.Printf("... resolving parameters.\n")
 
 	// There can be parameters at the path level. We merge these with the operation parameters.
 	t.op.Parameters = ParamsAdd(t.op.Parameters, pathItem.Parameters)
@@ -843,6 +843,7 @@ func (t *Test) ResolveParameters(tc *TestSuite) error {
 	var err error
 	var genParam interface{}
 	for _, params := range t.op.Parameters {
+		fmt.Printf("        %s (in %s): ", params.Name, params.In)
 		if params.In == "body" {
 			var bodyMap map[string]interface{}
 			bodyIsMap := false
@@ -861,6 +862,7 @@ func (t *Test) ResolveParameters(tc *TestSuite) error {
 						}
 					}
 				}
+				fmt.Print("provided\n")
 				continue
 			}
 			// Body is map, we generate parameters, then use the value in the original t and tc's bodyParam where possible
@@ -910,6 +912,7 @@ func (t *Test) ResolveParameters(tc *TestSuite) error {
 			}
 			if _, ok := paramsMap[params.Name]; ok {
 				t.AddBasicComparison(mqswag.GetMeqaTag(params.Description), &params, paramsMap[params.Name])
+				fmt.Print("provided\n")
 				continue
 			}
 			genParam, err = t.GenerateParameter(&params, t.db)
@@ -946,9 +949,10 @@ func GetOperationByMethod(item *spec.PathItem, method string) *spec.Operation {
 func (t *Test) GenerateParameter(paramSpec *spec.Parameter, db *mqswag.DB) (interface{}, error) {
 	tag := mqswag.GetMeqaTag(paramSpec.Description)
 	if paramSpec.Schema != nil {
-		return t.GenerateSchema("", tag, paramSpec.Schema, db)
+		return t.GenerateSchema("", tag, paramSpec.Schema, db, 3)
 	}
 	if len(paramSpec.Enum) != 0 {
+		fmt.Print("enum\n")
 		return generateEnum(paramSpec.Enum)
 	}
 	if len(paramSpec.Type) == 0 {
@@ -958,19 +962,19 @@ func (t *Test) GenerateParameter(paramSpec *spec.Parameter, db *mqswag.DB) (inte
 	// construct a full schema from simple ones
 	schema := (*spec.Schema)(mqswag.CreateSchemaFromSimple(&paramSpec.SimpleSchema, &paramSpec.CommonValidations))
 	if paramSpec.Type == gojsonschema.TYPE_OBJECT {
-		return t.generateObject("", tag, schema, db)
+		return t.generateObject("", tag, schema, db, 3)
 	}
 	if paramSpec.Type == gojsonschema.TYPE_ARRAY {
-		return t.generateArray("", tag, schema, db)
+		return t.generateArray("", tag, schema, db, 3)
 	}
 
-	return t.generateByType(schema, paramSpec.Name, tag, paramSpec)
+	return t.generateByType(schema, paramSpec.Name, tag, paramSpec, true)
 }
 
 // Two ways to get to generateByType
 // 1) directly called from GenerateParameter, now we know the type is a parameter, and we want to add to comparison
 // 2) called at bottom level, here we know the object will be added to comparison and not the type primitives.
-func (t *Test) generateByType(s *spec.Schema, prefix string, parentTag *mqswag.MeqaTag, paramSpec *spec.Parameter) (interface{}, error) {
+func (t *Test) generateByType(s *spec.Schema, prefix string, parentTag *mqswag.MeqaTag, paramSpec *spec.Parameter, print bool) (interface{}, error) {
 	tag := mqswag.GetMeqaTag(s.Description)
 	if tag == nil {
 		tag = parentTag
@@ -981,6 +985,9 @@ func (t *Test) generateByType(s *spec.Schema, prefix string, parentTag *mqswag.M
 			for _, c := range t.comparisons[tag.Class] {
 				if c.old != nil {
 					c.oldUsed[tag.Property] = c.old[tag.Property]
+					if print {
+						fmt.Printf("found %s.%s\n", tag.Class, tag.Property)
+					}
 					return c.old[tag.Property], nil
 				}
 			}
@@ -994,12 +1001,18 @@ func (t *Test) generateByType(s *spec.Schema, prefix string, parentTag *mqswag.M
 				comp := &Comparison{obj, make(map[string]interface{}), nil, (*spec.Schema)(t.db.GetSchema(tag.Class))}
 				comp.oldUsed[tag.Property] = comp.old[tag.Property]
 				t.comparisons[tag.Class] = append(t.comparisons[tag.Class], comp)
+				if print {
+					fmt.Printf("found %s.%s\n", tag.Class, tag.Property)
+				}
 				return obj[tag.Property], nil
 			}
 		}
 	}
 
 	if len(s.Type) != 0 {
+		if print {
+			fmt.Print("random\n")
+		}
 		var result interface{}
 		var err error
 		switch s.Type[0] {
@@ -1127,7 +1140,7 @@ func generateInt(s *spec.Schema) (int64, error) {
 	return i, nil
 }
 
-func (t *Test) generateArray(name string, parentTag *mqswag.MeqaTag, schema *spec.Schema, db *mqswag.DB) (interface{}, error) {
+func (t *Test) generateArray(name string, parentTag *mqswag.MeqaTag, schema *spec.Schema, db *mqswag.DB, level int) (interface{}, error) {
 	var numItems int
 	if schema.MaxItems != nil || schema.MinItems != nil {
 		var maxItems int = 10
@@ -1173,29 +1186,55 @@ func (t *Test) generateArray(name string, parentTag *mqswag.MeqaTag, schema *spe
 		hash = make(map[interface{}]interface{})
 	}
 
-	for i := 0; i < numItems; i++ {
-		entry, err := t.GenerateSchema(name, tag, itemSchema, db)
+	generateOneEntry := func() error {
+		entry, err := t.GenerateSchema(name, tag, itemSchema, db, level)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		if entry == nil {
-			continue
+			return nil
 		}
 		if hash != nil && hash[entry] != nil {
-			continue
+			return nil
 		}
 		ar = append(ar, entry)
 		if hash != nil {
 			hash[entry] = 1
 		}
+		return nil
+	}
+
+	// we only print one entry
+	err := generateOneEntry()
+	if err != nil {
+		return nil, err
+	}
+	level = 0 // this will supress prints
+	for i := 0; i < numItems; i++ {
+		err = generateOneEntry()
+		if err != nil {
+			return nil, err
+		}
 	}
 	return ar, nil
 }
 
-func (t *Test) generateObject(name string, parentTag *mqswag.MeqaTag, schema *spec.Schema, db *mqswag.DB) (interface{}, error) {
+func (t *Test) generateObject(name string, parentTag *mqswag.MeqaTag, schema *spec.Schema, db *mqswag.DB, level int) (interface{}, error) {
 	obj := make(map[string]interface{})
+	var spaces string
+	var nextLevel int
+	if level > 0 {
+		spaces = strings.Repeat("    ", level)
+		nextLevel = level + 1
+	}
+	if level != 0 {
+		fmt.Println("")
+	}
 	for k, v := range schema.Properties {
-		o, err := t.GenerateSchema(k+"_", nil, &v, db)
+		if level != 0 {
+			fmt.Printf("%s%s . ", spaces, k)
+		}
+		o, err := t.GenerateSchema(k+"_", nil, &v, db, nextLevel)
 		if err != nil {
 			return nil, err
 		}
@@ -1214,7 +1253,7 @@ func (t *Test) generateObject(name string, parentTag *mqswag.MeqaTag, schema *sp
 }
 
 // The parentTag passed in is what the higher level thinks this schema object should be.
-func (t *Test) GenerateSchema(name string, parentTag *mqswag.MeqaTag, schema *spec.Schema, db *mqswag.DB) (interface{}, error) {
+func (t *Test) GenerateSchema(name string, parentTag *mqswag.MeqaTag, schema *spec.Schema, db *mqswag.DB, level int) (interface{}, error) {
 	swagger := db.Swagger
 
 	// The tag that's closest to the object takes priority, much like child class can override parent class.
@@ -1237,14 +1276,20 @@ func (t *Test) GenerateSchema(name string, parentTag *mqswag.MeqaTag, schema *sp
 				found = t.db.Find(referenceName, nil, nil, mqswag.MatchAlways, 1)
 			}
 			if len(found) > 0 {
+				if level != 0 {
+					fmt.Printf("found %s\n", referenceName)
+				}
 				return found[0], nil
 			}
 			return nil, nil
 		}
-		return t.GenerateSchema(name, &mqswag.MeqaTag{referenceName, "", "", 0}, (*spec.Schema)(referredSchema), db)
+		return t.GenerateSchema(name, &mqswag.MeqaTag{referenceName, "", "", 0}, (*spec.Schema)(referredSchema), db, level)
 	}
 
 	if len(schema.Enum) != 0 {
+		if level != 0 {
+			fmt.Print("enum\n")
+		}
 		return generateEnum(schema.Enum)
 	}
 
@@ -1252,7 +1297,7 @@ func (t *Test) GenerateSchema(name string, parentTag *mqswag.MeqaTag, schema *sp
 		combined := make(map[string]interface{})
 		discriminator := ""
 		for _, s := range schema.AllOf {
-			m, err := t.GenerateSchema(name, nil, &s, db)
+			m, err := t.GenerateSchema(name, nil, &s, db, level)
 			if err != nil {
 				return nil, err
 			}
@@ -1285,13 +1330,13 @@ func (t *Test) GenerateSchema(name string, parentTag *mqswag.MeqaTag, schema *sp
 		return nil, mqutil.NewError(mqutil.ErrInvalid, "Parameter doesn't have type")
 	}
 	if schema.Type[0] == gojsonschema.TYPE_OBJECT {
-		return t.generateObject(name, tag, schema, db)
+		return t.generateObject(name, tag, schema, db, level)
 	}
 	if schema.Type[0] == gojsonschema.TYPE_ARRAY {
-		return t.generateArray(name, tag, schema, db)
+		return t.generateArray(name, tag, schema, db, level)
 	}
 
-	return t.generateByType(schema, name, tag, nil)
+	return t.generateByType(schema, name, tag, nil, level != 0)
 }
 
 func generateEnum(e []interface{}) (interface{}, error) {
