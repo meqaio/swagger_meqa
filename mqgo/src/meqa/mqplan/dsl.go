@@ -1281,6 +1281,9 @@ func (t *Test) GenerateSchema(name string, parentTag *mqswag.MeqaTag, schema *sp
 				}
 				return found[0], nil
 			}
+			if level != 0 {
+				fmt.Printf("null\n")
+			}
 			return nil, nil
 		}
 		return t.GenerateSchema(name, &mqswag.MeqaTag{referenceName, "", "", 0}, (*spec.Schema)(referredSchema), db, level)
