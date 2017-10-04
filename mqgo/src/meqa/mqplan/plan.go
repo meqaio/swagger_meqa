@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	resty "gopkg.in/resty.v0"
+	"gopkg.in/resty.v0"
 	"gopkg.in/yaml.v2"
 
 	"meqa/mqswag"

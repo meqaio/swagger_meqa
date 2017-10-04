@@ -36,31 +36,31 @@ func main() {
 	swaggerJsonPath := *swaggerFile
 	if fi, err := os.Stat(swaggerJsonPath); os.IsNotExist(err) || fi.Mode().IsDir() {
 		fmt.Printf("Can't load swagger file at the following location %s", swaggerJsonPath)
-		return
+		os.Exit(1)
 	}
 	testPlanPath := *meqaPath
 	if fi, err := os.Stat(testPlanPath); os.IsNotExist(err) {
 		err = os.Mkdir(testPlanPath, 0755)
 		if err != nil {
 			fmt.Printf("Can't create the directory at %s\n", testPlanPath)
-			return
+			os.Exit(1)
 		}
 	} else if !fi.Mode().IsDir() {
 		fmt.Printf("The specified location is not a directory: %s\n", testPlanPath)
-		return
+		os.Exit(1)
 	}
 
 	// loading swagger.json
 	swagger, err := mqswag.CreateSwaggerFromURL(swaggerJsonPath, *meqaPath)
 	if err != nil {
 		mqutil.Logger.Printf("Error: %s", err.Error())
-		return
+		os.Exit(1)
 	}
 	dag := mqswag.NewDAG()
 	err = swagger.AddToDAG(dag)
 	if err != nil {
 		mqutil.Logger.Printf("Error: %s", err.Error())
-		return
+		os.Exit(1)
 	}
 
 	dag.Sort()
@@ -85,13 +85,13 @@ func main() {
 		}
 		if err != nil {
 			mqutil.Logger.Printf("Error: %s", err.Error())
-			return
+			os.Exit(1)
 		}
 		testPlanFile := filepath.Join(testPlanPath, algo+".yaml")
 		err = testPlan.DumpToFile(testPlanFile)
 		if err != nil {
 			mqutil.Logger.Printf("Error: %s", err.Error())
-			return
+			os.Exit(1)
 		}
 		fmt.Println("Test plans generated at:", testPlanFile)
 	}

@@ -148,15 +148,21 @@ class SwaggerDoc(object):
 
     def __init__(self, filename):
         self.vocab = Vocabulary()
-        self.doc = load_yaml(filename)
         self.definitions = dict()  # holds the object definitions.
         self.logger = logging.getLogger(name='meqa')
+        self.doc = load_yaml(filename)
+
+    def __init__(self, vocab, yamlString):
+        self.vocab = vocab
+        self.definitions = dict()  # holds the object definitions.
+        self.logger = logging.getLogger(name='meqa')
+        yaml = YAML()
+        self.doc = yaml.load(yamlString)
 
     def dump(self, filename):
         yaml = YAML()
-        f = open(filename, 'w')
-        yaml.dump(self.doc, f)
-        f.close()
+        with open(filename, 'w') as f:
+            yaml.dump(self.doc, f)
 
     # given a object schema, try to find a object definition that matches the schema.
     def find_definition(self, schema):
