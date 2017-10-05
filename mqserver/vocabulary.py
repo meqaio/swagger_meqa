@@ -8,6 +8,9 @@ class Vocabulary(object):
         self.parser = spacy.load('en_core_web_md')
         self.vocab = self.parser.vocab
         self.low_prob = self.vocab['sjflsjl'].prob
+        if self.low_prob > -10000000:
+            print("vocab low prob is too high, check the spacy oov_prob file value")
+
         self.new_words = set()
         self.punctuations = set(string.punctuation)
 

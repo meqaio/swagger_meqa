@@ -1,5 +1,9 @@
 FROM meqa/python
 
+RUN apt-get update
+RUN apt-get install -y vim
+RUN apt-get install -y less
+
 RUN mkdir /meqa
 RUN mkdir /meqa/bin
 RUN mkdir /meqa/data
