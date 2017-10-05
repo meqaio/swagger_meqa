@@ -71,7 +71,8 @@ class SpecResource(object):
         swagger.add_tags()
         swagger.dump(tagged_swagger_path)
 
-        result = subprocess.run("/meqa/bin/mqgen -d {} -s {} -a all".format(dirpath, tagged_swagger_path))
+        result = subprocess.run(["/meqa/bin/mqgen", "-d", dirpath, "-s", tagged_swagger_path, "-a", "all"], stdout=subprocess.PIPE)
+
         if result.returncode != 0:
             raise falcon.HTTPBadRequest("failed to generate test plan", result.stdout)
 
