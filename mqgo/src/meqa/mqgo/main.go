@@ -111,7 +111,9 @@ func generateMeqa(meqaPath string, swaggerPath string) error {
 
 func main() {
 	genCommand := flag.NewFlagSet("generate", flag.ExitOnError)
+	genCommand.SetOutput(os.Stdout)
 	runCommand := flag.NewFlagSet("run", flag.ExitOnError)
+	runCommand.SetOutput(os.Stdout)
 
 	genMeqaPath := genCommand.String("d", meqaDataDir, "the directory where we put meqa temp files and logs")
 	genSwaggerFile := genCommand.String("s", filepath.Join(meqaDataDir, "swagger.yaml"), "the swagger.yaml file name or URL")
