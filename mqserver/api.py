@@ -17,7 +17,7 @@ MQStatus = 'status'
 MQSwagger = 'swagger'
 MQPlan = 'plan'
 
-MQDataDir = '/meqa'
+MQDataDir = '/meqa/data'
 
 import falcon
 
@@ -71,7 +71,7 @@ class SpecResource(object):
         swagger.add_tags()
         swagger.dump(tagged_swagger_path)
 
-        result = subprocess.run("mqgen -d {} -s {} -a all".format(dirpath, tagged_swagger_path))
+        result = subprocess.run("/meqa/bin/mqgen -d {} -s {} -a all".format(dirpath, tagged_swagger_path))
         if result.returncode != 0:
             raise falcon.HTTPBadRequest("failed to generate test plan", result.stdout)
 
