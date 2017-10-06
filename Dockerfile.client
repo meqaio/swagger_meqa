@@ -1,4 +1,0 @@
-FROM alpine
-
-COPY ./mqgo/bin/linux_amd64/mqgo /usr/bin/
-ENTRYPOINT ["/usr/bin/mqgo"]
