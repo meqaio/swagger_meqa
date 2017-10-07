@@ -1,4 +1,4 @@
-# meqa
+# OpenAPI Testing Meqanized
 
 Meqa generates and runs test suites using your swagger/OpenAPI yaml spec. It aims to make REST API testing easy by generating useful test patterns and avoiding coding.
 
