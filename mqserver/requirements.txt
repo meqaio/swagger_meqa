@@ -1,3 +1,2 @@
-bravado-core
 ruamel.yaml
 falcon
