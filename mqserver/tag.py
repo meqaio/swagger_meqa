@@ -146,18 +146,18 @@ class SwaggerDoc(object):
     TypeArray = 'array'
     TypeString = 'string'
 
-    def __init__(self, filename):
-        self.vocab = Vocabulary()
+    def __init__(self, filename=None, vocab=None, body=None):
+        if vocab == None:
+            self.vocab = Vocabulary()
+        else:
+            self.vocab = vocab
         self.definitions = dict()  # holds the object definitions.
         self.logger = logging.getLogger(name='meqa')
-        self.doc = load_yaml(filename)
-
-    def __init__(self, vocab, yamlString):
-        self.vocab = vocab
-        self.definitions = dict()  # holds the object definitions.
-        self.logger = logging.getLogger(name='meqa')
-        yaml = YAML()
-        self.doc = yaml.load(yamlString)
+        if filename != None:
+            self.doc = load_yaml(filename)
+        elif body != None:
+            yaml = YAML()
+            self.doc = yaml.load(body)
 
     def dump(self, filename):
         yaml = YAML()
@@ -560,11 +560,15 @@ class SwaggerDoc(object):
 def main():
     logger = logging.getLogger(name='meqa')
     parser = argparse.ArgumentParser(description='generate tag.yaml from swagger.yaml')
-    parser.add_argument("-i", "--input", help="the swagger.yaml file", default="./meqa_data/swagger.yaml")
-    parser.add_argument("-o", "--output", help="the output file name", default="./meqa_data/swagger_tagged.yaml")
+    parser.add_argument("-i", "--input", help="the swagger.yaml file", default="")
+    parser.add_argument("-o", "--output", help="the output file name", default="")
     args = parser.parse_args()
 
-    swagger = SwaggerDoc(args.input)
+    if args.input == "" or args.output == "":
+        print("You must specify input and output files. Run tag.py -h for details")
+        exit(1)
+
+    swagger = SwaggerDoc(filename=args.input)
     if swagger.doc == None:
         logger.error("Failed to load file %s", args.input)
         return

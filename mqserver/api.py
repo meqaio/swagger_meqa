@@ -57,7 +57,7 @@ class SpecResource(object):
         if not MQSwagger in obj:
             raise falcon.HTTPBadRequest('no swagger in request body')
 
-        swagger = SwaggerDoc(self.vocab, obj[MQSwagger])
+        swagger = SwaggerDoc(vocab=self.vocab, body=obj[MQSwagger])
         if swagger.doc == None:
             raise falcon.HTTPBadRequest('failed to parse the swagger file posted')
 
