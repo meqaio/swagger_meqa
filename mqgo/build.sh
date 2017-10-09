@@ -4,21 +4,25 @@ pushd .
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-export GOPATH=$GOPATH:$DIR
+unameOut="$(uname -s)"
+case "${unameOut}" in
+    CYGWIN*)    sep=";";DIR=`cygpath -w $DIR`;;
+    *)          sep=":"
+esac
 
-export GOOS=windows
-export GOARCH=amd64
-go install meqa/mqgo
-go install meqa/mqgen
+export GOPATH=${GOPATH}${sep}${DIR}
+echo "GOPATH=${GOPATH}"
 
-export GOOS=linux
-export GOARCH=amd64
-go install meqa/mqgo
-go install meqa/mqgen
+function build_one {
+    echo "building ${GOOS}_${GOARCH}"
+    GOOS=${GOOS} GOARCH=${GOARCH} go install meqa/mqgo
+    GOOS=${GOOS} GOARCH=${GOARCH} go install meqa/mqgen
+}
 
-export GOOS=darwin
 export GOARCH=amd64
-go install meqa/mqgo
-go install meqa/mqgen
+for GOOS in "windows" "linux" "darwin"
+do
+    build_one
+done
 
 popd
