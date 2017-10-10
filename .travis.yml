@@ -9,5 +9,4 @@ os:
   - osx
 
 install:
-script:
   - ./mqgo/build-vendor.sh
