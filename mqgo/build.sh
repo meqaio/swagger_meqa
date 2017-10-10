@@ -4,6 +4,8 @@ pushd .
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
+cd $DIR
+
 unameOut="$(uname -s)"
 case "${unameOut}" in
     CYGWIN*)    sep=";";DIR=`cygpath -w $DIR`;;
@@ -14,9 +16,15 @@ export GOPATH=${GOPATH}${sep}${DIR}
 echo "GOPATH=${GOPATH}"
 
 function build_one {
+    if [ ${GOOS} = "windows" ]; then
+        EXT=".exe"
+    else
+        EXT=""
+    fi
+
     echo "building ${GOOS}_${GOARCH}"
-    GOOS=${GOOS} GOARCH=${GOARCH} go install meqa/mqgo
-    GOOS=${GOOS} GOARCH=${GOARCH} go install meqa/mqgen
+    GOOS=${GOOS} GOARCH=${GOARCH} go build -o bin/${GOOS}_${GOARCH}/mqgo${EXT} meqa/mqgo
+    GOOS=${GOOS} GOARCH=${GOARCH} go build -o bin/${GOOS}_${GOARCH}/mqgen${EXT} meqa/mqgen
 }
 
 export GOARCH=amd64
