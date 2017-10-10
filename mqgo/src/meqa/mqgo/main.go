@@ -1,6 +1,8 @@
 package main
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -23,7 +25,7 @@ const (
 	meqaDataDir = "meqa_data"
 	configFile  = ".config"
 	resultFile  = "result.yaml"
-	serverURL   = "http://localhost:8888"
+	serverURL   = "https://api.meqa.io:443"
 )
 
 const (
@@ -58,6 +60,33 @@ func getConfigs(meqaPath string) (map[string]interface{}, error) {
 }
 
 func generateMeqa(meqaPath string, swaggerPath string) error {
+	caPool := x509.NewCertPool()
+	permCert := `-----BEGIN CERTIFICATE-----
+MIIDVzCCAj+gAwIBAgIJAJOCmHT8l8H6MA0GCSqGSIb3DQEBCwUAMEIxCzAJBgNV
+BAYTAlVTMQswCQYDVQQIDAJDQTEQMA4GA1UECgwHbWVxYS5pbzEUMBIGA1UEAwwL
+YXBpLm1lcWEuaW8wHhcNMTcxMDEwMDQzMTQ0WhcNMjcxMDA4MDQzMTQ0WjBCMQsw
+CQYDVQQGEwJVUzELMAkGA1UECAwCQ0ExEDAOBgNVBAoMB21lcWEuaW8xFDASBgNV
+BAMMC2FwaS5tZXFhLmlvMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA
+zrqFruzqLoQDDo+RnjmiBQRTz5P2thD57UCKZXASoTbGL/RppR1bgq+87WTGyqij
+5+NSNbwzl+0wfLzQJ3n5klvjihDHGxsKf/cyHxuTiUtxt7IK+R5lMahLQuSReHi9
+74KEDJqfUQVkR29AR7Tnay1jM/qDl1zwM2MzZJFYN/3Fb6oTCKCL07T6Ai0Ct5E3
+R+Top8rD8QNK7VWivF78Pxyqi9D6OARF/t0PjQWD6PippGzwVArNbdniZw9Fybgi
+6XMa7BD+5XX9kz/Yr8YbyiEMuwiIgp7Qiy9YUfdad1rlnClp79AffNt+FcPWFUAX
+HOO1SfpEJsKeFsIm2gZbDQIDAQABo1AwTjAdBgNVHQ4EFgQUDBBLDmUc6ELMjI+b
+4MXf5EnsbGAwHwYDVR0jBBgwFoAUDBBLDmUc6ELMjI+b4MXf5EnsbGAwDAYDVR0T
+BAUwAwEB/zANBgkqhkiG9w0BAQsFAAOCAQEAbTVTBURITrhDcXvAZTaYyknyH9He
+hIixE4SFAtZ5i6NWhiA9veKfcSTtGVxzwbpEx5Rhqxx9OoYA6gD/BTtyX8GSFAbu
+tQelpNZSBOnDCEMRCNUc1+ccULvJdXN0MGkjtNeCgv6S3gjyhFe+xRHB8nFOiq7Z
+0qCFziwr2nK5sBoISMyERlQHwTaSbqm/AvvZioDkgTwcubfP9GIa6zkc6RxBJW+S
+I7nKRgKm9r+E6Yi7Kahf1bCWCmFUVZKd+Y1zyWlYZA43v9gFcy8ZHOWg5+GAIhyO
+UDqHH0wRogFg9n/9p69s/RcDdn6dW6Psdtvmxug28ExUQxYTkj/6ORmoiw==
+-----END CERTIFICATE-----
+`
+	caPool.AppendCertsFromPEM([]byte(permCert))
+	config := tls.Config{RootCAs: caPool}
+	//config.InsecureSkipVerify = true
+
+	resty.SetTLSClientConfig(&config)
 	resty.SetRedirectPolicy(resty.FlexibleRedirectPolicy(15))
 
 	// Get the API key, if it doesn't exist, generate one.
