@@ -8,7 +8,7 @@ cd $DIR
 
 echo "building meqa docker images..."
 #docker build -f docker/Dockerfile.server-base -t meqa/python:latest .
-docker build -f docker/Dockerfile.server -t meqa/mqserver:latest .
+#docker build -f docker/Dockerfile.server -t meqa/mqserver:latest .
 docker build -f docker/Dockerfile.client -t meqa/go:latest .
 
 popd

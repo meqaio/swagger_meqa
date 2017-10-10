@@ -224,14 +224,14 @@ func main() {
 		return
 	}
 
-	// Test loading swagger.json
+	// load swagger.yaml
 	swagger, err := mqswag.CreateSwaggerFromURL(*swaggerFile, *meqaPath)
 	if err != nil {
 		mqutil.Logger.Printf("Error: %s", err.Error())
 	}
 	mqswag.ObjDB.Init(swagger)
 
-	// Test loading test plan
+	// load test plan
 	mqplan.Current.Username = *username
 	mqplan.Current.Password = *password
 	mqplan.Current.ApiToken = *apitoken
@@ -239,6 +239,10 @@ func main() {
 	if err != nil {
 		mqutil.Logger.Printf("Error loading test plan: %s", err.Error())
 	}
+
+	// for testing, set the config to skip verifying https certificates
+	resty.SetTLSClientConfig(&tls.Config{InsecureSkipVerify: true})
+	resty.SetRedirectPolicy(resty.FlexibleRedirectPolicy(15))
 
 	if *testToRun == "all" {
 		for _, testSuite := range mqplan.Current.SuiteList {
