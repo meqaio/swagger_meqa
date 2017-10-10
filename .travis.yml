@@ -10,3 +10,6 @@ os:
 
 install:
   - ./mqgo/build-vendor.sh
+
+script:
+  - ls -l ./mqgo/bin/*/
