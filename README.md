@@ -4,7 +4,7 @@ Meqa generates and runs test suites using your swagger/OpenAPI yaml spec. It mak
 
 ## Demo
 
-![gif](https://i.imgur.com/428q1T9.gif)
+![gif](https://i.imgur.com/dT4qNMV.gif)
 
 ## Highlights
 
