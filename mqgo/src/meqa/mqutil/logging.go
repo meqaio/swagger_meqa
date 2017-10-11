@@ -8,7 +8,8 @@ import (
 )
 
 func NewLogger(out io.Writer) *log.Logger {
-	return log.New(out, "", (log.Ldate | log.Lmicroseconds | log.Lshortfile))
+	Logger = log.New(out, "", (log.Ldate | log.Lmicroseconds | log.Lshortfile))
+	return Logger
 }
 
 func NewStdLogger() *log.Logger {
@@ -16,7 +17,7 @@ func NewStdLogger() *log.Logger {
 }
 
 func NewFileLogger(path string) *log.Logger {
-	f, err := os.OpenFile(path, os.O_CREATE|os.O_TRUNC, 0666)
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_TRUNC|os.O_RDWR, 0666)
 	if err != nil {
 		fmt.Printf("Can't open %s, err: %s", path, err.Error())
 		return nil
