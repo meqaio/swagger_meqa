@@ -22,10 +22,11 @@ import (
 )
 
 const (
-	meqaDataDir = "meqa_data"
-	configFile  = ".config"
-	resultFile  = "result.yaml"
-	serverURL   = "https://api.meqa.io:443"
+	meqaDataDir     = "meqa_data"
+	configFile      = ".config"
+	resultFile      = "result.yml"
+	swaggerMeqaFile = "swagger_meqa.yml"
+	serverURL       = "https://api.meqa.io:443"
 )
 
 const (
@@ -124,12 +125,12 @@ UDqHH0wRogFg9n/9p69s/RcDdn6dW6Psdtvmxug28ExUQxYTkj/6ORmoiw==
 	if respMap["swagger_meqa"] == nil {
 		return errors.New(fmt.Sprintf("server call failed, status %d, body:\n%s", resp.StatusCode(), string(resp.Body())))
 	}
-	err = ioutil.WriteFile(filepath.Join(meqaPath, "swagger_meqa.yaml"), []byte(respMap["swagger_meqa"].(string)), 0644)
+	err = ioutil.WriteFile(filepath.Join(meqaPath, "swagger_meqa.yml"), []byte(respMap["swagger_meqa"].(string)), 0644)
 	if err != nil {
 		return err
 	}
 	for planName, planBody := range respMap["test_plans"].(map[string]interface{}) {
-		err = ioutil.WriteFile(filepath.Join(meqaPath, planName+".yaml"), []byte(planBody.(string)), 0644)
+		err = ioutil.WriteFile(filepath.Join(meqaPath, planName+".yml"), []byte(planBody.(string)), 0644)
 		if err != nil {
 			return err
 		}
@@ -144,13 +145,13 @@ func main() {
 	runCommand := flag.NewFlagSet("run", flag.ExitOnError)
 	runCommand.SetOutput(os.Stdout)
 
-	genMeqaPath := genCommand.String("d", meqaDataDir, "the directory where we put meqa temp files and logs")
-	genSwaggerFile := genCommand.String("s", filepath.Join(meqaDataDir, "swagger.yaml"), "the swagger.yaml file name or URL")
+	genMeqaPath := genCommand.String("d", meqaDataDir, "the directory where meqa config, log and output files reside")
+	genSwaggerFile := genCommand.String("s", "", "the swagger.yml file path")
 
-	runMeqaPath := runCommand.String("d", meqaDataDir, "the directory where we put meqa temp files and logs")
-	runSwaggerFile := runCommand.String("s", filepath.Join(meqaDataDir, "swagger_meqa.yaml"), "the swagger.yaml file name or URL")
+	runMeqaPath := runCommand.String("d", meqaDataDir, "the directory where meqa config, log and output files reside")
+	runSwaggerFile := runCommand.String("s", "", "the swagger_meqa.yml file path (default swagger_meqa.yml in meqa_data dir)")
 	testPlanFile := runCommand.String("p", "", "the test plan file name")
-	resultFile := runCommand.String("r", filepath.Join(meqaDataDir, resultFile), "the test result file name")
+	resultPath := runCommand.String("r", "", "the test result file name (default result.yml in meqa_data dir)")
 	testToRun := runCommand.String("t", "all", "the test to run")
 	username := runCommand.String("u", "", "the username for basic HTTP authentication")
 	password := runCommand.String("w", "", "the password for basic HTTP authentication")
@@ -171,40 +172,56 @@ func main() {
 		os.Exit(1)
 	}
 
-	var meqaPath *string
-	var swaggerFile *string
+	var meqaPath string
+	var swaggerFile string
 	switch os.Args[1] {
 	case "generate":
 		genCommand.Parse(os.Args[2:])
-		meqaPath = genMeqaPath
-		swaggerFile = genSwaggerFile
+		meqaPath = *genMeqaPath
+		swaggerFile = *genSwaggerFile
+		if len(swaggerFile) == 0 {
+			fmt.Println("You must use -s option to provide a swagger.yml file. Use -h to see the options")
+			os.Exit(1)
+		}
 	case "run":
 		runCommand.Parse(os.Args[2:])
-		meqaPath = runMeqaPath
-		swaggerFile = runSwaggerFile
+		meqaPath = *runMeqaPath
+		swaggerFile = *runSwaggerFile
 	default:
 		flag.Usage()
 		os.Exit(1)
 	}
-	mqutil.Logger = mqutil.NewFileLogger(filepath.Join(*meqaPath, "mqgo.log"))
-	mqutil.Logger.Println(os.Args)
 
-	if _, err := os.Stat(*swaggerFile); os.IsNotExist(err) {
-		fmt.Printf("can't load swagger file at the following location %s", *swaggerFile)
-		return
-	}
-	fi, err := os.Stat(*meqaPath)
+	fi, err := os.Stat(meqaPath)
 	if os.IsNotExist(err) {
-		fmt.Printf("specified meqa directory %s doesn't exist.", *meqaPath)
-		return
+		fmt.Printf("Meqa directory %s doesn't exist.", meqaPath)
+		os.Exit(1)
 	}
 	if !fi.Mode().IsDir() {
-		fmt.Printf("specified meqa directory %s is not a directory.", *meqaPath)
-		return
+		fmt.Printf("Meqa directory %s is not a directory.", meqaPath)
+		os.Exit(1)
+	}
+
+	if os.Args[1] == "run" {
+		if len(swaggerFile) == 0 {
+			swaggerFile = filepath.Join(meqaPath, swaggerMeqaFile)
+		}
+		if len(*resultPath) == 0 {
+			rf := filepath.Join(meqaPath, resultFile)
+			resultPath = &rf
+		}
+	}
+
+	mqutil.Logger = mqutil.NewFileLogger(filepath.Join(meqaPath, "mqgo.log"))
+	mqutil.Logger.Println(os.Args)
+
+	if _, err := os.Stat(swaggerFile); os.IsNotExist(err) {
+		fmt.Printf("can't load swagger file at the following location %s", swaggerFile)
+		os.Exit(1)
 	}
 
 	if genCommand.Parsed() {
-		err = generateMeqa(*meqaPath, *swaggerFile)
+		err = generateMeqa(meqaPath, swaggerFile)
 		if err != nil {
 			fmt.Printf("got an err:\n%s", err.Error())
 			os.Exit(1)
@@ -224,8 +241,8 @@ func main() {
 		return
 	}
 
-	// load swagger.yaml
-	swagger, err := mqswag.CreateSwaggerFromURL(*swaggerFile, *meqaPath)
+	// load swagger.yml
+	swagger, err := mqswag.CreateSwaggerFromURL(swaggerFile, meqaPath)
 	if err != nil {
 		mqutil.Logger.Printf("Error: %s", err.Error())
 	}
@@ -258,6 +275,6 @@ func main() {
 		mqutil.Logger.Printf("err:\n%v", err)
 	}
 
-	os.Remove(*resultFile)
-	mqplan.Current.WriteResultToFile(*resultFile)
+	os.Remove(*resultPath)
+	mqplan.Current.WriteResultToFile(*resultPath)
 }
