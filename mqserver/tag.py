@@ -385,9 +385,10 @@ class SwaggerDoc(object):
         # the param object.
         param_schema = param.get('schema')
         if param_schema != None:
-            found = self.find_definition(param_schema)
-            if found:
-                param['description'] = param.get('description', '') + ' ' + '<meqa ' + found + '>'
+            if self.should_try_tag(param):
+                found = self.find_definition(param_schema)
+                if found:
+                    param['description'] = param.get('description', '') + ' ' + '<meqa ' + found + '>'
             return self.guess_tag_for_schema_properties(param_schema, [param_name], None, None)
 
         norm_name = self.vocab.normalize(param_name)
@@ -520,7 +521,7 @@ class SwaggerDoc(object):
                                     guess_class_name = path_class.norm_name
                         self.guess_tag_for_schema_properties(resp.get('schema'), [code], guess_class_name, None)
 
-                if path_class != None:
+                if path_class != None and self.should_try_tag(op):
                     if method == SwaggerDoc.MethodPost:
                         method_guessed = self.guess_method_from_description(op.get('description', '') + ' ' + op.get('summary', ''))
                         if method_guessed != None and method_guessed != method:
@@ -559,13 +560,13 @@ class SwaggerDoc(object):
 
 def main():
     logger = logging.getLogger(name='meqa')
-    parser = argparse.ArgumentParser(description='generate tag.yaml from swagger.yaml')
-    parser.add_argument("-i", "--input", help="the swagger.yaml file", default="")
-    parser.add_argument("-o", "--output", help="the output file name", default="")
+    parser = argparse.ArgumentParser(description='Use swagger.yml to generate tagged swagger yaml file')
+    parser.add_argument("-i", "--input", help="the swagger.yml file", default="")
+    parser.add_argument("-o", "--output", help="the generated tagged swagger file location", default="")
     args = parser.parse_args()
 
     if args.input == "" or args.output == "":
-        print("You must specify input and output files. Run tag.py -h for details")
+        print("You must specify input and output files. Run python tag.py -h for details")
         exit(1)
 
     swagger = SwaggerDoc(filename=args.input)
