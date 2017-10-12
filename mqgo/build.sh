@@ -12,7 +12,7 @@ case "${unameOut}" in
     *)          sep=":"
 esac
 
-export GOPATH=${GOPATH}${sep}${DIR}
+export GOPATH=${DIR}${sep}${GOPATH}
 echo "GOPATH=${GOPATH}"
 
 function build_one {

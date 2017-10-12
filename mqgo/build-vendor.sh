@@ -4,7 +4,13 @@ pushd .
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-export GOPATH=$GOPATH:$DIR
+unameOut="$(uname -s)"
+case "${unameOut}" in
+    CYGWIN*)    sep=";";DIR=`cygpath -w $DIR`;;
+    *)          sep=":"
+esac
+
+export GOPATH=${DIR}${sep}${GOPATH}
 
 cd $DIR/src
 go get -u github.com/kardianos/govendor
