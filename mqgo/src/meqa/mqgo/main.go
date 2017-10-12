@@ -4,7 +4,6 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
-	"errors"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -23,27 +22,36 @@ import (
 
 const (
 	meqaDataDir     = "meqa_data"
-	configFile      = ".config"
+	configFile      = ".config.yml"
 	resultFile      = "result.yml"
 	swaggerMeqaFile = "swagger_meqa.yml"
-	serverURL       = "https://api.meqa.io:443"
+	serverURL       = "https://api.meqa.io"
 )
 
 const (
-	ConfigAPIKey = "api_key"
+	configAPIKey       = "api_key"
+	configAcceptedTerm = "terms_accepted"
 )
+
+func writeConfigFile(configPath string, configMap map[string]interface{}) error {
+	configBytes, err := yaml.Marshal(configMap)
+	if err != nil {
+		return err
+	}
+	err = ioutil.WriteFile(configPath, configBytes, 0644)
+	if err != nil {
+		return err
+	}
+	return nil
+}
 
 func getConfigs(meqaPath string) (map[string]interface{}, error) {
 	configMap := make(map[string]interface{})
 	configPath := filepath.Join(meqaPath, configFile)
 
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {
-		configMap[ConfigAPIKey] = uuid.NewV4().String()
-		configBytes, err := yaml.Marshal(configMap)
-		if err != nil {
-			return nil, err
-		}
-		err = ioutil.WriteFile(configPath, configBytes, 0644)
+		configMap[configAPIKey] = uuid.NewV4().String()
+		err = writeConfigFile(configPath, configMap)
 		if err != nil {
 			return nil, err
 		}
@@ -85,7 +93,6 @@ UDqHH0wRogFg9n/9p69s/RcDdn6dW6Psdtvmxug28ExUQxYTkj/6ORmoiw==
 `
 	caPool.AppendCertsFromPEM([]byte(permCert))
 	config := tls.Config{RootCAs: caPool}
-	//config.InsecureSkipVerify = true
 
 	resty.SetTLSClientConfig(&config)
 	resty.SetRedirectPolicy(resty.FlexibleRedirectPolicy(15))
@@ -95,8 +102,36 @@ UDqHH0wRogFg9n/9p69s/RcDdn6dW6Psdtvmxug28ExUQxYTkj/6ORmoiw==
 	if err != nil {
 		return err
 	}
-	if configMap[ConfigAPIKey] == nil {
-		return errors.New(fmt.Sprintf("api_key not found in %s\n", filepath.Join(meqaPath, configFile)))
+	if configMap[configAPIKey] == nil {
+		return fmt.Errorf("api_key not found in %s", filepath.Join(meqaPath, configFile))
+	}
+	acceptedTerm := configMap[configAcceptedTerm]
+	if acceptedTerm != nil {
+		acceptedTermBool, ok := acceptedTerm.(bool)
+		if !ok || !acceptedTermBool {
+			acceptedTerm = nil
+		}
+	}
+	warning := `The "generate" command will send your Swagger spec to
+https://api.meqa.io to be processed. This service is provided as a convenience.
+You can also follow the startup guide at https://github.com/meqaio/swagger_meqa
+to do Swagger spec processing on your local computer. By continuing and using
+the https://api.meqa.io service you are agreeing to our Terms and Conditions
+located at: https://github.com/meqaio/swagger_meqa/blob/master/TERMS.md.
+
+Do you wish to proceed? y/n: `
+	if acceptedTerm == nil {
+		fmt.Print(warning)
+		var answer string
+		fmt.Scanln(&answer)
+		if answer != "y" {
+			os.Exit(1)
+		}
+		configMap[configAcceptedTerm] = true
+		err = writeConfigFile(filepath.Join(meqaPath, configFile), configMap)
+		if err != nil {
+			return err
+		}
 	}
 
 	inputBytes, err := ioutil.ReadFile(swaggerPath)
@@ -105,7 +140,7 @@ UDqHH0wRogFg9n/9p69s/RcDdn6dW6Psdtvmxug28ExUQxYTkj/6ORmoiw==
 	}
 
 	bodyMap := make(map[string]interface{})
-	bodyMap["api_key"] = configMap[ConfigAPIKey]
+	bodyMap["api_key"] = configMap[configAPIKey]
 	bodyMap["swagger"] = string(inputBytes)
 
 	req := resty.R()
@@ -113,7 +148,7 @@ UDqHH0wRogFg9n/9p69s/RcDdn6dW6Psdtvmxug28ExUQxYTkj/6ORmoiw==
 	resp, err := req.Post(serverURL + "/specs")
 
 	if status := resp.StatusCode(); status >= 300 {
-		return errors.New(fmt.Sprintf("server call failed, status %d, body:\n%s", status, string(resp.Body())))
+		return fmt.Errorf("server call failed, status %d, body:\n%s", status, string(resp.Body()))
 	}
 
 	respMap := make(map[string]interface{})
@@ -123,14 +158,18 @@ UDqHH0wRogFg9n/9p69s/RcDdn6dW6Psdtvmxug28ExUQxYTkj/6ORmoiw==
 	}
 
 	if respMap["swagger_meqa"] == nil {
-		return errors.New(fmt.Sprintf("server call failed, status %d, body:\n%s", resp.StatusCode(), string(resp.Body())))
+		return fmt.Errorf("server call failed, status %d, body:\n%s", resp.StatusCode(), string(resp.Body()))
 	}
-	err = ioutil.WriteFile(filepath.Join(meqaPath, "swagger_meqa.yml"), []byte(respMap["swagger_meqa"].(string)), 0644)
+	swaggerMeqaPath := filepath.Join(meqaPath, "swagger_meqa.yml")
+	fmt.Printf("Writing tagged swagger spec to: %s\n", swaggerMeqaPath)
+	err = ioutil.WriteFile(swaggerMeqaPath, []byte(respMap["swagger_meqa"].(string)), 0644)
 	if err != nil {
 		return err
 	}
 	for planName, planBody := range respMap["test_plans"].(map[string]interface{}) {
-		err = ioutil.WriteFile(filepath.Join(meqaPath, planName+".yml"), []byte(planBody.(string)), 0644)
+		planPath := filepath.Join(meqaPath, planName+".yml")
+		fmt.Printf("Writing test suites file to: %s\n", planPath)
+		err = ioutil.WriteFile(planPath, []byte(planBody.(string)), 0644)
 		if err != nil {
 			return err
 		}
