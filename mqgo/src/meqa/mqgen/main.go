@@ -27,7 +27,7 @@ func main() {
 	swaggerJSONFile := filepath.Join(meqaDataDir, "swagger.yaml")
 	meqaPath := flag.String("d", meqaDataDir, "the directory where we put the generated files")
 	swaggerFile := flag.String("s", swaggerJSONFile, "the swagger.yaml file location")
-	algorithm := flag.String("a", "path", "the algorithm - simple, object, path, all")
+	algorithm := flag.String("a", "all", "the algorithm - simple, object, path, all")
 	verbose := flag.Bool("v", false, "turn on verbose mode")
 
 	flag.Parse()

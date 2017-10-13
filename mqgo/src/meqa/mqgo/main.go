@@ -138,6 +138,26 @@ Do you wish to proceed? y/n: `
 	if err != nil {
 		return err
 	}
+	var swaggerMap map[string]interface{}
+	err = json.Unmarshal(inputBytes, &swaggerMap)
+	if err == nil {
+		// Convert to yaml because the server python requires it
+		inputBytes, err = yaml.Marshal(swaggerMap)
+		if err != nil {
+			fmt.Printf("Unexpected error: %s\n", err)
+			os.Exit(1)
+		}
+	} else {
+		err = yaml.Unmarshal(inputBytes, &swaggerMap)
+		if err != nil {
+			fmt.Printf("Failed to unmarshal file %s as yaml - error: %s\n", swaggerPath, err.Error())
+			os.Exit(1)
+		}
+	}
+	if sv := swaggerMap["swagger"]; sv != "2.0" {
+		fmt.Printf("We only support swagger/openapi spec 2.0 right now. Your version is %s\n", sv)
+		os.Exit(1)
+	}
 
 	bodyMap := make(map[string]interface{})
 	bodyMap["api_key"] = configMap[configAPIKey]

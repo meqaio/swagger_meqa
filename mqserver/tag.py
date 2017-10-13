@@ -8,7 +8,6 @@ from vocabulary import Vocabulary
 
 from ruamel.yaml import YAML
 from pathlib import Path
-from math import log
 
 def load_yaml(filename):
     yaml = YAML()
