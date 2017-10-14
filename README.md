@@ -39,3 +39,6 @@ The run step takes a generated test suite file (simple.yml in the above example)
 * The above are just the starting point as proof of concept. We will add more test suites (e.g. negative tests) if there are enough interest.
 * The test yaml files can be edited to add in your own test suites. We allow overriding global, test suite and test parameters, as well as chaining output to input parameters. See doc for more details.
 
+## Docs
+
+For more details see the [docs](docs) directory.

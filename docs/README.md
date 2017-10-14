@@ -1,4 +1,4 @@
-# Meqa Docs
+# Installing and Running Meqa
 
 Meqa takes a Swagger/OpenAPI spec, parses it to understand the structure, the relationship among objects and operations, and generate test suites. It is in its early stage. It only works with swagger version 2.0. The test suites it currently generates is to serve as a proof-of-concept. We will keep improving it to generate more complete and diverse test suites. We try to make it very easy to try meqa. Please file issues and star the project to let us know of your need and interest.
 
@@ -7,7 +7,7 @@ Meqa achieves its goal in three steps
 * Use the above tagged Swagger spec to generate test suites in yaml.
 * Run a test suite.
 
-The easiest way to try meqa out is to just download mqgo binary (or use meqa/go Docker container). The mqgo program can send your Swagger spec to the demo server (https://api.meqa.io) to generate the test suites, as well as run the test suites.
+The easiest way to try meqa is to install mqgo, which is a small binary. It sends your Swagger spec to the demo server (https://api.meqa.io) to be processed and generate the test suites. Mqgo will run your tests locally, so your test target can still be on a private IP or inside a firewall.
 
 ## Installing mqgo
 
