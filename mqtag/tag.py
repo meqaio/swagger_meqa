@@ -565,7 +565,7 @@ def main():
     args = parser.parse_args()
 
     if args.input == "" or args.output == "":
-        print("You must specify input and output files. Run python tag.py -h for details")
+        print("You must specify input and output files. Run with -h for more details")
         exit(1)
 
     swagger = SwaggerDoc(filename=args.input)
