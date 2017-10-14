@@ -1,4 +1,4 @@
 FROM alpine
 
-COPY ./mqgo/bin/linux_amd64/mqgo /usr/bin/
+COPY ./mqgo/bin/linux_amd64/* /usr/bin/
 CMD ["/usr/bin/mqgo"]

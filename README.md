@@ -16,7 +16,7 @@ Meqa generates and runs test suites using your swagger/OpenAPI yaml spec. It mak
 
 ## Getting Started
 
-The compiled binaries for Linux, Windows and MacOS are under releases directory. You can also docker pull meqa/go:latest.
+The compiled binaries for Linux, Windows and MacOS are under this repo's "releases" directory. You can also docker pull meqa/go:latest.
 
 There are two steps
 * Use your swagger spec (e.g. swagger.yml) to generate the test suite files.
