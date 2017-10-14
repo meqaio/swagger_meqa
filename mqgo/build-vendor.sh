@@ -15,6 +15,7 @@ if [ -z ${GOPATH} ]; then
 else
     export GOPATH=${DIR}${sep}${GOPATH}
 fi
+export PATH=${PATH}${sep}${DIR}/bin
 echo "GOPATH=${GOPATH}"
 
 cd $DIR/src
