@@ -10,11 +10,17 @@ case "${unameOut}" in
     *)          sep=":"
 esac
 
-export GOPATH=${DIR}${sep}${GOPATH}
+if [ -z ${GOPATH} ]; then
+    export GOPATH=${DIR}
+else
+    export GOPATH=${DIR}${sep}${GOPATH}
+fi
+echo "GOPATH=${GOPATH}"
 
 cd $DIR/src
 go get -u github.com/kardianos/govendor
 govendor sync
-../build.sh
+cd $DIR
+./build.sh
 
 popd

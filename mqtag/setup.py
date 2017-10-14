@@ -6,7 +6,7 @@ here = path.abspath(path.dirname(__file__))
 
 setup(
     name='mqtag',
-    version='0.6.3',
+    version='0.6.4',
     description='mqtag command',
     long_description='Testing meqanized - http://meqa.io',
     url='https://github.com/meqaio/swagger_meqa',
@@ -26,7 +26,7 @@ setup(
 
     keywords='swagger REST API testing',
     py_modules=["tag", "vocabulary"],
-    install_requires=['en_core_web_md', 'spacy', 'ruamel.yaml'],
+    install_requires=['spacy', 'ruamel.yaml'],
 
     entry_points={
         'console_scripts': [
