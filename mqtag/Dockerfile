@@ -9,8 +9,4 @@ RUN find /usr/local/lib/python3.6 -name oov_prob -exec sed -i '1 s/-[0-9.]*/-100
 RUN apt-get install -y vim
 RUN apt-get install -y less
 
-RUN mkdir /meqa
-RUN mkdir /meqa/bin
-RUN mkdir /meqa/data
-
-COPY ./mqgo/bin/linux_amd64/* /meqa/bin/
+COPY ./mqgo/bin/linux_amd64/* /usr/local/bin/

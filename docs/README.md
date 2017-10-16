@@ -1,6 +1,6 @@
 # Installing and Running Meqa
 
-Meqa takes a Swagger/OpenAPI spec, parses it to understand the structure, the relationship among objects and operations, and generate test suites. It is in its early stage. It only works with swagger version 2.0. The test suites it currently generates is to serve as a proof-of-concept. We will keep improving it to generate more complete and diverse test suites. We try to make it very easy to try meqa. Please file issues and star the project to let us know of your need and interest.
+Meqa takes a Swagger/OpenAPI spec, parses it to understand the structure, the relationship among objects and operations, and generate test suites. It is in its early stage, and only works with swagger version 2.0.
 
 Meqa achieves its goal in three steps
 * Add <meqa ... > tags to the Swagger yaml spec to indicate meqa's understanding of the structure of the spec.

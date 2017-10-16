@@ -114,7 +114,7 @@ UDqHH0wRogFg9n/9p69s/RcDdn6dW6Psdtvmxug28ExUQxYTkj/6ORmoiw==
 	}
 	warning := `The "generate" command will send your Swagger spec to
 https://api.meqa.io to be processed. This service is provided as a convenience.
-You can also follow the startup guide at https://github.com/meqaio/swagger_meqa
+You can also follow https://github.com/meqaio/swagger_meqa/tree/master/docs
 to do Swagger spec processing on your local computer. By continuing and using
 the https://api.meqa.io service you are agreeing to our Terms and Conditions
 located at: https://github.com/meqaio/swagger_meqa/blob/master/TERMS.md.

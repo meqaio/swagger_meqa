@@ -16,13 +16,13 @@ Meqa generates and runs test suites using your swagger/OpenAPI yaml spec. It mak
 
 ## Getting Started
 
-The compiled binaries for Linux, Windows and MacOS are under this repo's "releases" directory. You can also docker pull meqa/go:latest.
+The compiled binaries for Linux, Windows and MacOS are under [releases](releases). You can also docker pull meqa/go:latest. More details on how to build and run are under [docs](docs).
 
 There are two steps
-* Use your swagger spec (e.g. swagger.yml) to generate the test suite files.
+* Use your swagger spec (e.g. petstore.yml) to generate the test suite files.
 * Pick a test suite file to run.
 
-Using downloaded binary the commands 
+Using downloaded mqgo binary the commands are:
 * mqgo generate -d testdata/ -s testdata/petstore.yml
 * mqgo run -d testdata/ -s testdata/swagger_meqa.yml -p testdata/simple.yml
 
