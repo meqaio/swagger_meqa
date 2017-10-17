@@ -36,10 +36,10 @@ To run everything on your local computer, you need mqtag, mqgen and mqgo.
 ### Build/Install Locally
 
 * mqgen and mqgo
-    * Run mqgo/build-vendor.sh.
+    * You need to have golang 1.8+ installed. Run mqgo/build-vendor.sh.
     * To use Docker container instead of the above, docker pull meqa/go:latest.
 * mqtag - Note that building mqtag would take a while, because the NLP libraries are big.
-    * pip3 install mqtag
+    * You need to have python 3.5+ installed. Run: pip3 install mqtag
     * python3 -m spacy download en_core_web_md
     * Run the following and replace <python_lib_installdir> with your actuall install directory (e.g. /usr/local/lib/python3.6/site-packages) : echo -100000000 > <python_lib_install_dir>/en_core_web_md/en_core_web_md-1.2.1/vocab/oov_prob
     * To use Docker container instead of the above, docker pull meqa/tag:latest

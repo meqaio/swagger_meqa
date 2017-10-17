@@ -24,13 +24,17 @@ var algoList []string = []string{algoSimple, algoObject, algoPath}
 func main() {
 	mqutil.Logger = mqutil.NewStdLogger()
 
-	swaggerJSONFile := filepath.Join(meqaDataDir, "swagger.yaml")
+	swaggerJSONFile := filepath.Join(meqaDataDir, "swagger.yml")
 	meqaPath := flag.String("d", meqaDataDir, "the directory where we put the generated files")
-	swaggerFile := flag.String("s", swaggerJSONFile, "the swagger.yaml file location")
+	swaggerFile := flag.String("s", swaggerJSONFile, "the swagger.yml file location")
 	algorithm := flag.String("a", "all", "the algorithm - simple, object, path, all")
 	verbose := flag.Bool("v", false, "turn on verbose mode")
 
 	flag.Parse()
+	run(meqaPath, swaggerFile, algorithm, verbose)
+}
+
+func run(meqaPath *string, swaggerFile *string, algorithm *string, verbose *bool) {
 	mqutil.Verbose = *verbose
 
 	swaggerJsonPath := *swaggerFile
@@ -87,7 +91,7 @@ func main() {
 			mqutil.Logger.Printf("Error: %s", err.Error())
 			os.Exit(1)
 		}
-		testPlanFile := filepath.Join(testPlanPath, algo+".yaml")
+		testPlanFile := filepath.Join(testPlanPath, algo+".yml")
 		err = testPlan.DumpToFile(testPlanFile)
 		if err != nil {
 			mqutil.Logger.Printf("Error: %s", err.Error())

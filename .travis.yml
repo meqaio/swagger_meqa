@@ -12,4 +12,4 @@ install:
   - ./mqgo/build-vendor.sh
 
 script:
-  - ls -l ./mqgo/bin/*/
+  - ./mqgo/test.sh
