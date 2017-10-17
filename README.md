@@ -29,7 +29,7 @@ The commands are:
 The run step uses swagger_meqa.yml, which is a tagged version of the original petstore.yml.
 * Search for meqa in swagger_meqa.yml to see all the tags.
 * The tags will be more accurate if the swagger is more structured (e.g. using #definitions instead of inline Objects) and has more descriptions.
-* See [meqa Format](format.md) for the meaning of tags and adjust them if a tag is wrong.
+* See [meqa Format](docs/format.md) for the meaning of tags and adjust them if a tag is wrong.
 * If you add or override the meqa tags, you can feed the tagged yaml file into the "mqgo generate" function again to create new test suites.
 
 The run step takes a generated test plan file (path.yml in the above example).
