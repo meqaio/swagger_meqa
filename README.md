@@ -16,29 +16,31 @@ Meqa generates and runs test suites using your swagger/OpenAPI yaml spec. It mak
 
 ## Getting Started
 
-The compiled binaries for Linux, Windows and MacOS are under [releases](releases). You can also docker pull meqa/go:latest. More details on how to build and run are under [docs](docs).
+The compiled binaries for Linux, Windows and MacOS are under [releases](releases). You can also docker pull meqa/go:latest. In the examples below we use the Swagger's petstore (http://petstore.swagger.io/)
 
-There are two steps
+There are two steps.
 * Use your swagger spec (e.g. petstore.yml) to generate the test plan files.
 * Pick a test plan file to run.
 
-Using downloaded mqgo binary the commands are:
-* mqgo generate -d testdata/ -s testdata/petstore.yml
-* mqgo run -d testdata/ -s testdata/swagger_meqa.yml -p testdata/path.yml
+The commands are:
+* mqgo generate -d /testdata/ -s /testdata/petstore.yml
+* mqgo run -d /testdata/ -s /testdata/swagger_meqa.yml -p /testdata/path.yml
 
-The run step uses swagger_meqa.yml, which is a tagged version of the original (petstore.yml in the above example).
+The run step uses swagger_meqa.yml, which is a tagged version of the original petstore.yml.
 * Search for meqa in swagger_meqa.yml to see all the tags.
-* See docs for the meaning of tags and adjust them if a tag is wrong.
 * The tags will be more accurate if the swagger is more structured (e.g. using #definitions instead of inline Objects) and has more descriptions.
-* If you add or override the meqa tags, you can feed the tagged yaml file into the generate function again to create new test suites.
+* See [meqa Format](format.md) for the meaning of tags and adjust them if a tag is wrong.
+* If you add or override the meqa tags, you can feed the tagged yaml file into the "mqgo generate" function again to create new test suites.
 
 The run step takes a generated test plan file (path.yml in the above example).
-* path.yml just exercises a few simple APIs to expose obvious issues, such as lack of api keys.
+* simple.yml just exercises a few simple APIs to expose obvious issues, such as lack of api keys.
 * path.yml exercises CRUD patterns grouped by the REST path.
 * object.yml tries to create an object, then exercises the endpoints that needs the object as an input.
-* The above are just the starting point as proof of concept. We will add more test suites (e.g. negative tests) if there are enough interest.
+* The above are just the starting point as proof of concept. We will add more test patterns if there are enough interest.
 * The test yaml files can be edited to add in your own test suites. We allow overriding global, test suite and test parameters, as well as chaining output to input parameters. See [meqa format](docs/format.md) for more details.
 
 ## Docs
 
 For more details see the [docs](docs) directory.
+
+Please star this repo to show your interest and support!
