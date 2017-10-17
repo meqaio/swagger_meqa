@@ -253,11 +253,11 @@ func main() {
 
 	fi, err := os.Stat(*meqaPath)
 	if os.IsNotExist(err) {
-		fmt.Printf("Meqa directory %s doesn't exist.", meqaPath)
+		fmt.Printf("Meqa directory %s doesn't exist.", *meqaPath)
 		os.Exit(1)
 	}
 	if !fi.Mode().IsDir() {
-		fmt.Printf("Meqa directory %s is not a directory.", meqaPath)
+		fmt.Printf("Meqa directory %s is not a directory.", *meqaPath)
 		os.Exit(1)
 	}
 
@@ -276,7 +276,7 @@ func main() {
 	mqutil.Logger.Println(os.Args)
 
 	if _, err := os.Stat(*swaggerFile); os.IsNotExist(err) {
-		fmt.Printf("can't load swagger file at the following location %s", swaggerFile)
+		fmt.Printf("can't load swagger file at the following location %s", *swaggerFile)
 		os.Exit(1)
 	}
 

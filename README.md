@@ -4,7 +4,7 @@ Meqa generates and runs test suites using your swagger/OpenAPI yaml spec. It mak
 
 ## Demo
 
-![gif](https://i.imgur.com/dT4qNMV.gif)
+![gif](https://i.imgur.com/prWsMEi.gif)
 
 ## Highlights
 
@@ -24,7 +24,7 @@ There are two steps
 
 Using downloaded mqgo binary the commands are:
 * mqgo generate -d testdata/ -s testdata/petstore.yml
-* mqgo run -d testdata/ -s testdata/swagger_meqa.yml -p testdata/simple.yml
+* mqgo run -d testdata/ -s testdata/swagger_meqa.yml -p testdata/path.yml
 
 The run step uses swagger_meqa.yml, which is a tagged version of the original (petstore.yml in the above example).
 * Search for meqa in swagger_meqa.yml to see all the tags.
@@ -32,8 +32,8 @@ The run step uses swagger_meqa.yml, which is a tagged version of the original (p
 * The tags will be more accurate if the swagger is more structured (e.g. using #definitions instead of inline Objects) and has more descriptions.
 * If you add or override the meqa tags, you can feed the tagged yaml file into the generate function again to create new test suites.
 
-The run step takes a generated test plan file (simple.yml in the above example).
-* simple.yml just exercises a few simple APIs to expose obvious issues, such as lack of api keys.
+The run step takes a generated test plan file (path.yml in the above example).
+* path.yml just exercises a few simple APIs to expose obvious issues, such as lack of api keys.
 * path.yml exercises CRUD patterns grouped by the REST path.
 * object.yml tries to create an object, then exercises the endpoints that needs the object as an input.
 * The above are just the starting point as proof of concept. We will add more test suites (e.g. negative tests) if there are enough interest.

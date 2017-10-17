@@ -18,14 +18,14 @@ If you want to use the Docker containers. The equivalent of the "mqgo" binary is
 
 ## Running mqgo and Using https://api.meqa.io
 
-In this example we use the Swagger's demo petstore (http://petstore.swagger.io). The Swagger spec is saved at /testdata/petstore.yml. The first command below sends petstore.yml to api.meqa.io to generate swagger_meqa.yml and test plan yaml files (e.g. simple.yml) under the /testdata directory. The second command runs the test suites in simple.yml test plan.
+In this example we use the Swagger's demo petstore (http://petstore.swagger.io). The Swagger spec is saved at /testdata/petstore.yml. The first command below sends petstore.yml to api.meqa.io to generate swagger_meqa.yml and test plan yaml files (e.g. path.yml) under the /testdata directory. The second command runs the test suites in path.yml test plan.
 
 * mqgo generate -d /testdata -s /testdata/petstore.yml
-* mqgo run -d /testdata -s /testdata/swagger_meqa.yml -p /testdata/simple.yml
+* mqgo run -d /testdata -s /testdata/swagger_meqa.yml -p /testdata/path.yml
 
 To use Docker container the commands would be
 * docker run -it -v /testdata:/testdata meqa/go mqgo generate -d /testdata -s /testdata/petstore.yml
-* docker run -it -v /testdata:/testdata meqa/go mqgo run -d /testdata -s /testdata/swagger_meqa.yml -p /testdata/simple.yml
+* docker run -it -v /testdata:/testdata meqa/go mqgo run -d /testdata -s /testdata/swagger_meqa.yml -p /testdata/path.yml
 
 The meqa tag and test plan file format are explained in the [Meqa Format](format.md) doc.
 
@@ -46,15 +46,15 @@ To run everything on your local computer, you need mqtag, mqgen and mqgo.
 
 ### Run Locally
 
-In this example we use the Swagger's demo petstore. The Swagger spec is /testdata/petstore.yml. The first command below takes petstore.yml as input and generates swagger_meqa.yml as output. The second command uses swagger_meqa.yml to generate the test plan yaml files (e.g. simple.yml)under the /testdata directory. The third command runs the test suites in simple.yml test plan.
+In this example we use the Swagger's demo petstore. The Swagger spec is /testdata/petstore.yml. The first command below takes petstore.yml as input and generates swagger_meqa.yml as output. The second command uses swagger_meqa.yml to generate the test plan yaml files (e.g. path.yml)under the /testdata directory. The third command runs the test suites in path.yml test plan.
 
 * mqtag -i /testdata/petstore.yml -o /testdata/swagger_meqa.yml
 * mqgen -d /testdata -s /testdata/swagger_meqa.yml
-* mqgo run -d /testdata -s /testdata/swagger_meqa.yml -p /testdata/simple.yml
+* mqgo run -d /testdata -s /testdata/swagger_meqa.yml -p /testdata/path.yml
 
 To use Docker container the commands would be
 * docker run -it -v /testdata:/testdata meqa/tag mqtag -i /testdata/petstore.yml -o /testdata/swagger_meqa.yml
 * docker run -it -v /testdata:/testdata meqa/go mqgen -d /testdata -s /testdata/swagger_meqa.yml
-* docker run -it -v /testdata:/testdata meqa/go mqgo run -d /testdata -s /testdata/swagger_meqa.yml -p /testdata/simple.yml
+* docker run -it -v /testdata:/testdata meqa/go mqgo run -d /testdata -s /testdata/swagger_meqa.yml -p /testdata/path.yml
 
 The meqa tag and test file format are explained in the [meqa Format](format.md) doc.
