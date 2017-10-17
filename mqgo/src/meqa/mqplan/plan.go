@@ -284,11 +284,11 @@ func (plan *TestPlan) Run(name string, parentTest *Test) error {
 			dup.Name = parentTest.Name // always inherit the name
 		}
 		err := dup.Run(tc)
+		dup.err = err
+		plan.resultList = append(plan.resultList, dup)
 		if err != nil {
-			dup.err = err
 			return err
 		}
-		plan.resultList = append(plan.resultList, dup)
 	}
 	return nil
 }

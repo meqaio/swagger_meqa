@@ -351,7 +351,7 @@ func (t *Test) GetParam(path []string) interface{} {
 		section = t.FormParams
 	} else if path[0] == "bodyParams" {
 		section = t.BodyParams
-	} else if path[0] == "output" {
+	} else if path[0] == "outputs" {
 		section = t.Expect[ExpectBody]
 	}
 
@@ -373,7 +373,7 @@ func (t *Test) GetParam(path []string) interface{} {
 		return section
 	}
 
-	// Search by iterate through all the maps. This only applies if we only one
+	// Search by iterate through all the maps. This only applies if we have only one
 	// entry after the params section.
 	if len(path[1:]) == 1 {
 		var found interface{}
@@ -425,6 +425,17 @@ func (t *Test) ProcessResult(resp *resty.Response) error {
 		d.Decode(&resultObj)
 	}
 
+	// Before returning from this function, we should set the test's expect value to that
+	// of actual result. This allows us to print out a result report that is the same format
+	// as the test plan file, but with the expect value that reflects the current ground truth.
+	setExpect := func() {
+		t.Expect = make(map[string]interface{})
+		t.Expect[ExpectStatus] = status
+		if resultObj != nil {
+			t.Expect[ExpectBody] = resultObj
+		}
+	}
+
 	if mqutil.Verbose {
 		fmt.Println("Verifying REST response")
 	}
@@ -457,12 +468,14 @@ func (t *Test) ProcessResult(resp *resty.Response) error {
 				fmt.Printf("... actual response body: %s\n", respBody)
 				fmt.Printf("... checking body against test's expect value. Fail\n")
 				ejson, _ := json.Marshal(t.Expect[ExpectBody])
+				setExpect()
 				return mqutil.NewError(mqutil.ErrExpect, fmt.Sprintf(
 					"=== test failed, expecting body: \n%s\ngot body:\n%s\n===", string(ejson), respBody))
 			}
 		}
 	} else {
 		fmt.Printf("... expecting status: %v got status: %d. Fail\n", expectedStatus, status)
+		setExpect()
 		return mqutil.NewError(mqutil.ErrExpect, fmt.Sprintf("=== test failed, response code %d ===", status))
 	}
 
@@ -487,6 +500,7 @@ func (t *Test) ProcessResult(resp *resty.Response) error {
 			// indicator that the author didn't spec out all the success cases.
 			/* Don't treat this as a hard failure for now. Too common.
 			if !(useDefaultSpec && success) {
+				setExpect()
 				return err
 			}
 			*/
@@ -584,6 +598,7 @@ func (t *Test) ProcessResult(resp *resty.Response) error {
 		for className, resultArray := range collection {
 			err := t.CompareGetResult(className, associations, resultArray)
 			if err != nil {
+				setExpect()
 				return err
 			}
 		}
@@ -592,6 +607,7 @@ func (t *Test) ProcessResult(resp *resty.Response) error {
 			for _, c := range compArray {
 				err := t.ProcessOneComparison(className, method, c, associations, collection)
 				if err != nil {
+					setExpect()
 					return err
 				}
 			}
@@ -607,13 +623,7 @@ func (t *Test) ProcessResult(resp *resty.Response) error {
 		}
 	}
 
-	// All is well, reset test's Expect value to that of the real result
-	t.Expect = make(map[string]interface{})
-	t.Expect[ExpectStatus] = status
-	if resultObj != nil {
-		t.Expect[ExpectBody] = resultObj
-	}
-
+	setExpect()
 	return nil
 }
 

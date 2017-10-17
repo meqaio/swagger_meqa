@@ -19,8 +19,8 @@ Meqa generates and runs test suites using your swagger/OpenAPI yaml spec. It mak
 The compiled binaries for Linux, Windows and MacOS are under [releases](releases). You can also docker pull meqa/go:latest. More details on how to build and run are under [docs](docs).
 
 There are two steps
-* Use your swagger spec (e.g. petstore.yml) to generate the test suite files.
-* Pick a test suite file to run.
+* Use your swagger spec (e.g. petstore.yml) to generate the test plan files.
+* Pick a test plan file to run.
 
 Using downloaded mqgo binary the commands are:
 * mqgo generate -d testdata/ -s testdata/petstore.yml
@@ -32,12 +32,12 @@ The run step uses swagger_meqa.yml, which is a tagged version of the original (p
 * The tags will be more accurate if the swagger is more structured (e.g. using #definitions instead of inline Objects) and has more descriptions.
 * If you add or override the meqa tags, you can feed the tagged yaml file into the generate function again to create new test suites.
 
-The run step takes a generated test suite file (simple.yml in the above example).
+The run step takes a generated test plan file (simple.yml in the above example).
 * simple.yml just exercises a few simple APIs to expose obvious issues, such as lack of api keys.
 * path.yml exercises CRUD patterns grouped by the REST path.
 * object.yml tries to create an object, then exercises the endpoints that needs the object as an input.
 * The above are just the starting point as proof of concept. We will add more test suites (e.g. negative tests) if there are enough interest.
-* The test yaml files can be edited to add in your own test suites. We allow overriding global, test suite and test parameters, as well as chaining output to input parameters. See doc for more details.
+* The test yaml files can be edited to add in your own test suites. We allow overriding global, test suite and test parameters, as well as chaining output to input parameters. See [meqa format](docs/format.md) for more details.
 
 ## Docs
 

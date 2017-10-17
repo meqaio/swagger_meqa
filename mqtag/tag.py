@@ -518,7 +518,7 @@ class SwaggerDoc(object):
                                 successResp = resp
                                 if path_class != None:
                                     guess_class_name = path_class.norm_name
-                        self.guess_tag_for_schema_properties(resp.get('schema'), [code], guess_class_name, None)
+                        self.guess_tag_for_schema_properties(resp.get('schema'), [str(code)], guess_class_name, None)
 
                 if path_class != None and self.should_try_tag(op):
                     if method == SwaggerDoc.MethodPost:
