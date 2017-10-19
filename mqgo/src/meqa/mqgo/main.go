@@ -208,10 +208,10 @@ func main() {
 	runCommand.SetOutput(os.Stdout)
 
 	genMeqaPath := genCommand.String("d", meqaDataDir, "the directory where meqa config, log and output files reside")
-	genSwaggerFile := genCommand.String("s", "", "the swagger.yml file path")
+	genSwaggerFile := genCommand.String("s", "", "the OpenAPI (Swagger) spec file path")
 
 	runMeqaPath := runCommand.String("d", meqaDataDir, "the directory where meqa config, log and output files reside")
-	runSwaggerFile := runCommand.String("s", "", "the swagger_meqa.yml file path (default swagger_meqa.yml in meqa_data dir)")
+	runSwaggerFile := runCommand.String("s", "", "the meqa generated OpenAPI (Swagger) spec file path")
 	testPlanFile := runCommand.String("p", "", "the test plan file name")
 	resultPath := runCommand.String("r", "", "the test result file name (default result.yml in meqa_data dir)")
 	testToRun := runCommand.String("t", "all", "the test to run")
