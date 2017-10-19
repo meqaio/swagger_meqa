@@ -1,14 +1,14 @@
 # Meqa Tags and Test Plan File Format
 
-Here we explain the meqa tag's meaning and the meqa test plan file structure. The examples in this document are all based on the Swagger's demo petstore (http://petstore.swagger.io). You can download the swagger spec at http://petstore.swagger.io/v2/swagger.yaml.
+Here we explain the meqa tag's meaning and the meqa test plan file structure. The examples in this document are all based on the standard demo [petstore](http://petstore.swagger.io/v2/swagger.yaml).
 
 ## Meqa Tags
 
-Meqa inserts `<meqa ...>` tags inside a Swagger spec to show its understanding of the spec. The generation and running of test suites depend on this understanding being correct.
+Meqa inserts `<meqa ...>` tags inside an OpenAPI spec to show its understanding of the spec. The generation and running of test suites depend on this understanding being correct.
 
-The meqa tags are always appended at the end of a relevant Swagger entity's description field. The format is `<meqa DefinitionName.PropertyName.MethodType flags>`. It means that the tagged entity actually refers to the entity in the tag.
+The meqa tags are always appended at the end of a relevant OpenAPI entity's description field. The format is `<meqa DefinitionName.PropertyName.MethodType flags>`. It means that the tagged entity actually refers to the entity in the tag.
 
-* DefinitionName - the Swagger definition's name.
+* DefinitionName - the OpenAPI definition's name.
 * PropertyName - the property of the above definition.
 * MethodType - one of the http methods (e.g. post). This part is only present when we want to override the meaning of the tagged operation. For instance, if the tagged operation is a POST operation, but is actually changing an existing object and thus will be tagged "put". Note that the methods in meqa tags should always be in lower case.
 * Flags - the only flag we support is "weak", indicating a weak reference to break circular dependency.
@@ -53,7 +53,7 @@ Each test plan yaml file has multiple test suites separated by '---'. Each test 
     orderId: '{{delete_deleteOrder_3.pathParams.orderId}}'
 ```
 
-In this test suite, there are four tests, triggering the following REST calls to the host specified in the swagger spec. 
+In this test suite, there are four tests, triggering the following REST calls to the host specified in the OpenAPI spec. 
 
 * POST /store/order
 * GET /store/order/{orderId}

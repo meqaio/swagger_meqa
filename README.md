@@ -1,6 +1,6 @@
 # OpenAPI Testing Meqanized
 
-Meqa generates and runs test suites using your swagger/OpenAPI yaml spec. It makes REST API testing easy by generating useful test patterns - no coding needed.
+Meqa generates and runs test suites using your OpenAPI (formerly Swagger) spec in YAML. It makes REST API testing easy by generating useful test patterns - no coding needed.
 
 ## Demo
 
@@ -16,19 +16,19 @@ Meqa generates and runs test suites using your swagger/OpenAPI yaml spec. It mak
 
 ## Getting Started
 
-The compiled binaries for Linux, Windows and MacOS are under [releases](https://github.com/meqaio/swagger_meqa/releases). You can also docker pull meqa/go:latest. In the examples below we use the Swagger's petstore (http://petstore.swagger.io/)
+The compiled binaries for Linux, Windows and MacOS are under [releases](https://github.com/meqaio/swagger_meqa/releases). You can also docker pull meqa/go:latest. In the examples below we use the classic [petstore example spec] (http://petstore.swagger.io/).
 
 There are two steps.
-* Use your swagger spec (e.g. petstore.yml) to generate the test plan files.
+* Use your OpenAPI spec (e.g., petstore.yml) to generate the test plan files.
 * Pick a test plan file to run.
 
 The commands are:
 * mqgo generate -d /testdata/ -s /testdata/petstore.yml
-* mqgo run -d /testdata/ -s /testdata/swagger_meqa.yml -p /testdata/path.yml
+* mqgo run -d /testdata/ -s /testdata/petstore_meqa.yml -p /testdata/path.yml
 
-The run step uses swagger_meqa.yml, which is a tagged version of the original petstore.yml.
-* Search for meqa in swagger_meqa.yml to see all the tags.
-* The tags will be more accurate if the swagger is more structured (e.g. using #definitions instead of inline Objects) and has more descriptions.
+The run step uses petstore_meqa.yml, which is a tagged version of the original petstore.yml.
+* Search for meqa in petstore_meqa.yml to see all the tags.
+* The tags will be more accurate if the OpenAPI spec is more structured (e.g. using #definitions instead of inline Objects) and has more descriptions.
 * See [meqa Format](docs/format.md) for the meaning of tags and adjust them if a tag is wrong.
 * If you add or override the meqa tags, you can feed the tagged yaml file into the "mqgo generate" function again to create new test suites.
 
