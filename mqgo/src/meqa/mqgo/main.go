@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"strings"
 
 	"github.com/satori/go.uuid"
 
@@ -21,11 +22,10 @@ import (
 )
 
 const (
-	meqaDataDir     = "meqa_data"
-	configFile      = ".config.yml"
-	resultFile      = "result.yml"
-	swaggerMeqaFile = "swagger_meqa.yml"
-	serverURL       = "https://api.meqa.io"
+	meqaDataDir = "meqa_data"
+	configFile  = ".config.yml"
+	resultFile  = "result.yml"
+	serverURL   = "https://api.meqa.io"
 )
 
 const (
@@ -180,7 +180,10 @@ Do you wish to proceed? y/n: `
 	if respMap["swagger_meqa"] == nil {
 		return fmt.Errorf("server call failed, status %d, body:\n%s", resp.StatusCode(), string(resp.Body()))
 	}
-	swaggerMeqaPath := filepath.Join(meqaPath, "swagger_meqa.yml")
+
+	// output file name is the input swagger spec name + _meqa.yml, if there isn't a _meqa already
+	_, inputFile := filepath.Split(swaggerPath)
+	swaggerMeqaPath := filepath.Join(meqaPath, strings.TrimSuffix(strings.Split(inputFile, ".")[0], "_meqa")+"_meqa.yml")
 	fmt.Printf("Writing tagged swagger spec to: %s\n", swaggerMeqaPath)
 	err = ioutil.WriteFile(swaggerMeqaPath, []byte(respMap["swagger_meqa"].(string)), 0644)
 	if err != nil {
@@ -238,16 +241,16 @@ func main() {
 		genCommand.Parse(os.Args[2:])
 		meqaPath = genMeqaPath
 		swaggerFile = genSwaggerFile
-		if len(*swaggerFile) == 0 {
-			fmt.Println("You must use -s option to provide a swagger.yml file. Use -h to see the options")
-			os.Exit(1)
-		}
 	case "run":
 		runCommand.Parse(os.Args[2:])
 		meqaPath = runMeqaPath
 		swaggerFile = runSwaggerFile
 	default:
 		flag.Usage()
+		os.Exit(1)
+	}
+	if len(*swaggerFile) == 0 {
+		fmt.Println("You must use -s option to provide a swagger/openapi yaml spec file. Use -h to see the options")
 		os.Exit(1)
 	}
 
@@ -262,10 +265,6 @@ func main() {
 	}
 
 	if os.Args[1] == "run" {
-		if len(*swaggerFile) == 0 {
-			rf := filepath.Join(*meqaPath, swaggerMeqaFile)
-			swaggerFile = &rf
-		}
 		if len(*resultPath) == 0 {
 			rf := filepath.Join(*meqaPath, resultFile)
 			resultPath = &rf

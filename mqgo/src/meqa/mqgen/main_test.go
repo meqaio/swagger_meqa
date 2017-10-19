@@ -11,7 +11,7 @@ func TestMqgen(t *testing.T) {
 	mqutil.Logger = mqutil.NewStdLogger()
 	wd, _ := os.Getwd()
 	meqaPath := filepath.Join(wd, "../../../testdata")
-	swaggerPath := filepath.Join(meqaPath, "swagger_meqa.yml")
+	swaggerPath := filepath.Join(meqaPath, "petstore_meqa.yml")
 	algorithm := "all"
 	verbose := false
 	run(&meqaPath, &swaggerPath, &algorithm, &verbose)
