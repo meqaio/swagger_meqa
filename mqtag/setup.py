@@ -6,7 +6,7 @@ here = path.abspath(path.dirname(__file__))
 
 setup(
     name='mqtag',
-    version='0.6.5',
+    version='0.6.6',
     description='mqtag command',
     long_description='Testing meqanized - http://meqa.io',
     url='https://github.com/meqaio/swagger_meqa',

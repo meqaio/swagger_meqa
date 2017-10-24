@@ -7,6 +7,7 @@ import string
 from vocabulary import Vocabulary
 
 from ruamel.yaml import YAML
+from ruamel.yaml.comments import CommentedMap
 from pathlib import Path
 
 def load_yaml(filename):
@@ -190,7 +191,7 @@ class SwaggerDoc(object):
     # The path is the list of keys we can use to traverse to the object from the swagger doc root. e.g.
     # [definitions, Pet, id]
     def iterate_schema(self, schema, callback, path, follow_array=False, follow_ref=True, follow_object=False):
-        if schema == None:
+        if schema == None or not isinstance(schema, CommentedMap):
             return
 
         callback(schema, path)
