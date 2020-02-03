@@ -1064,7 +1064,8 @@ func generateString(s *spec.Schema, prefix string) (string, error) {
 		return t.Format("2006-01-02"), nil
 	}
 	if s.Format == "uuid" {
-		return uuid.NewV4().String(), nil
+		u, err := uuid.NewV4()
+		return u.String(), err
 	}
 
 	// If no pattern is specified, we use the field name + some numbers as pattern

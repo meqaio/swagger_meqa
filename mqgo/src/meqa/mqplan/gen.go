@@ -180,10 +180,18 @@ func GeneratePathTestSuite(operations mqswag.NodeList, plan *TestPlan) {
 	sort.Sort(operations)
 	testId := 0
 	testSuite := CreateTestSuite(fmt.Sprintf("%s", pathName), nil, plan)
+	createTest := &Test{}
+	idTag := "id"
 	for _, o := range operations {
 		testId++
-		testSuite.Tests = append(testSuite.Tests, CreateTestFromOp(o, testId))
-
+		currentTest := CreateTestFromOp(o, testId)
+		testSuite.Tests = append(testSuite.Tests, currentTest)
+		if OperationMatches(o, mqswag.MethodPost) {
+			createTest = currentTest
+		} else if strings.Contains(o.GetName(), idTag) {
+			currentTest.PathParams = make(map[string]interface{})
+			currentTest.PathParams[idTag] = fmt.Sprintf("{{%s.outputs.%s}}", createTest.Name, idTag)
+		}
 		if OperationMatches(o, mqswag.MethodDelete) {
 			lastTest := testSuite.Tests[len(testSuite.Tests)-1]
 			// Find an operation that takes the same last path param.
