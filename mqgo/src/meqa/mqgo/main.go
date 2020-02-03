@@ -50,7 +50,8 @@ func getConfigs(meqaPath string) (map[string]interface{}, error) {
 	configPath := filepath.Join(meqaPath, configFile)
 
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {
-		configMap[configAPIKey] = uuid.NewV4().String()
+		u, _ := uuid.NewV4()
+		configMap[configAPIKey] = u.String()
 		err = writeConfigFile(configPath, configMap)
 		if err != nil {
 			return nil, err
