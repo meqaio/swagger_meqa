@@ -147,7 +147,7 @@ func (n ByMethodPriority) Less(i, j int) bool {
 	mj := methodWeight[n[j].GetMethod()]
 	pi := n[i].Priority
 	pj := n[j].Priority
-	return mi < mj || (mi == mj && pi < pj) || (pi == pj && n[i].Name < n[j].Name)
+	return mi < mj || (mi == mj && pi < pj) || (mi == mj && pi == pj && n[i].Name < n[j].Name)
 }
 
 // We expect a single thread on the server would handle the DAG creation and traversing. So no mutex for now.
