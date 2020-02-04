@@ -132,6 +132,24 @@ func (n NodeList) Less(i, j int) bool {
 	return wi < wj || (wi == wj && n[i].Name < n[j].Name)
 }
 
+type ByMethodPriority []*DAGNode
+
+func (n ByMethodPriority) Len() int {
+	return len(n)
+}
+
+func (n ByMethodPriority) Swap(i, j int) {
+	n[i], n[j] = n[j], n[i]
+}
+
+func (n ByMethodPriority) Less(i, j int) bool {
+	mi := methodWeight[n[i].GetMethod()]
+	mj := methodWeight[n[j].GetMethod()]
+	pi := n[i].Priority
+	pj := n[j].Priority
+	return mi < mj || (mi == mj && pi < pj) || (pi == pj && n[i].Name < n[j].Name)
+}
+
 // We expect a single thread on the server would handle the DAG creation and traversing. So no mutex for now.
 type DAG struct {
 	NameMap    map[string]*DAGNode // DAGNode name to node mapping.
