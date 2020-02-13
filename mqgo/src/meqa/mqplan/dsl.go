@@ -21,7 +21,7 @@ import (
 
 	"github.com/go-openapi/spec"
 	"github.com/lucasjones/reggen"
-	"github.com/satori/go.uuid"
+	uuid "github.com/satori/go.uuid"
 	"github.com/xeipuuv/gojsonschema"
 )
 
@@ -1067,6 +1067,9 @@ func generateString(s *spec.Schema, prefix string) (string, error) {
 		u, err := uuid.NewV4()
 		return u.String(), err
 	}
+	if s.Format == "email" {
+		s.Pattern = "^\\w+@[a-zA-Z_]+?\\.[a-zA-Z]{2,3}$"
+	}
 
 	// If no pattern is specified, we use the field name + some numbers as pattern
 	var pattern string
@@ -1083,7 +1086,7 @@ func generateString(s *spec.Schema, prefix string) (string, error) {
 		return "", mqutil.NewError(mqutil.ErrInvalid, err.Error())
 	}
 
-	if len(s.Format) == 0 || s.Format == "password" {
+	if len(s.Format) == 0 || s.Format == "password" || s.Format == "email" {
 		return str, nil
 	}
 	if s.Format == "byte" {
