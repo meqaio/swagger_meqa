@@ -167,6 +167,20 @@ func CreateSwaggerFromURL(path string, meqaPath string) (*Swagger, error) {
 	return (*Swagger)(specDoc.Spec()), nil
 }
 
+func GetWhitelistSuites(path string) (map[string]bool, error) {
+	whitelistBytes, err := ioutil.ReadFile(path)
+	if err != nil {
+		mqutil.Logger.Printf("can't read file %s", path)
+		return nil, err
+	}
+	suites := strings.Split(string(whitelistBytes), "\n")
+	whitelist := make(map[string]bool)
+	for _, suite := range suites {
+		whitelist[suite] = true
+	}
+	return whitelist, nil
+}
+
 // FindSchemaByName finds the schema defined by name in the swagger document.
 func (swagger *Swagger) FindSchemaByName(name string) *Schema {
 	schema, ok := swagger.Definitions[name]

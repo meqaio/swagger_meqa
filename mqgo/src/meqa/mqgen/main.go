@@ -29,18 +29,33 @@ func main() {
 	swaggerFile := flag.String("s", swaggerJSONFile, "the swagger.yml file location")
 	algorithm := flag.String("a", "all", "the algorithm - simple, object, path, all")
 	verbose := flag.Bool("v", false, "turn on verbose mode")
+	whitelistFile := flag.String("w", "", "the whitelist.txt file location")
 
 	flag.Parse()
-	run(meqaPath, swaggerFile, algorithm, verbose)
+	run(meqaPath, swaggerFile, algorithm, verbose, whitelistFile)
 }
 
-func run(meqaPath *string, swaggerFile *string, algorithm *string, verbose *bool) {
+func run(meqaPath *string, swaggerFile *string, algorithm *string, verbose *bool, whitelistFile *string) {
 	mqutil.Verbose = *verbose
 
 	swaggerJsonPath := *swaggerFile
 	if fi, err := os.Stat(swaggerJsonPath); os.IsNotExist(err) || fi.Mode().IsDir() {
 		fmt.Printf("Can't load swagger file at the following location %s", swaggerJsonPath)
 		os.Exit(1)
+	}
+	whitelistPath := *whitelistFile
+	whitelist := make(map[string]bool)
+	if len(whitelistPath) > 0 {
+		if fi, err := os.Stat(whitelistPath); os.IsNotExist(err) || fi.Mode().IsDir() {
+			fmt.Printf("Can't load whitelist file at the following location %s", whitelistPath)
+			os.Exit(1)
+		}
+		wl, err := mqswag.GetWhitelistSuites(whitelistPath)
+		whitelist = wl
+		if err != nil {
+			mqutil.Logger.Printf("Error: %s", err.Error())
+			os.Exit(1)
+		}
 	}
 	testPlanPath := *meqaPath
 	if fi, err := os.Stat(testPlanPath); os.IsNotExist(err) {
@@ -81,7 +96,7 @@ func run(meqaPath *string, swaggerFile *string, algorithm *string, verbose *bool
 		var testPlan *mqplan.TestPlan
 		switch algo {
 		case algoPath:
-			testPlan, err = mqplan.GeneratePathTestPlan(swagger, dag)
+			testPlan, err = mqplan.GeneratePathTestPlan(swagger, dag, whitelist)
 		case algoObject:
 			testPlan, err = mqplan.GenerateTestPlan(swagger, dag)
 		default:

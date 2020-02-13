@@ -238,7 +238,7 @@ func (n PathWeightList) Less(i, j int) bool {
 
 // Go through all the paths in swagger, and generate the tests for all the operations under
 // the path.
-func GeneratePathTestPlan(swagger *mqswag.Swagger, dag *mqswag.DAG) (*TestPlan, error) {
+func GeneratePathTestPlan(swagger *mqswag.Swagger, dag *mqswag.DAG, whitelist map[string]bool) (*TestPlan, error) {
 	testPlan := &TestPlan{}
 	testPlan.Init(swagger, nil)
 	testPlan.comment = `
@@ -291,7 +291,9 @@ parameters by default.
 	sort.Sort(pathWeightList)
 
 	for _, p := range pathWeightList {
-		GeneratePathTestSuite(pathMap[p.path], testPlan)
+		if whitelist[p.path] {
+			GeneratePathTestSuite(pathMap[p.path], testPlan)
+		}
 	}
 	return testPlan, nil
 }
