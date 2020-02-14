@@ -932,7 +932,24 @@ func (t *Test) ResolveParameters(tc *TestSuite) error {
 			return err
 		}
 	}
+	paramMaps := []*map[string]interface{}{&t.PathParams, &t.QueryParams, &t.HeaderParams, &t.FormParams}
+	for _, m := range paramMaps {
+		removeNulls(m)
+	}
+	bodyMap := t.BodyParams.(map[string]interface{})
+	removeNulls(&bodyMap)
+	t.BodyParams = bodyMap
 	return nil
+}
+
+func removeNulls(inputMap *map[string]interface{}) {
+	filteredMap := make(map[string]interface{})
+	for k, v := range *inputMap {
+		if v != nil {
+			filteredMap[k] = v
+		}
+	}
+	*inputMap = filteredMap
 }
 
 func GetOperationByMethod(item *spec.PathItem, method string) *spec.Operation {
