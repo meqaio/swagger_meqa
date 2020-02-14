@@ -177,7 +177,7 @@ func GeneratePathTestSuite(operations mqswag.NodeList, plan *TestPlan) {
 	}
 
 	pathName := operations[0].GetName()
-	sort.Sort(operations)
+	sort.Sort(mqswag.ByMethodPriority(operations))
 	testId := 0
 	testSuite := CreateTestSuite(fmt.Sprintf("%s", pathName), nil, plan)
 	createTest := &Test{}
