@@ -936,9 +936,11 @@ func (t *Test) ResolveParameters(tc *TestSuite) error {
 	for _, m := range paramMaps {
 		removeNulls(m)
 	}
-	bodyMap := t.BodyParams.(map[string]interface{})
-	removeNulls(&bodyMap)
-	t.BodyParams = bodyMap
+	if t.BodyParams != nil {
+		bodyMap := t.BodyParams.(map[string]interface{})
+		removeNulls(&bodyMap)
+		t.BodyParams = bodyMap
+	}
 	return nil
 }
 
