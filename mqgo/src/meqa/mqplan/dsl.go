@@ -917,7 +917,9 @@ func (t *Test) ResolveParameters(tc *TestSuite) error {
 			}
 
 			// If there is a parameter passed in, just use it. Otherwise generate one.
-			if paramsMap[params.Name] == nil && globalParamsMap[params.Name] != nil {
+			_, inLocal := paramsMap[params.Name]
+			_, inGlobal := globalParamsMap[params.Name]
+			if !inLocal && inGlobal {
 				paramsMap[params.Name] = globalParamsMap[params.Name]
 			}
 			if _, ok := paramsMap[params.Name]; ok {
