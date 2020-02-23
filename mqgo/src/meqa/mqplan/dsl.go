@@ -460,8 +460,11 @@ func (t *Test) ProcessResult(resp *resty.Response) error {
 		}
 	}
 
+	greenSuccess := fmt.Sprintf("%vSuccess%v", mqutil.GREEN, mqutil.END)
+	redFail := fmt.Sprintf("%vFail%v", mqutil.RED, mqutil.END)
+	yellowFail := fmt.Sprintf("%vFail%v", mqutil.YELLOW, mqutil.END)
 	if testSuccess {
-		fmt.Printf("... expecting status: %v got status: %d. Success\n", expectedStatus, status)
+		fmt.Printf("... expecting status: %v got status: %d. %v\n", expectedStatus, status, greenSuccess)
 		if t.Expect != nil && t.Expect[ExpectBody] != nil {
 			testSuccess = mqutil.InterfaceEquals(t.Expect[ExpectBody], resultObj)
 			if testSuccess {
@@ -478,7 +481,7 @@ func (t *Test) ProcessResult(resp *resty.Response) error {
 		}
 	} else {
 		t.responseError = resp
-		fmt.Printf("... expecting status: %v got status: %d. Fail\n", expectedStatus, status)
+		fmt.Printf("... expecting status: %v got status: %d. %v\n", expectedStatus, status, redFail)
 		setExpect()
 		return mqutil.NewError(mqutil.ErrExpect, fmt.Sprintf("=== test failed, response code %d ===", status))
 	}
@@ -490,7 +493,7 @@ func (t *Test) ProcessResult(resp *resty.Response) error {
 		fmt.Printf("... verifying response against openapi schema. ")
 		err := respSchema.Parses("", resultObj, collection, true, t.db.Swagger)
 		if err != nil {
-			fmt.Print("Fail\n")
+			fmt.Printf("%v\n", yellowFail)
 			objMatchesSchema = true
 			specBytes, _ := json.MarshalIndent(respSpec, "", "    ")
 			mqutil.Logger.Printf("server response doesn't match swagger spec: \n%s", string(specBytes))
@@ -510,7 +513,7 @@ func (t *Test) ProcessResult(resp *resty.Response) error {
 			}
 			*/
 		} else {
-			fmt.Print("Success\n")
+			fmt.Printf("%v\n", greenSuccess)
 		}
 	}
 	if resultObj != nil && len(collection) == 0 && t.tag != nil && len(t.tag.Class) > 0 {

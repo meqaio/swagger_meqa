@@ -326,7 +326,7 @@ func runMeqa(meqaPath *string, swaggerFile *string, testPlanFile *string, result
 	resty.SetTLSClientConfig(&tls.Config{InsecureSkipVerify: true})
 	resty.SetRedirectPolicy(resty.FlexibleRedirectPolicy(15))
 
-	resultCounts := make(map[string]int)
+	mqplan.Current.ResultCounts = make(map[string]int)
 	if *testToRun == "all" {
 		for _, testSuite := range mqplan.Current.SuiteList {
 			mqutil.Logger.Printf("\n---\nTest suite: %s\n", testSuite.Name)
@@ -334,7 +334,7 @@ func runMeqa(meqaPath *string, swaggerFile *string, testPlanFile *string, result
 			counts, err := mqplan.Current.Run(testSuite.Name, nil)
 			mqutil.Logger.Printf("err:\n%v", err)
 			for k := range counts {
-				resultCounts[k] += counts[k]
+				mqplan.Current.ResultCounts[k] += counts[k]
 			}
 		}
 	} else {
@@ -343,15 +343,11 @@ func runMeqa(meqaPath *string, swaggerFile *string, testPlanFile *string, result
 		counts, err := mqplan.Current.Run(*testToRun, nil)
 		mqutil.Logger.Printf("err:\n%v", err)
 		for k := range counts {
-			resultCounts[k] += counts[k]
+			mqplan.Current.ResultCounts[k] += counts[k]
 		}
 	}
 	mqplan.Current.LogErrors()
-	fmt.Printf("%v: %v\n", mqutil.Passed, resultCounts[mqutil.Passed])
-	fmt.Printf("%v: %v\n", mqutil.Failed, resultCounts[mqutil.Failed])
-	fmt.Printf("%v: %v\n", mqutil.Skipped, resultCounts[mqutil.Skipped])
-	fmt.Printf("%v: %v\n", mqutil.SchemaMismatch, resultCounts[mqutil.SchemaMismatch])
-	fmt.Printf("%v: %v\n", mqutil.Total, resultCounts[mqutil.Total])
+	mqplan.Current.PrintSummary()
 	os.Remove(*resultPath)
 	mqplan.Current.WriteResultToFile(*resultPath)
 }

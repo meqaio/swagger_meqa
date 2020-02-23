@@ -117,7 +117,8 @@ type TestPlan struct {
 	ApiToken string
 
 	// Run result.
-	resultList []*Test
+	resultList   []*Test
+	ResultCounts map[string]int
 
 	comment string
 }
@@ -236,22 +237,47 @@ func (plan *TestPlan) WriteResultToFile(path string) error {
 }
 
 func (plan *TestPlan) LogErrors() {
-	fmt.Println("-----------------------------Errors----------------------------------")
+	fmt.Print(mqutil.AQUA)
+	fmt.Printf("-----------------------------Errors----------------------------------\n")
+	fmt.Print(mqutil.END)
 	for _, t := range plan.resultList {
 		if t.responseError != nil || t.schemaError != nil {
+			fmt.Print(mqutil.AQUA)
 			fmt.Println("--------")
 			fmt.Printf("%v: %v\n", t.Path, t.Name)
+			fmt.Print(mqutil.END)
 		}
 		if t.responseError != nil {
+			fmt.Print(mqutil.RED)
 			fmt.Println("Response Status Code:", t.resp.StatusCode())
 			fmt.Println(t.responseError)
+			fmt.Print(mqutil.END)
 		}
 		if t.schemaError != nil {
+			fmt.Print(mqutil.YELLOW)
 			fmt.Println(t.schemaError.Error())
+			fmt.Print(mqutil.END)
 		}
 	}
+	fmt.Print(mqutil.AQUA)
 	fmt.Println("---------------------------------------------------------------------")
+	fmt.Print(mqutil.END)
 }
+
+func (plan *TestPlan) PrintSummary() {
+	fmt.Print(mqutil.GREEN)
+	fmt.Printf("%v: %v\n", mqutil.Passed, plan.ResultCounts[mqutil.Passed])
+	fmt.Print(mqutil.RED)
+	fmt.Printf("%v: %v\n", mqutil.Failed, plan.ResultCounts[mqutil.Failed])
+	fmt.Print(mqutil.BLUE)
+	fmt.Printf("%v: %v\n", mqutil.Skipped, plan.ResultCounts[mqutil.Skipped])
+	fmt.Print(mqutil.YELLOW)
+	fmt.Printf("%v: %v\n", mqutil.SchemaMismatch, plan.ResultCounts[mqutil.SchemaMismatch])
+	fmt.Print(mqutil.AQUA)
+	fmt.Printf("%v: %v\n", mqutil.Total, plan.ResultCounts[mqutil.Total])
+	fmt.Print(mqutil.END)
+}
+
 func (plan *TestPlan) Init(swagger *mqswag.Swagger, db *mqswag.DB) {
 	plan.db = db
 	plan.swagger = swagger
