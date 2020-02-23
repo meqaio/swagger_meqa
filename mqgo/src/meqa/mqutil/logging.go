@@ -7,6 +7,15 @@ import (
 	"os"
 )
 
+// Test results constants
+const (
+	Passed         = "Passed"
+	Failed         = "Failed"
+	Skipped        = "Skipped"
+	SchemaMismatch = "SchemaMismatch"
+	Total          = "Total"
+)
+
 func NewLogger(out io.Writer) *log.Logger {
 	Logger = log.New(out, "", (log.Ldate | log.Lmicroseconds | log.Lshortfile))
 	return Logger

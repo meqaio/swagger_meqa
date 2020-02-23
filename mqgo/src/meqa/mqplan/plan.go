@@ -235,6 +235,23 @@ func (plan *TestPlan) WriteResultToFile(path string) error {
 	return p.DumpToFile(path)
 }
 
+func (plan *TestPlan) LogErrors() {
+	fmt.Println("-----------------------------Errors----------------------------------")
+	for _, t := range plan.resultList {
+		if t.responseError != nil || t.schemaError != nil {
+			fmt.Println("--------")
+			fmt.Printf("%v: %v\n", t.Path, t.Name)
+		}
+		if t.responseError != nil {
+			fmt.Println("Response Status Code:", t.resp.StatusCode())
+			fmt.Println(t.responseError)
+		}
+		if t.schemaError != nil {
+			fmt.Println(t.schemaError.Error())
+		}
+	}
+	fmt.Println("---------------------------------------------------------------------")
+}
 func (plan *TestPlan) Init(swagger *mqswag.Swagger, db *mqswag.DB) {
 	plan.db = db
 	plan.swagger = swagger
@@ -244,24 +261,26 @@ func (plan *TestPlan) Init(swagger *mqswag.Swagger, db *mqswag.DB) {
 }
 
 // Run a named TestSuite in the test plan.
-func (plan *TestPlan) Run(name string, parentTest *Test) error {
+func (plan *TestPlan) Run(name string, parentTest *Test) (map[string]int, error) {
 	tc, ok := plan.SuiteMap[name]
+	resultCounts := make(map[string]int)
 	if !ok || len(tc.Tests) == 0 {
 		str := fmt.Sprintf("The following test suite is not found: %s", name)
 		mqutil.Logger.Println(str)
-		return errors.New(str)
+		return resultCounts, errors.New(str)
 	}
 	tc.db = plan.db.CloneSchema()
 	defer func() {
 		tc.db = nil
 	}()
-
+	resultCounts[mqutil.Total] = len(tc.Tests)
+	resultCounts[mqutil.Failed] = 0
 	for _, test := range tc.Tests {
 		if len(test.Ref) != 0 {
 			test.Strict = tc.Strict
-			err := plan.Run(test.Ref, test)
+			resultCounts, err := plan.Run(test.Ref, test)
 			if err != nil {
-				return err
+				return resultCounts, err
 			}
 			continue
 		}
@@ -286,11 +305,16 @@ func (plan *TestPlan) Run(name string, parentTest *Test) error {
 		err := dup.Run(tc)
 		dup.err = err
 		plan.resultList = append(plan.resultList, dup)
-		if err != nil {
-			return err
+		if dup.schemaError != nil {
+			resultCounts[mqutil.SchemaMismatch]++
 		}
+		if err != nil {
+			resultCounts[mqutil.Failed]++
+			return resultCounts, err
+		}
+		resultCounts[mqutil.Passed]++
 	}
-	return nil
+	return resultCounts, nil
 }
 
 // The current global TestPlan

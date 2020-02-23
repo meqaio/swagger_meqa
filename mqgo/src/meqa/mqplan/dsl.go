@@ -118,6 +118,9 @@ type Test struct {
 	op    *spec.Operation
 	resp  *resty.Response
 	err   error
+
+	responseError interface{}
+	schemaError   error
 }
 
 func (t *Test) Init(suite *TestSuite) {
@@ -490,6 +493,7 @@ func (t *Test) ProcessResult(resp *resty.Response) error {
 			objMatchesSchema = true
 			specBytes, _ := json.MarshalIndent(respSpec, "", "    ")
 			mqutil.Logger.Printf("server response doesn't match swagger spec: \n%s", string(specBytes))
+			t.schemaError = err
 			if mqutil.Verbose {
 				// fmt.Printf("... openapi response schema: %s\n", string(specBytes))
 				// fmt.Printf("... response body: %s\n", string(respBody))
@@ -539,6 +543,10 @@ func (t *Test) ProcessResult(resp *resty.Response) error {
 				mqutil.Logger.Printf("swagger.spec expects a non-empty response, but response body is actually empty")
 			}
 		}
+	}
+	if expectedStatus != "success" {
+		setExpect()
+		return nil
 	}
 
 	// Sometimes the server will return more data than requested. For instance, the server may generate
