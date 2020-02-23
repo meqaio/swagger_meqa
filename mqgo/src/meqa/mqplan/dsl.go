@@ -477,6 +477,7 @@ func (t *Test) ProcessResult(resp *resty.Response) error {
 			}
 		}
 	} else {
+		t.responseError = resp
 		fmt.Printf("... expecting status: %v got status: %d. Fail\n", expectedStatus, status)
 		setExpect()
 		return mqutil.NewError(mqutil.ErrExpect, fmt.Sprintf("=== test failed, response code %d ===", status))
