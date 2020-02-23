@@ -336,6 +336,7 @@ func (plan *TestPlan) Run(name string, parentTest *Test) (map[string]int, error)
 		}
 		if err != nil {
 			resultCounts[mqutil.Failed]++
+			resultCounts[mqutil.Skipped] = len(tc.Tests) - resultCounts[mqutil.Passed] - 1
 			return resultCounts, err
 		}
 		resultCounts[mqutil.Passed]++
