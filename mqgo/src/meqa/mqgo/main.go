@@ -10,13 +10,12 @@ import (
 	"os"
 	"strings"
 
-	"github.com/satori/go.uuid"
-
 	"meqa/mqplan"
 	"meqa/mqswag"
 	"meqa/mqutil"
 	"path/filepath"
 
+	uuid "github.com/satori/go.uuid"
 	"gopkg.in/resty.v0"
 	"gopkg.in/yaml.v2"
 )
@@ -327,20 +326,28 @@ func runMeqa(meqaPath *string, swaggerFile *string, testPlanFile *string, result
 	resty.SetTLSClientConfig(&tls.Config{InsecureSkipVerify: true})
 	resty.SetRedirectPolicy(resty.FlexibleRedirectPolicy(15))
 
+	mqplan.Current.ResultCounts = make(map[string]int)
 	if *testToRun == "all" {
 		for _, testSuite := range mqplan.Current.SuiteList {
 			mqutil.Logger.Printf("\n---\nTest suite: %s\n", testSuite.Name)
 			fmt.Printf("\n---\nTest suite: %s\n", testSuite.Name)
-			err := mqplan.Current.Run(testSuite.Name, nil)
+			counts, err := mqplan.Current.Run(testSuite.Name, nil)
 			mqutil.Logger.Printf("err:\n%v", err)
+			for k := range counts {
+				mqplan.Current.ResultCounts[k] += counts[k]
+			}
 		}
 	} else {
 		mqutil.Logger.Printf("\n---\nTest suite: %s\n", *testToRun)
 		fmt.Printf("\n---\nTest suite: %s\n", *testToRun)
-		err := mqplan.Current.Run(*testToRun, nil)
+		counts, err := mqplan.Current.Run(*testToRun, nil)
 		mqutil.Logger.Printf("err:\n%v", err)
+		for k := range counts {
+			mqplan.Current.ResultCounts[k] += counts[k]
+		}
 	}
-
+	mqplan.Current.LogErrors()
+	mqplan.Current.PrintSummary()
 	os.Remove(*resultPath)
 	mqplan.Current.WriteResultToFile(*resultPath)
 }

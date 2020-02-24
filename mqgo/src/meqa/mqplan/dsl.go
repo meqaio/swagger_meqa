@@ -118,6 +118,9 @@ type Test struct {
 	op    *spec.Operation
 	resp  *resty.Response
 	err   error
+
+	responseError interface{}
+	schemaError   error
 }
 
 func (t *Test) Init(suite *TestSuite) {
@@ -457,8 +460,11 @@ func (t *Test) ProcessResult(resp *resty.Response) error {
 		}
 	}
 
+	greenSuccess := fmt.Sprintf("%vSuccess%v", mqutil.GREEN, mqutil.END)
+	redFail := fmt.Sprintf("%vFail%v", mqutil.RED, mqutil.END)
+	yellowFail := fmt.Sprintf("%vFail%v", mqutil.YELLOW, mqutil.END)
 	if testSuccess {
-		fmt.Printf("... expecting status: %v got status: %d. Success\n", expectedStatus, status)
+		fmt.Printf("... expecting status: %v got status: %d. %v\n", expectedStatus, status, greenSuccess)
 		if t.Expect != nil && t.Expect[ExpectBody] != nil {
 			testSuccess = mqutil.InterfaceEquals(t.Expect[ExpectBody], resultObj)
 			if testSuccess {
@@ -474,7 +480,8 @@ func (t *Test) ProcessResult(resp *resty.Response) error {
 			}
 		}
 	} else {
-		fmt.Printf("... expecting status: %v got status: %d. Fail\n", expectedStatus, status)
+		t.responseError = resp
+		fmt.Printf("... expecting status: %v got status: %d. %v\n", expectedStatus, status, redFail)
 		setExpect()
 		return mqutil.NewError(mqutil.ErrExpect, fmt.Sprintf("=== test failed, response code %d ===", status))
 	}
@@ -486,10 +493,11 @@ func (t *Test) ProcessResult(resp *resty.Response) error {
 		fmt.Printf("... verifying response against openapi schema. ")
 		err := respSchema.Parses("", resultObj, collection, true, t.db.Swagger)
 		if err != nil {
-			fmt.Print("Fail\n")
+			fmt.Printf("%v\n", yellowFail)
 			objMatchesSchema = true
 			specBytes, _ := json.MarshalIndent(respSpec, "", "    ")
 			mqutil.Logger.Printf("server response doesn't match swagger spec: \n%s", string(specBytes))
+			t.schemaError = err
 			if mqutil.Verbose {
 				// fmt.Printf("... openapi response schema: %s\n", string(specBytes))
 				// fmt.Printf("... response body: %s\n", string(respBody))
@@ -505,7 +513,7 @@ func (t *Test) ProcessResult(resp *resty.Response) error {
 			}
 			*/
 		} else {
-			fmt.Print("Success\n")
+			fmt.Printf("%v\n", greenSuccess)
 		}
 	}
 	if resultObj != nil && len(collection) == 0 && t.tag != nil && len(t.tag.Class) > 0 {
@@ -539,6 +547,10 @@ func (t *Test) ProcessResult(resp *resty.Response) error {
 				mqutil.Logger.Printf("swagger.spec expects a non-empty response, but response body is actually empty")
 			}
 		}
+	}
+	if expectedStatus != "success" {
+		setExpect()
+		return nil
 	}
 
 	// Sometimes the server will return more data than requested. For instance, the server may generate
