@@ -1377,7 +1377,8 @@ func (t *Test) GenerateSchema(name string, parentTag *mqswag.MeqaTag, schema *sp
 	}
 
 	if len(schema.Type) == 0 {
-		return nil, mqutil.NewError(mqutil.ErrInvalid, "Parameter doesn't have type")
+		// return nil, mqutil.NewError(mqutil.ErrInvalid, "Parameter doesn't have type")
+		return t.generateObject(name, tag, schema, db, level)
 	}
 	if schema.Type[0] == gojsonschema.TYPE_OBJECT {
 		return t.generateObject(name, tag, schema, db, level)
