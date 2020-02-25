@@ -293,7 +293,7 @@ parameters by default.
 	sort.Sort(pathWeightList)
 
 	for _, p := range pathWeightList {
-		if whitelist[p.path] {
+		if whitelist == nil || whitelist[p.path] {
 			GeneratePathTestSuite(pathMap[p.path], testPlan)
 		}
 	}
