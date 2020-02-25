@@ -165,6 +165,7 @@ func (t *Test) Duplicate() *Test {
 	test.resp = nil
 	test.comparisons = make(map[string]([]*Comparison))
 	test.err = nil
+	test.db = test.suite.db
 
 	return &test
 }
@@ -606,6 +607,12 @@ func (t *Test) ProcessResult(resp *resty.Response) error {
 						}
 					}
 				}
+			}
+		}
+		for className, resultArray := range collection {
+			objTag := mqswag.MeqaTag{className, "", "", 0}
+			for _, c := range resultArray {
+				t.AddObjectComparison(&objTag, c.(map[string]interface{}), (*spec.Schema)(t.db.GetSchema(className)))
 			}
 		}
 	}
