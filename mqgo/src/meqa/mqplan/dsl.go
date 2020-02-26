@@ -288,9 +288,9 @@ func (t *Test) CompareGetResult(className string, associations map[string]map[st
 				b, _ := json.Marshal(comp)
 				c, _ := json.Marshal(resultArray[0].(map[string]interface{}))
 				fmt.Printf("... checking GET result against client DB. Result doesn't match query. Fail\n")
-				t.responseError = fmt.Sprintf("Expected:\n%v\nFound:%v\n", string(b), string(c))
+				t.responseError = fmt.Sprintf("Expected:\n%v\nFound:\n%v\n", string(b), string(c))
 				if len(resultArray) > 1 {
-					t.responseError = t.responseError.(string) + fmt.Sprintf("...and %v other objects.\n", len(resultArray)-1)
+					t.responseError = t.responseError.(string) + fmt.Sprintf("... and %v other objects.\n", len(resultArray)-1)
 				}
 				return mqutil.NewError(mqutil.ErrHttp, fmt.Sprintf("result returned doesn't contain query parameters:\n%s\n",
 					string(b)))
@@ -317,9 +317,9 @@ func (t *Test) CompareGetResult(className string, associations map[string]map[st
 				b, _ := json.Marshal(dbEntry)
 				c, _ := json.Marshal(resultArray[0].(map[string]interface{}))
 				fmt.Printf("... checking GET result against client DB. Result not found on client. Fail\n")
-				t.responseError = fmt.Sprintf("Expected:\n%v\nFound:%v\n", string(b), string(c))
+				t.responseError = fmt.Sprintf("Expected:\n%v\nFound:\n%v\n", string(b), string(c))
 				if len(resultArray) > 1 {
-					t.responseError = t.responseError.(string) + fmt.Sprintf("...and %v other objects.\n", len(resultArray)-1)
+					t.responseError = t.responseError.(string) + fmt.Sprintf("... and %v other objects.\n", len(resultArray)-1)
 				}
 				return mqutil.NewError(mqutil.ErrHttp, fmt.Sprintf("client object not found in results returned\n%s\n",
 					string(b)))
@@ -578,7 +578,7 @@ func (t *Test) ProcessResult(resp *resty.Response) error {
 
 	// For posts, it's possible that the server has replaced certain fields (such as uuid). We should just
 	// use the server's result.
-	if method == mqswag.MethodPost {
+	if method == mqswag.MethodPost || method == mqswag.MethodPut {
 		var propertyCollection map[string][]interface{}
 		if objMatchesSchema {
 			propertyCollection = make(map[string][]interface{})
@@ -596,6 +596,29 @@ func (t *Test) ProcessResult(resp *resty.Response) error {
 						newcompList = append(newcompList, &c)
 					}
 					collection[className] = nil
+					if t.Strict {
+						for _, comp := range compList {
+							found := false
+							for _, entry := range classList {
+								if mqutil.InterfaceEquals(comp.new, entry) {
+									found = true
+									break
+								}
+							}
+							if !found {
+								setExpect()
+								b, _ := json.Marshal(comp.new)
+								c, _ := json.Marshal(classList[0].(map[string]interface{}))
+								fmt.Printf("... checking GET result against client DB. Result not found on client. Fail\n")
+								t.responseError = fmt.Sprintf("Expected:\n%v\nFound:\n%v\n", string(b), string(c))
+								if len(classList) > 1 {
+									t.responseError = t.responseError.(string) + fmt.Sprintf("... and %v other objects.\n", len(classList)-1)
+								}
+								return mqutil.NewError(mqutil.ErrHttp, fmt.Sprintf("client object not found in results returned\n%s\n",
+									string(b)))
+							}
+						}
+					}
 					t.comparisons[className] = newcompList
 				} else if len(compList) == 1 {
 					// When posting a single item, and the server returned fields that belong to the object,
@@ -1121,7 +1144,7 @@ func generateString(s *spec.Schema, prefix string) (string, error) {
 		return u.String(), err
 	}
 	if s.Format == "email" {
-		s.Pattern = "^\\w+@[a-zA-Z_]+?\\.[a-zA-Z]{2,3}$"
+		s.Pattern = "^[a-z0-9]+@[a-z_]+?\\.[a-z]{2,3}$"
 	}
 
 	// If no pattern is specified, we use the field name + some numbers as pattern
@@ -1300,6 +1323,13 @@ func (t *Test) generateObject(name string, parentTag *mqswag.MeqaTag, schema *sp
 	for k, v := range schema.Properties {
 		if level != 0 {
 			fmt.Printf("%s%s . ", spaces, k)
+		}
+		if t.suite.BodyParams != nil {
+			if o, ok := t.suite.BodyParams.(map[string]interface{})[k]; ok {
+				obj[k] = o
+				fmt.Println("found")
+				continue
+			}
 		}
 		o, err := t.GenerateSchema(k+"_", nil, &v, db, nextLevel)
 		if err != nil {
