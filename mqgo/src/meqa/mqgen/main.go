@@ -44,7 +44,7 @@ func run(meqaPath *string, swaggerFile *string, algorithm *string, verbose *bool
 		os.Exit(1)
 	}
 	whitelistPath := *whitelistFile
-	whitelist := make(map[string]bool)
+	var whitelist map[string]bool
 	if len(whitelistPath) > 0 {
 		if fi, err := os.Stat(whitelistPath); os.IsNotExist(err) || fi.Mode().IsDir() {
 			fmt.Printf("Can't load whitelist file at the following location %s", whitelistPath)
