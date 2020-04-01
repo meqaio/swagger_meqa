@@ -929,7 +929,9 @@ func (t *Test) ResolveParameters(tc *TestSuite) error {
 			}
 
 			// If there is a parameter passed in, just use it. Otherwise generate one.
-			if paramsMap[params.Name] == nil && globalParamsMap[params.Name] != nil {
+			_, inLocal := paramsMap[params.Name]
+			_, inGlobal := globalParamsMap[params.Name]
+			if !inLocal && inGlobal {
 				paramsMap[params.Name] = globalParamsMap[params.Name]
 			}
 			if _, ok := paramsMap[params.Name]; ok {
@@ -944,7 +946,26 @@ func (t *Test) ResolveParameters(tc *TestSuite) error {
 			return err
 		}
 	}
+	paramMaps := []*map[string]interface{}{&t.PathParams, &t.QueryParams, &t.HeaderParams, &t.FormParams}
+	for _, m := range paramMaps {
+		removeNulls(m)
+	}
+	if t.BodyParams != nil {
+		bodyMap := t.BodyParams.(map[string]interface{})
+		removeNulls(&bodyMap)
+		t.BodyParams = bodyMap
+	}
 	return nil
+}
+
+func removeNulls(inputMap *map[string]interface{}) {
+	filteredMap := make(map[string]interface{})
+	for k, v := range *inputMap {
+		if v != nil {
+			filteredMap[k] = v
+		}
+	}
+	*inputMap = filteredMap
 }
 
 func GetOperationByMethod(item *spec.PathItem, method string) *spec.Operation {
