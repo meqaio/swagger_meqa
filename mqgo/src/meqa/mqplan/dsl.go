@@ -165,6 +165,7 @@ func (t *Test) Duplicate() *Test {
 	test.resp = nil
 	test.comparisons = make(map[string]([]*Comparison))
 	test.err = nil
+	test.db = test.suite.db
 
 	return &test
 }
@@ -267,49 +268,62 @@ func (t *Test) CompareGetResult(className string, associations map[string]map[st
 	mqutil.Logger.Printf("got %d entries from db", len(dbArray))
 
 	// TODO optimize later. Should sort first.
-	for _, entry := range resultArray {
-		entryMap, _ := entry.(map[string]interface{})
-		if entryMap == nil {
-			// Server returned array of non-map types. Nothing for us to do. If the schema and server result doesn't
-			// match we will catch that when we verify schema.
-			continue
-		}
-
-		// What is returned should match our criteria.
-		if len(t.comparisons[className]) > 0 {
+	if len(t.comparisons[className]) > 0 {
+		for _, comp := range t.comparisons[className] {
 			compFound := false
-			for _, comp := range t.comparisons[className] {
+			for _, entry := range resultArray {
 				// One of the comparison should match
+				entryMap, _ := entry.(map[string]interface{})
+				if entryMap == nil {
+					// Server returned array of non-map types. Nothing for us to do. If the schema and server result doesn't
+					// match we will catch that when we verify schema.
+					continue
+				}
 				if mqutil.InterfaceEquals(comp.oldUsed, entryMap) {
 					compFound = true
 					break
 				}
 			}
 			if !compFound {
-				b, _ := json.Marshal(entry)
+				b, _ := json.Marshal(comp)
+				c, _ := json.Marshal(resultArray[0].(map[string]interface{}))
 				fmt.Printf("... checking GET result against client DB. Result doesn't match query. Fail\n")
-				return mqutil.NewError(mqutil.ErrHttp, fmt.Sprintf("result returned doesn't match query parameters:\n%s\n",
+				t.responseError = fmt.Sprintf("Expected:\n%v\nFound:\n%v\n", string(b), string(c))
+				if len(resultArray) > 1 {
+					t.responseError = t.responseError.(string) + fmt.Sprintf("... and %v other objects.\n", len(resultArray)-1)
+				}
+				return mqutil.NewError(mqutil.ErrHttp, fmt.Sprintf("result returned doesn't contain query parameters:\n%s\n",
 					string(b)))
 			}
 		}
-
-		if !t.Strict {
-			continue
-		}
-		found := false
+	}
+	if t.Strict {
 		for _, dbEntry := range dbArray {
 			dbentryMap, _ := dbEntry.(map[string]interface{})
-			if dbentryMap != nil && mqutil.InterfaceEquals(dbentryMap, entryMap) {
-				found = true
-				break
+			found := false
+			for _, entry := range resultArray {
+				entryMap, _ := entry.(map[string]interface{})
+				if entryMap == nil {
+					// Server returned array of non-map types. Nothing for us to do. If the schema and server result doesn't
+					// match we will catch that when we verify schema.
+					continue
+				}
+				if dbentryMap != nil && mqutil.InterfaceEquals(dbentryMap, entryMap) {
+					found = true
+					break
+				}
 			}
-		}
-
-		if !found {
-			b, _ := json.Marshal(entry)
-			fmt.Printf("... checking GET result against client DB. Result not found on client. Fail\n")
-			return mqutil.NewError(mqutil.ErrHttp, fmt.Sprintf("result returned is not found on client\n%s\n",
-				string(b)))
+			if !found {
+				b, _ := json.Marshal(dbEntry)
+				c, _ := json.Marshal(resultArray[0].(map[string]interface{}))
+				fmt.Printf("... checking GET result against client DB. Result not found on client. Fail\n")
+				t.responseError = fmt.Sprintf("Expected:\n%v\nFound:\n%v\n", string(b), string(c))
+				if len(resultArray) > 1 {
+					t.responseError = t.responseError.(string) + fmt.Sprintf("... and %v other objects.\n", len(resultArray)-1)
+				}
+				return mqutil.NewError(mqutil.ErrHttp, fmt.Sprintf("client object not found in results returned\n%s\n",
+					string(b)))
+			}
 		}
 	}
 	fmt.Printf("... checking GET result against client DB. Success\n")
@@ -564,7 +578,7 @@ func (t *Test) ProcessResult(resp *resty.Response) error {
 
 	// For posts, it's possible that the server has replaced certain fields (such as uuid). We should just
 	// use the server's result.
-	if method == mqswag.MethodPost {
+	if method == mqswag.MethodPost || method == mqswag.MethodPut {
 		var propertyCollection map[string][]interface{}
 		if objMatchesSchema {
 			propertyCollection = make(map[string][]interface{})
@@ -582,6 +596,29 @@ func (t *Test) ProcessResult(resp *resty.Response) error {
 						newcompList = append(newcompList, &c)
 					}
 					collection[className] = nil
+					if t.Strict {
+						for _, comp := range compList {
+							found := false
+							for _, entry := range classList {
+								if mqutil.InterfaceEquals(comp.new, entry) {
+									found = true
+									break
+								}
+							}
+							if !found {
+								setExpect()
+								b, _ := json.Marshal(comp.new)
+								c, _ := json.Marshal(classList[0].(map[string]interface{}))
+								fmt.Printf("... checking GET result against client DB. Result not found on client. Fail\n")
+								t.responseError = fmt.Sprintf("Expected:\n%v\nFound:\n%v\n", string(b), string(c))
+								if len(classList) > 1 {
+									t.responseError = t.responseError.(string) + fmt.Sprintf("... and %v other objects.\n", len(classList)-1)
+								}
+								return mqutil.NewError(mqutil.ErrHttp, fmt.Sprintf("client object not found in results returned\n%s\n",
+									string(b)))
+							}
+						}
+					}
 					t.comparisons[className] = newcompList
 				} else if len(compList) == 1 {
 					// When posting a single item, and the server returned fields that belong to the object,
@@ -593,6 +630,12 @@ func (t *Test) ProcessResult(resp *resty.Response) error {
 						}
 					}
 				}
+			}
+		}
+		for className, resultArray := range collection {
+			objTag := mqswag.MeqaTag{className, "", "", 0}
+			for _, c := range resultArray {
+				t.AddObjectComparison(&objTag, c.(map[string]interface{}), (*spec.Schema)(t.db.GetSchema(className)))
 			}
 		}
 	}
@@ -1101,7 +1144,7 @@ func generateString(s *spec.Schema, prefix string) (string, error) {
 		return u.String(), err
 	}
 	if s.Format == "email" {
-		s.Pattern = "^\\w+@[a-zA-Z_]+?\\.[a-zA-Z]{2,3}$"
+		s.Pattern = "^[a-z0-9]+@[a-z_]+?\\.[a-z]{2,3}$"
 	}
 
 	// If no pattern is specified, we use the field name + some numbers as pattern
@@ -1281,6 +1324,13 @@ func (t *Test) generateObject(name string, parentTag *mqswag.MeqaTag, schema *sp
 		if level != 0 {
 			fmt.Printf("%s%s . ", spaces, k)
 		}
+		if t.suite.BodyParams != nil {
+			if o, ok := t.suite.BodyParams.(map[string]interface{})[k]; ok {
+				obj[k] = o
+				fmt.Println("found")
+				continue
+			}
+		}
 		o, err := t.GenerateSchema(k+"_", nil, &v, db, nextLevel)
 		if err != nil {
 			return nil, err
@@ -1377,7 +1427,8 @@ func (t *Test) GenerateSchema(name string, parentTag *mqswag.MeqaTag, schema *sp
 	}
 
 	if len(schema.Type) == 0 {
-		return nil, mqutil.NewError(mqutil.ErrInvalid, "Parameter doesn't have type")
+		// return nil, mqutil.NewError(mqutil.ErrInvalid, "Parameter doesn't have type")
+		return t.generateObject(name, tag, schema, db, level)
 	}
 	if schema.Type[0] == gojsonschema.TYPE_OBJECT {
 		return t.generateObject(name, tag, schema, db, level)

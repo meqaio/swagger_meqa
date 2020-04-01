@@ -176,7 +176,7 @@ func InterfaceEquals(criteria interface{}, existing interface{}) bool {
 			return true
 		} else {
 			existingKind := reflect.TypeOf(existing).Kind()
-			if existingKind == reflect.Map || existingKind == reflect.Array {
+			if existingKind == reflect.Map || existingKind == reflect.Array || existingKind == reflect.Slice {
 				return true
 			}
 			return false
@@ -223,6 +223,9 @@ func InterfaceEquals(criteria interface{}, existing interface{}) bool {
 			}
 		}
 		return true
+	}
+	if eKind == reflect.String && (cKind == reflect.Int || cKind == reflect.Float32 || cKind == reflect.Float64) {
+		return reflect.TypeOf(existing).String() == "json.Number"
 	}
 
 	cJson, _ := json.Marshal(criteria)

@@ -255,7 +255,7 @@ func (plan *TestPlan) LogErrors() {
 		}
 		if t.schemaError != nil {
 			fmt.Print(mqutil.YELLOW)
-			fmt.Println(t.schemaError.Error())
+			// fmt.Println(t.schemaError.Error())
 			fmt.Print(mqutil.END)
 		}
 	}

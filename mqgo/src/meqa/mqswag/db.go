@@ -157,7 +157,7 @@ func (schema *Schema) Parses(name string, object interface{}, collection map[str
 	} else if k == reflect.Map {
 		isProperty = false
 		objMap, objIsMap := object.(map[string]interface{})
-		if !objIsMap || !schema.Type.Contains(gojsonschema.TYPE_OBJECT) {
+		if !objIsMap { // || !schema.Type.Contains(gojsonschema.TYPE_OBJECT) {
 			return raiseError("schema is not an object")
 		}
 		for _, requiredName := range schema.Required {
